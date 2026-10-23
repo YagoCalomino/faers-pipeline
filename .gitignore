@@ -1,0 +1,30 @@
+# Data and runtime output (keep only the .gitkeep placeholders)
+data/**
+!data/**/
+!data/**/.gitkeep
+logs/
+
+# Working planning document: kept out of the public repository
+docs/PLANO_FAERS_PIPELINE.md
+
+# Secrets
+.env
+
+# Build / tool output
+target/
+dbt_packages/
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Airflow may write a default config if AIRFLOW_CONFIG ever points here
+config/airflow.cfg
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

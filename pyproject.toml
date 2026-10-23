@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "faers-pipeline"
+version = "0.1.0"
+description = "Pharmacovigilance pipeline: FDA FAERS/AEMS -> Airflow -> DuckDB/dbt -> disproportionality signals"
+readme = "README.md"
+requires-python = ">=3.12"
+# Runtime dependencies are pinned in infra/docker/requirements.txt
+# (installed with the official Airflow constraints).
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "dags", "tests"]
+# The plan's code snippets are reference text, not project code.
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # Portuguese text in docstrings/messages
+
+[tool.ruff.lint.isort]
+known-first-party = ["faers_pipeline"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
