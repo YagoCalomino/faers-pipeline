@@ -1,0 +1,15 @@
+# STUB (Phase 5). Nothing here is used yet.
+# TODO(Phase 0): confirm endpoints, terms of use and rate limit on the official NLM pages
+# before filling the values below.
+api:
+  base_url: "https://rxnav.nlm.nih.gov/REST"   # TODO: confirm in Phase 0
+  max_requests_per_second: null                 # TODO: from the NLM terms of use
+  request_timeout_s: 30
+  user_agent: "faers-pipeline-portfolio"
+
+cache:
+  path: "/opt/airflow/data/lake/raw/rxnorm/cache"
+  ttl_days: null                                # TODO: decide in Phase 5
+
+coverage:
+  min_ps_ss_row_coverage: 0.85                  # initial target from the plan; adjust after measuring

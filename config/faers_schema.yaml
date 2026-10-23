@@ -1,0 +1,9 @@
+# Required columns per file type (lowercase). Missing column = failure. Extra column = warning.
+# Based on the post-2014Q3 layout; to be checked against the README inside a real zip (Phase 0).
+demo: [primaryid, caseid, caseversion, i_f_code, event_dt, fda_dt, age, age_cod, age_grp, sex, reporter_country]
+drug: [primaryid, caseid, drug_seq, role_cod, drugname, prod_ai]
+reac: [primaryid, caseid, pt]
+outc: [primaryid, caseid, outc_cod]
+rpsr: [primaryid, caseid, rpsr_cod]
+ther: [primaryid, caseid, dsg_drug_seq, start_dt, end_dt]
+indi: [primaryid, caseid, indi_drug_seq, indi_pt]

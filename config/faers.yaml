@@ -1,0 +1,35 @@
+source:
+  name: faers
+  # Confirmed 2026-10-19: ranged GET on faers_ascii_2026q2.zip returned 206 with zip magic
+  # bytes "PK\x03\x04" (63,223,614 bytes). Missing quarters (2026q3) return 404 on GET
+  # but 500 on HEAD, and HEAD reports Content-Length 0, so availability uses a ranged GET.
+  # The FDA page now says AEMS; this download path still works.
+  base_url: "https://fis.fda.gov/content/Exports"
+  filename_pattern: "faers_ascii_{year}q{q}.zip"
+  landing_page: "https://www.fda.gov/drugs/fda-adverse-event-reporting-system-faers/fda-adverse-event-reporting-system-faers-latest-quarterly-data-files"
+  request_timeout_s: 120
+  user_agent: "faers-pipeline-portfolio"
+
+schedule:
+  # PLACEHOLDER: the 8 MVP quarters are decided after the Phase 0 spike.
+  start_quarter: "2024Q3"   # PLACEHOLDER
+  end_quarter: "2026Q2"     # PLACEHOLDER
+  cron: "0 0 1 */3 *"
+  max_active_runs: 2
+
+availability_sensor:
+  poke_interval_s: 21600     # 6 h
+  timeout_s: 2592000         # 30 days
+
+file_types: [demo, drug, reac, outc, rpsr, ther, indi]
+
+parse:
+  delimiter: "$"
+  quote: ""
+  encoding: "utf-8"
+  fallback_encoding: "latin-1"
+
+paths:
+  landing: "/opt/airflow/data/landing/faers"
+  lake: "/opt/airflow/data/lake"
+  warehouse: "/opt/airflow/data/warehouse/faers.duckdb"

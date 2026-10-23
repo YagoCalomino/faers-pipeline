@@ -1,0 +1,11 @@
+# STUB (Phase 7). Values come from the plan (section 6.7); exposed later as dbt vars.
+signal_drug_roles: [PS, SS]
+signal_min_cases: 3
+thresholds:
+  evans:            # a >= 3, PRR >= 2, chi2 >= 4
+    min_cases: 3
+    min_prr: 2
+    min_chi2: 4
+  ror:              # a >= 3, lower 95% CI of ROR > 1
+    min_cases: 3
+    min_ror_lcl: 1
