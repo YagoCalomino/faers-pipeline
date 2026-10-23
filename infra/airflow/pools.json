@@ -1,0 +1,12 @@
+{
+  "duckdb_writer": {
+    "slots": 1,
+    "description": "Single writer for the DuckDB warehouse file (dbt runs)",
+    "include_deferred": false
+  },
+  "rxnorm_api": {
+    "slots": 4,
+    "description": "Concurrent calls to the NLM RxNav API (rate limit)",
+    "include_deferred": false
+  }
+}

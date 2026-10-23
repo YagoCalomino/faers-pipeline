@@ -1,0 +1,7 @@
+# Installed into the Airflow environment together with the official constraints file
+# https://raw.githubusercontent.com/apache/airflow/constraints-3.3.2/constraints-3.12.txt
+# Packages listed in that file must match its version (pyarrow, requests, PyYAML).
+duckdb==1.5.6
+pyarrow==25.0.1
+requests==2.34.2
+PyYAML==6.0.3

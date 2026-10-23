@@ -1,0 +1,5 @@
+# Installed into a separate virtualenv (/opt/dbt-venv), outside the Airflow constraints.
+# duckdb is pinned to the same version as the Airflow environment so both read the same files.
+dbt-core==1.12.6
+dbt-duckdb==1.11.0
+duckdb==1.5.6
