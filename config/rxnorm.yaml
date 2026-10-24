@@ -1,15 +1,60 @@
-# STUB (Phase 5). Nothing here is used yet.
-# TODO(Phase 0): confirm endpoints, terms of use and rate limit on the official NLM pages
-# before filling the values below.
+# RxNorm enrichment (Phase 5). Values confirmed in Phase 0 (2026-10-23) on the official NLM pages:
+#   Terms of service: https://lhncbc.nlm.nih.gov/RxNav/TermsofService.html
+#   RxNorm API list:  https://lhncbc.nlm.nih.gov/RxNav/APIs/RxNormAPIs.html
+#   (one page per function: https://lhncbc.nlm.nih.gov/RxNav/APIs/api-RxNorm.<function>.html)
 api:
-  base_url: "https://rxnav.nlm.nih.gov/REST"   # TODO: confirm in Phase 0
-  max_requests_per_second: null                 # TODO: from the NLM terms of use
+  base_url: "https://rxnav.nlm.nih.gov/REST"
+  # Documented limit: "no more than 20 requests per second per IP address" (100 with a UTS
+  # API key, not used here). Phase 0: ~150 ms per call, all HTTP 200 at 2 req/s.
+  rate_limit_rps: 5
   request_timeout_s: 30
   user_agent: "faers-pipeline-portfolio"
+  retry:
+    max_attempts: 4
+    backoff_initial_s: 2
+    backoff_multiplier: 2
+    retry_on_status: [429, 500, 502, 503, 504]
+  endpoints:
+    # findRxcuiByString; search=2: exact match first, then normalized match.
+    find_by_name: "/rxcui.json?name={name}&search=2"
+    # getApproximateMatch; maxEntries 1-100 (default 20). Scores compare only within one result.
+    approximate: "/approximateTerm.json?term={term}&maxEntries=5"
+    # getRelatedByType; IN = ingredient.
+    related_ingredients: "/rxcui/{rxcui}/related.json?tty=IN"
+    # getRxConceptProperties; name and tty of an RxCUI.
+    properties: "/rxcui/{rxcui}/properties.json"
+    # getRxNormVersion; e.g. {"version": "05-Oct-2026", "apiVersion": "3.1.356"}.
+    version: "/version.json"
 
 cache:
   path: "/opt/airflow/data/lake/raw/rxnorm/cache"
-  ttl_days: null                                # TODO: decide in Phase 5
+  # No automatic expiry. Every entry is stamped with the RxNorm version (version endpoint) at
+  # lookup time; refreshing is a manual decision (e.g. after a new RxNorm release).
+  # The NLM terms recommend "caching results for a 12-24 hour period" to limit requests;
+  # whether that is meant as a minimum or a maximum was not confirmed.
+  expiry: none
+  stamp_with_rxnorm_version: true
+  refresh: manual
+
+# Match layers, tried in this order; the layer is stored as match_type.
+match_layers:
+  - exact            # find_by_name hit on the exact string
+  - normalized       # find_by_name hit only after RxNorm normalization (search=2)
+  - approx_accepted  # approximate candidate that passes approximate_rules
+  - fallback         # no accepted match: the normalized text itself becomes the "ingredient"
+
+approximate_rules:
+  source: RXNORM                   # ignore candidates from other sources (MMSL, VANDF, ...)
+  require_ingredient: true         # the candidate must resolve to at least one IN
+  min_score: null                  # TODO(Phase 5): calibrate on a labelled sample
 
 coverage:
-  min_ps_ss_row_coverage: 0.85                  # initial target from the plan; adjust after measuring
+  min_ps_ss_row_coverage: 0.85     # initial target from the plan; adjust after measuring
+
+# Required statement, copied from https://lhncbc.nlm.nih.gov/RxNav/TermsofService.html
+# ("We request that any application that makes use of NLM data include the following
+# statement"). The same page says the NLM name and/or logo may not be used.
+attribution_text: >-
+  This product uses publicly available data from the U.S. National Library of Medicine (NLM),
+  National Institutes of Health, Department of Health and Human Services; NLM is not
+  responsible for the product and does not endorse or recommend this or any other product.
