@@ -1,25 +1,61 @@
-# FAERS sample fixture
+# FAERS sample fixture (v2)
 
-Real subset of the FDA FAERS quarterly ASCII file for 2026Q2, built by
-`scripts/make_fixture.py --quarter 2026Q2 --cases 200 --deleted 20`.
-Bytes are copied unchanged (line endings included), so this folder is marked `-text` in
-`.gitattributes`.
+Real subset of the FDA FAERS quarterly ASCII files 2024Q3, 2025Q1, 2025Q2, 2026Q2, built by
+`scripts/make_fixture.py` (selection rules in its docstring). Lines are copied unchanged from
+the zips (line endings included), so this folder is marked `-text` in `.gitattributes`.
+Source zips: https://fis.fda.gov/content/Exports/faers_ascii_<yyyy>q<n>.zip
 
-- Source: https://fis.fda.gov/content/Exports/faers_ascii_2026q2.zip
-- Source zip sha256: `90213500721ecaf976ee45d8ad04aa2dbb80861d93c87fef67ccaf515919bf2a`
-- DEMO: first 200 distinct caseid in file order, all DEMO lines of those cases
-  (200 primaryid). Other types: every line with one of those primaryid.
-- Deleted: lines up to the 20th non-blank id (keeps the leading blank line).
+Selected caseid per rule (159 distinct caseid):
+- `a_first_2026Q2` (100): 10014022, 10021835, 10100983, 10144708, 10144714, 10144827, 10144828, 10144830, 10144832, 10144834, 10144836, 10144838, 10144840, 10144841, 10144843, 10144845, 10144847, 10144849, 10144851, 10144853, 10144854, 10144857, 10144859, 10144860, 10144866, 10144868, 10144872, 10144875, 10144877, 10144879, 10144881, 10144883, 10144884, 10144886, 10144888, 10144890, 10144891, 10144892, 10144893, 10144895, 10144896, 10144897, 10144898, 10144899, 10144900, 10144901, 10144902, 10144903, 10144904, 10144905, 10144906, 10144907, 10144908, 10144909, 10144910, 10144911, 10144912, 10144913, 10144914, 10144915, 10144917, 10144919, 10144924, 10144926, 10144929, 10144931, 10144932, 10144933, 10144935, 10144939, 10175416, 10216401, 10231642, 10247560, 10250545, 10312832, 10338343, 10354388, 10361766, 10401818, 10427696, 10443344, 10488495, 10504723, 10506060, 10509134, 10586438, 10591924, 10627271, 10627273, 10652708, 10658321, 10676524, 10687948, 10695370, 10715316, 10719139, 10725659, 10730151, 10734231
+- `b_multi_version` (25): 7192201, 10231642, 10338343, 10591924, 10989339, 11046223, 11381598, 11519456, 11636063, 11704993, 12484050, 13143264, 13246494, 13364554, 13537777, 13569134, 13762353, 13814584, 13899561, 13932214, 13961041, 14068970, 14278356, 14497369, 14517379
+- `c_republished_primaryid` (5): 1872426647 (reac differs), 1899700119 (reac differs), 183021914, 206298194, 247738013
+- `c_caseid` (5): 18997001, 24773801, 20629819, 18724266, 18302191
+- `d_deleted_in_demo` (10): 25112692, 6530848, 6826416, 7766831, 9861853, 13824952, 14032279, 14405485, 15104262, 15201214
+- `e_rpsr` (5): 24036449, 24799559, 24901407, 26566046, 26566068
+- `f_role_dn` (3): 14448266, 17347387, 17848608
+- `g_empty_sex` (5): 6689217, 6689218, 6711157, 7448870, 7607455
+- `g_empty_age_cod` (5): 6711157, 8109618, 8569632, 9200013, 9223331
+- `h_fixed` (1): 26012757
+- `i_ther_start_dt_6_chars` (2): 6125174, 6161990
+- `i_ther_start_dt_4_chars` (2): 5786303, 6220489
 
-| File | Lines (with header) | Bytes |
-|---|---|---|
-| `ASCII/DEMO26Q2.txt` | 201 | 25,854 |
-| `ASCII/DRUG26Q2.txt` | 3274 | 313,626 |
-| `ASCII/INDI26Q2.txt` | 1742 | 87,357 |
-| `ASCII/OUTC26Q2.txt` | 174 | 3,920 |
-| `ASCII/REAC26Q2.txt` | 1931 | 73,790 |
-| `ASCII/RPSR26Q2.txt` | 1 | 26 |
-| `ASCII/THER26Q2.txt` | 334 | 12,196 |
-| `Deleted/DELETE26Q2.txt` | 21 | 182 |
+| Quarter | File | Lines (with header) | Bytes |
+|---|---|---|---|
+| 2024Q3 | `ASCII/DEMO24Q3.txt` | 32 | 5,017 |
+| 2024Q3 | `ASCII/DRUG24Q3.txt` | 1750 | 182,088 |
+| 2024Q3 | `ASCII/REAC24Q3.txt` | 734 | 28,840 |
+| 2024Q3 | `ASCII/OUTC24Q3.txt` | 58 | 1,373 |
+| 2024Q3 | `ASCII/RPSR24Q3.txt` | 2 | 51 |
+| 2024Q3 | `ASCII/THER24Q3.txt` | 221 | 8,034 |
+| 2024Q3 | `ASCII/INDI24Q3.txt` | 564 | 28,404 |
+| 2024Q3 | `Deleted/DELETE24Q3.txt` | 11 | 92 |
+| 2024Q3 | zip sha256 `c13ce123e26e12d1533ebf494e482e7ae697d18b7169b9627f8b576a75111030` | | |
+| 2025Q1 | `ASCII/DEMO25Q1.txt` | 23 | 3,519 |
+| 2025Q1 | `ASCII/DRUG25Q1.txt` | 712 | 73,046 |
+| 2025Q1 | `ASCII/REAC25Q1.txt` | 307 | 11,678 |
+| 2025Q1 | `ASCII/OUTC25Q1.txt` | 37 | 833 |
+| 2025Q1 | `ASCII/RPSR25Q1.txt` | 3 | 71 |
+| 2025Q1 | `ASCII/THER25Q1.txt` | 100 | 3,541 |
+| 2025Q1 | `ASCII/INDI25Q1.txt` | 275 | 13,488 |
+| 2025Q1 | `Deleted/DELETE25Q1.txt` | 13 | 109 |
+| 2025Q1 | zip sha256 `51c1dc440733fbbb0b6913b5382ce5b9a3510642a0c6bfd6239d26aa18346b69` | | |
+| 2025Q2 | `ASCII/DEMO25Q2.txt` | 14 | 2,128 |
+| 2025Q2 | `ASCII/DRUG25Q2.txt` | 561 | 58,653 |
+| 2025Q2 | `ASCII/REAC25Q2.txt` | 248 | 8,809 |
+| 2025Q2 | `ASCII/OUTC25Q2.txt` | 28 | 617 |
+| 2025Q2 | `ASCII/RPSR25Q2.txt` | 2 | 48 |
+| 2025Q2 | `ASCII/THER25Q2.txt` | 48 | 1,731 |
+| 2025Q2 | `ASCII/INDI25Q2.txt` | 200 | 9,728 |
+| 2025Q2 | `Deleted/DELETE25Q2.txt` | 18 | 152 |
+| 2025Q2 | zip sha256 `e731a72f1c85b79c5d86706d9f8708cc2f4cef75c0a9caac7c28074da02a9074` | | |
+| 2026Q2 | `ASCII/DEMO26Q2.txt` | 140 | 17,743 |
+| 2026Q2 | `ASCII/DRUG26Q2.txt` | 2318 | 215,288 |
+| 2026Q2 | `ASCII/REAC26Q2.txt` | 1287 | 49,530 |
+| 2026Q2 | `ASCII/OUTC26Q2.txt` | 132 | 2,939 |
+| 2026Q2 | `ASCII/RPSR26Q2.txt` | 3 | 72 |
+| 2026Q2 | `ASCII/THER26Q2.txt` | 168 | 6,073 |
+| 2026Q2 | `ASCII/INDI26Q2.txt` | 1333 | 68,758 |
+| 2026Q2 | `Deleted/DELETE26Q2.txt` | 13 | 110 |
+| 2026Q2 | zip sha256 `90213500721ecaf976ee45d8ad04aa2dbb80861d93c87fef67ccaf515919bf2a` | | |
 
-Total: 516,951 bytes.
+Total: 802,563 bytes.

@@ -1,0 +1,275 @@
+primaryid$caseid$indi_drug_seq$indi_pt
+1163606328$11636063$1$Asthma
+1163606328$11636063$7$Product used for unknown indication
+1170499325$11704993$1$Product used for unknown indication
+1170499325$11704993$6$Product used for unknown indication
+1170499325$11704993$10$Product used for unknown indication
+1170499325$11704993$11$Product used for unknown indication
+1170499325$11704993$14$Product used for unknown indication
+1170499325$11704993$22$Product used for unknown indication
+1170499325$11704993$29$Product used for unknown indication
+1170499325$11704993$30$Product used for unknown indication
+1170499325$11704993$31$Product used for unknown indication
+1170499325$11704993$32$Product used for unknown indication
+1170499325$11704993$33$Product used for unknown indication
+1170499325$11704993$37$Product used for unknown indication
+1170499325$11704993$46$Product used for unknown indication
+1170499325$11704993$47$Product used for unknown indication
+1170499325$11704993$48$Product used for unknown indication
+1170499325$11704993$49$Product used for unknown indication
+1170499325$11704993$51$Product used for unknown indication
+1170499325$11704993$53$Product used for unknown indication
+1170499325$11704993$57$Product used for unknown indication
+1170499325$11704993$61$Product used for unknown indication
+1170499325$11704993$67$Product used for unknown indication
+1170499325$11704993$69$Product used for unknown indication
+1170499325$11704993$73$Product used for unknown indication
+1170499325$11704993$78$Product used for unknown indication
+1170499325$11704993$83$Product used for unknown indication
+1170499325$11704993$87$Product used for unknown indication
+1170499325$11704993$92$Product used for unknown indication
+1170499325$11704993$96$Product used for unknown indication
+1170499325$11704993$97$Product used for unknown indication
+1170499325$11704993$109$Product used for unknown indication
+1170499325$11704993$112$Product used for unknown indication
+1170499325$11704993$117$Product used for unknown indication
+1170499325$11704993$122$Product used for unknown indication
+1170499325$11704993$126$Product used for unknown indication
+1170499325$11704993$129$Product used for unknown indication
+1170499325$11704993$135$Product used for unknown indication
+1170499325$11704993$136$Product used for unknown indication
+1170499325$11704993$139$Product used for unknown indication
+1170499325$11704993$143$Product used for unknown indication
+1170499325$11704993$147$Product used for unknown indication
+1170499325$11704993$148$Product used for unknown indication
+1170499325$11704993$150$Product used for unknown indication
+1170499325$11704993$152$Product used for unknown indication
+1170499325$11704993$154$Product used for unknown indication
+1170499325$11704993$155$Product used for unknown indication
+1170499325$11704993$156$Product used for unknown indication
+1170499325$11704993$157$Product used for unknown indication
+1170499325$11704993$160$Product used for unknown indication
+1170499325$11704993$161$Product used for unknown indication
+1170499325$11704993$162$Product used for unknown indication
+1170499325$11704993$163$Product used for unknown indication
+1170499325$11704993$164$Product used for unknown indication
+1170499325$11704993$165$Product used for unknown indication
+1248405014$12484050$1$Asthma
+1248405014$12484050$21$Depression
+1248405014$12484050$23$Product used for unknown indication
+1248405014$12484050$24$Product used for unknown indication
+1248405014$12484050$25$Product used for unknown indication
+1248405014$12484050$26$Product used for unknown indication
+1248405014$12484050$27$Product used for unknown indication
+1248405014$12484050$28$Product used for unknown indication
+1248405014$12484050$29$Gastrooesophageal reflux disease
+1248405014$12484050$30$Bone disorder
+1248405014$12484050$31$Hypothyroidism
+1248405014$12484050$32$Thrombosis prophylaxis
+1248405014$12484050$33$Hypertension
+1248405014$12484050$34$Hypertension
+1248405014$12484050$35$Blood cholesterol increased
+1314326415$13143264$1$Depression
+1314326415$13143264$4$Product used for unknown indication
+1314326415$13143264$5$Product used for unknown indication
+1314326415$13143264$6$Product used for unknown indication
+1314326415$13143264$7$Product used for unknown indication
+1314326415$13143264$8$Product used for unknown indication
+1314326415$13143264$9$Product used for unknown indication
+1324649434$13246494$1$Angina pectoris
+1324649434$13246494$2$Angina pectoris
+1324649434$13246494$4$Pleural effusion
+1324649434$13246494$5$Lung disorder
+1324649434$13246494$6$Left ventricular dysfunction
+1324649434$13246494$7$Pulmonary oedema
+1324649434$13246494$8$Pulmonary oedema
+1324649434$13246494$9$Lung disorder
+1324649434$13246494$10$Left ventricular dysfunction
+1324649434$13246494$11$Pleural effusion
+1324649434$13246494$12$Pleural effusion
+1324649434$13246494$13$Pulmonary oedema
+1324649434$13246494$14$Lung disorder
+1324649434$13246494$15$Left ventricular dysfunction
+1324649434$13246494$16$Angina pectoris
+1324649434$13246494$19$Depression
+1324649434$13246494$20$Cardiac failure
+1324649434$13246494$21$Cardiac failure
+1324649434$13246494$23$Cardiac failure
+1324649434$13246494$25$Cardiovascular disorder
+1324649434$13246494$26$Angina pectoris
+1324649434$13246494$28$Product used for unknown indication
+1324649434$13246494$29$Angina pectoris
+1324649434$13246494$30$Dyspepsia
+1324649434$13246494$31$Duodenal ulcer
+1324649434$13246494$32$Product used for unknown indication
+1324649434$13246494$33$Cardiovascular disorder
+1324649434$13246494$34$Cardiovascular disorder
+1324649434$13246494$36$Product used for unknown indication
+1324649434$13246494$37$Left ventricular dysfunction
+1324649434$13246494$38$Anaemia
+1324649434$13246494$39$Cardiovascular disorder
+1324649434$13246494$40$Pain
+1324649434$13246494$41$Product used for unknown indication
+1324649434$13246494$42$Pain in extremity
+1324649434$13246494$43$Psoriasis
+1324649434$13246494$44$Psoriasis
+1324649434$13246494$45$Psoriasis
+1324649434$13246494$46$Pain in extremity
+1324649434$13246494$48$Depression
+1324649434$13246494$49$Left ventricular dysfunction
+1324649434$13246494$50$Depression
+1324649434$13246494$51$Ventricular dysfunction
+1324649434$13246494$52$Dyspepsia
+1376235324$13762353$1$Rheumatoid arthritis
+1376235324$13762353$7$Rheumatoid arthritis
+1376235324$13762353$9$Diabetes mellitus
+1382495223$13824952$1$Hormone replacement therapy
+1382495223$13824952$4$Thyroid disorder
+1389956111$13899561$1$Narcolepsy
+1389956111$13899561$2$Cataplexy
+1389956111$13899561$3$Somnolence
+1389956111$13899561$8$Post-traumatic stress disorder
+1389956111$13899561$9$Migraine
+1389956111$13899561$10$Neuralgia
+1389956111$13899561$11$Product used for unknown indication
+1389956111$13899561$12$Product used for unknown indication
+1389956111$13899561$13$Product used for unknown indication
+1389956111$13899561$14$Product used for unknown indication
+1389956111$13899561$15$Product used for unknown indication
+1389956111$13899561$16$Product used for unknown indication
+1389956111$13899561$17$Product used for unknown indication
+1389956111$13899561$18$Product used for unknown indication
+1389956111$13899561$19$Product used for unknown indication
+1389956111$13899561$20$Product used for unknown indication
+1389956111$13899561$21$Product used for unknown indication
+1389956111$13899561$22$Product used for unknown indication
+1389956111$13899561$23$Product used for unknown indication
+1389956111$13899561$24$Product used for unknown indication
+1389956111$13899561$25$Product used for unknown indication
+1389956111$13899561$26$Product used for unknown indication
+1389956111$13899561$27$Product used for unknown indication
+1389956111$13899561$28$Product used for unknown indication
+1389956111$13899561$29$Product used for unknown indication
+1389956111$13899561$30$Product used for unknown indication
+1389956111$13899561$31$Product used for unknown indication
+1389956111$13899561$32$Product used for unknown indication
+1389956111$13899561$33$Product used for unknown indication
+1389956111$13899561$34$Methylenetetrahydrofolate reductase gene mutation
+1389956111$13899561$35$Product used for unknown indication
+1389956111$13899561$36$Product used for unknown indication
+1389956111$13899561$37$Product used for unknown indication
+1389956111$13899561$38$Product used for unknown indication
+1389956111$13899561$39$Product used for unknown indication
+1389956111$13899561$40$Product used for unknown indication
+1389956111$13899561$41$Product used for unknown indication
+1389956111$13899561$42$Product used for unknown indication
+1389956111$13899561$43$Product used for unknown indication
+1389956111$13899561$44$Product used for unknown indication
+1389956111$13899561$45$Product used for unknown indication
+1389956111$13899561$46$Product used for unknown indication
+1389956111$13899561$47$Product used for unknown indication
+1389956111$13899561$48$Product used for unknown indication
+151042622$15104262$1$Tuberculosis
+151042622$15104262$2$Tuberculosis
+151042622$15104262$3$Tuberculosis
+151042622$15104262$4$Tuberculosis
+1520121434$15201214$1$Artificial menopause
+1520121434$15201214$2$Sleep disorder
+1520121434$15201214$3$Hyperhidrosis
+1520121434$15201214$4$Cognitive disorder
+1520121434$15201214$5$Muscle spasms
+1520121434$15201214$6$Blood testosterone increased
+1520121434$15201214$11$Hypothyroidism
+183021914$18302191$1$Product used for unknown indication
+183021914$18302191$2$Product used for unknown indication
+183021914$18302191$3$Product used for unknown indication
+183021914$18302191$4$Product used for unknown indication
+183021914$18302191$5$Product used for unknown indication
+183021914$18302191$6$Product used for unknown indication
+183021914$18302191$7$Product used for unknown indication
+1872426647$18724266$1$Immunisation
+1872426647$18724266$4$Immunisation
+1872426647$18724266$30$Immunisation
+1872426647$18724266$31$Prophylaxis
+1872426647$18724266$32$Asthma
+1872426647$18724266$44$Asthma
+1872426647$18724266$83$Asthma
+1872426647$18724266$92$Asthma
+1872426647$18724266$101$Asthma
+1872426647$18724266$109$Asthma
+1872426647$18724266$131$Prophylaxis
+1872426647$18724266$132$Asthma
+1872426647$18724266$145$Asthma
+1872426647$18724266$159$Asthma
+1872426647$18724266$175$Prophylaxis
+1872426647$18724266$177$Asthma
+1872426647$18724266$194$Asthma
+1872426647$18724266$199$Asthma
+1872426647$18724266$200$Prophylaxis
+1872426647$18724266$204$Asthma
+1872426647$18724266$206$Asthma
+1872426647$18724266$211$Asthma
+1872426647$18724266$212$Prophylaxis
+1872426647$18724266$220$Asthma prophylaxis
+1872426647$18724266$221$Asthma
+1872426647$18724266$228$Immunisation
+1899700119$18997001$1$Immunodeficiency common variable
+1899700119$18997001$1$Primary immunodeficiency syndrome
+1899700119$18997001$2$Product used for unknown indication
+1899700119$18997001$3$Product used for unknown indication
+206298194$20629819$1$Product used for unknown indication
+206298194$20629819$2$Product used for unknown indication
+206298194$20629819$4$Product used for unknown indication
+206298194$20629819$6$Premedication
+206298194$20629819$8$Product used for unknown indication
+206298194$20629819$10$Product used for unknown indication
+206298194$20629819$11$Product used for unknown indication
+206298194$20629819$13$Vomiting
+206298194$20629819$14$Premedication
+206298194$20629819$19$Sjogren's syndrome
+206298194$20629819$20$Rheumatoid arthritis
+206298194$20629819$25$Hypertension
+206298194$20629819$26$Product used for unknown indication
+206298194$20629819$27$Hypertension
+206298194$20629819$28$Diabetes mellitus
+206298194$20629819$29$Blood pressure abnormal
+206298194$20629819$30$Premedication
+206298194$20629819$31$Product used for unknown indication
+206298194$20629819$32$Product used for unknown indication
+206298194$20629819$33$Product used for unknown indication
+206298194$20629819$34$Vomiting
+206298194$20629819$35$Product used for unknown indication
+206298194$20629819$37$Product used for unknown indication
+206298194$20629819$38$Hypertension
+206298194$20629819$39$Diabetes mellitus
+206298194$20629819$40$Blood pressure abnormal
+206298194$20629819$41$Product used for unknown indication
+206298194$20629819$43$Product used for unknown indication
+206298194$20629819$44$Product used for unknown indication
+206298194$20629819$45$Product used for unknown indication
+206298194$20629819$46$Microalbuminuria
+206298194$20629819$47$Hypertension
+206298194$20629819$48$Product used for unknown indication
+206298194$20629819$49$Product used for unknown indication
+206298194$20629819$50$Psoriatic arthropathy
+206298194$20629819$51$Psoriasis
+206298194$20629819$52$Hypertension
+206298194$20629819$53$Product used for unknown indication
+206298194$20629819$54$Product used for unknown indication
+206298194$20629819$55$Product used for unknown indication
+206298194$20629819$56$Hypertension
+206298194$20629819$57$Product used for unknown indication
+206298194$20629819$58$Sjogren's syndrome
+206298194$20629819$61$Product used for unknown indication
+206298194$20629819$62$Product used for unknown indication
+206298194$20629819$63$Product used for unknown indication
+247738013$24773801$1$Product used for unknown indication
+247738013$24773801$2$Product used for unknown indication
+247738013$24773801$3$Product used for unknown indication
+247738013$24773801$4$Product used for unknown indication
+247995591$24799559$1$Rheumatoid arthritis
+249014071$24901407$1$Abortion induced
+65308484$6530848$1$Colitis ulcerative
+68264163$6826416$1$Back pain
+68264163$6826416$2$Back pain
+77668313$7766831$1$Product used for unknown indication

@@ -14,10 +14,16 @@ from faers_pipeline import parse, quality
 
 DELETED_TXT = SAMPLE_DIR / "Deleted" / "DELETE26Q2.txt"
 OUTC_TXT = SAMPLE_DIR / "ASCII" / "OUTC26Q2.txt"
+DEMO_TXT = SAMPLE_DIR / "ASCII" / "DEMO26Q2.txt"
+RPSR_TXT = SAMPLE_DIR / "ASCII" / "RPSR26Q2.txt"
 
 
 def _data_lines(path: Path) -> int:
     return len(path.read_bytes().splitlines()) - 1
+
+
+def _deleted_ids(path: Path) -> list[str]:
+    return [x.decode() for x in path.read_bytes().split() if x.strip()]
 
 
 def _q(sql: str, *params) -> list[tuple]:
@@ -55,14 +61,20 @@ def test_rows_equal_txt_lines(parsed, faers_cfg):
         assert res["rows"] == lines == res["expected_rows"], ft
         assert res["malformed_rows"] == 0, ft
         assert res["encoding"] == "utf-8", ft
-    assert parsed["res"]["demo"]["rows"] == 200
+    assert parsed["res"]["demo"]["rows"] == _data_lines(DEMO_TXT) > 100
+    assert parsed["res"]["rpsr"]["rows"] > 0  # fixture v2 selects cases with RPSR rows
 
 
-def test_header_only_file_parses_to_zero_rows_and_fails_the_gate(parsed):
-    # No RPSR line among the first 200 cases of 2026Q2: the sample keeps only the header.
-    assert parsed["res"]["rpsr"]["rows"] == 0
+def test_header_only_file_parses_to_zero_rows_and_fails_the_gate(
+    parsed, tmp_path, parse_cfg, schema_cfg
+):
+    header_only = tmp_path / "RPSR26Q2.txt"
+    header_only.write_bytes(RPSR_TXT.read_bytes().splitlines(keepends=True)[0])
+    res = parse.to_parquet(header_only, tmp_path / "rpsr" / "rpsr.parquet", parse_cfg)
+    assert res["rows"] == 0
+    summaries = {**parsed["summary"], "rpsr": quality.summarize_parse("rpsr", res, schema_cfg)}
     with pytest.raises(ValueError, match="rpsr"):
-        quality.check_rows(list(parsed["summary"].values()))
+        quality.check_rows(list(summaries.values()))
 
 
 def test_contract_and_raw_columns(parsed, schema_cfg):
@@ -110,8 +122,8 @@ def test_manifest_from_sample(parsed, sample_zip, tmp_path):
         for key in quality.TYPE_FIELDS:
             assert key in entry, (ft, key)
         assert entry["content_fingerprint"].startswith(f"{entry['rows']}:")
-    assert got["file_types"]["demo"]["rows"] == 200
-    assert got["deleted"]["deleted_ids"] == 20
+    assert got["file_types"]["demo"]["rows"] == _data_lines(DEMO_TXT)
+    assert got["deleted"]["deleted_ids"] == len(_deleted_ids(DELETED_TXT))
     assert got["deleted"]["invalid_deleted_ids"] == 0
     assert got["deleted"]["deleted_ids_in_demo"] == in_demo
     assert not list(path.parent.glob("*.tmp"))
@@ -198,7 +210,8 @@ def test_parse_deleted_sample(tmp_path, parse_cfg):
     raw = DELETED_TXT.read_bytes()
     assert raw.splitlines()[0].strip() == b""  # the real file starts with a blank line
     res = parse.parse_deleted(raw, DELETED_TXT.name, tmp_path / "deleted.parquet", parse_cfg)
-    assert (res["rows"], res["blank_lines"], res["invalid_ids"]) == (20, 1, 0)
+    expected = len(_deleted_ids(DELETED_TXT))
+    assert (res["rows"], res["blank_lines"], res["invalid_ids"]) == (expected, 1, 0)
     assert res["columns"] == ["caseid", "_source_file", "_ingested_at"]
     ids = [r[0] for r in _q("SELECT caseid FROM read_parquet(?)", res["path"])]
     assert ids == [x.decode() for x in raw.split() if x.strip()]
@@ -207,7 +220,11 @@ def test_parse_deleted_sample(tmp_path, parse_cfg):
 def test_parse_deleted_counts_invalid_values_without_failing(tmp_path, parse_cfg):
     raw = DELETED_TXT.read_bytes() + b"12A45\r\n\n"
     res = parse.parse_deleted(raw, "DELETE26Q2.txt", tmp_path / "deleted.parquet", parse_cfg)
-    assert (res["rows"], res["blank_lines"], res["invalid_ids"]) == (21, 2, 1)
+    assert (res["rows"], res["blank_lines"], res["invalid_ids"]) == (
+        len(_deleted_ids(DELETED_TXT)) + 1,
+        2,
+        1,
+    )
     assert res["invalid_examples"] == ["12A45"]
 
 
