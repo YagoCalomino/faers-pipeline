@@ -11,9 +11,10 @@ source:
   user_agent: "faers-pipeline-portfolio"
 
 schedule:
-  # PLACEHOLDER: the 8 MVP quarters are decided after the Phase 0 spike.
-  start_quarter: "2024Q3"   # PLACEHOLDER
-  end_quarter: "2026Q2"     # PLACEHOLDER
+  # The 8 MVP quarters: 2024Q3 to 2026Q2 (both ends included). Checked 2026-10-23:
+  # 2024Q3 and 2026Q2 zips downloaded; 2026Q3 not yet published.
+  start_quarter: "2024Q3"
+  end_quarter: "2026Q2"
   cron: "0 0 1 */3 *"
   max_active_runs: 2
 
@@ -23,13 +24,26 @@ availability_sensor:
 
 file_types: [demo, drug, reac, outc, rpsr, ther, indi]
 
+# Case ids FDA removed from the database. Not one of file_types: own parser and task.
+# Seen in 2024Q3 and 2026Q2 as Deleted/DELETE24Q3.txt and Deleted/DELETE26Q2.txt:
+# no header, one caseid per line, first line blank.
+deleted:
+  member_pattern: "Deleted/DELETE{yy}Q{q}.txt"   # matched case-insensitively
+
 parse:
   delimiter: "$"
   quote: ""
   encoding: "utf-8"
   fallback_encoding: "latin-1"
+  # Applied with SET on each DuckDB connection of the parse. Phase 0 measured a peak RSS of
+  # ~1.5-1.6 GB for DRUG with no limit and 12 threads.
+  duckdb:
+    memory_limit: "1500MB"
+    threads: 2
+    temp_directory: "/opt/airflow/data/tmp/duckdb"   # spill files; one subfolder per process
 
 paths:
   landing: "/opt/airflow/data/landing/faers"
   lake: "/opt/airflow/data/lake"
+  ingest_log: "/opt/airflow/data/lake/_meta/faers/ingest_log.jsonl"   # append-only
   warehouse: "/opt/airflow/data/warehouse/faers.duckdb"

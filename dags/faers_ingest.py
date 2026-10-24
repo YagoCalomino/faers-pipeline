@@ -6,6 +6,8 @@ scheduled runs and backfills.
 
 from __future__ import annotations
 
+import resource
+import time
 from pathlib import Path
 
 import pendulum
@@ -18,8 +20,14 @@ from airflow.sdk import (
     task,
 )
 
-from faers_pipeline import download, parse, quality
-from faers_pipeline.config import build_url, load_config, quarter_label, quarter_start
+from faers_pipeline import download, files, parse, quality
+from faers_pipeline.config import (
+    build_url,
+    load_config,
+    parse_quarter,
+    quarter_label,
+    quarter_start,
+)
 
 CFG = load_config("faers.yaml")
 SCHEMA = load_config("faers_schema.yaml")
@@ -27,9 +35,19 @@ RAW_ASSET = Asset("faers_raw_parquet")
 
 LAKE = Path(CFG["paths"]["lake"])
 LANDING = Path(CFG["paths"]["landing"])
+INGEST_LOG = Path(CFG["paths"]["ingest_log"])
 START = quarter_start(CFG["schedule"]["start_quarter"])
 # A run's logical date is its interval start, so the last run is end_quarter itself.
 END = quarter_start(CFG["schedule"]["end_quarter"])
+
+
+def _raw_path(file_type: str, quarter: str) -> Path:
+    return LAKE / "raw" / "faers" / file_type / f"quarter={quarter}" / f"{file_type}.parquet"
+
+
+def _peak_rss_mb() -> float:
+    """Peak resident memory of this task process so far (Linux reports KiB)."""
+    return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)
 
 
 @dag(
@@ -72,10 +90,15 @@ def faers_ingest():
     @task
     def download_zip(quarter: str, url: str) -> dict:
         dest = LANDING / quarter / Path(url).name
+        stale = files.remove_stale_temp(dest.parent)
+        t0 = time.perf_counter()
         info = download.download_zip(
             url, dest, CFG["source"]["request_timeout_s"], CFG["source"]["user_agent"]
         )
-        # TODO(Phase 2): compare sha256 with the previous ingest log and log 'source_changed'
+        info["download_seconds"] = round(time.perf_counter() - t0, 1)
+        info["stale_removed"] = stale
+        run_id = get_current_context()["run_id"]
+        info.update(download.record_download(INGEST_LOG, quarter, info, run_id))
         return info
 
     @task
@@ -83,33 +106,36 @@ def faers_ingest():
         out_dir = LANDING / quarter / "extracted"
         return parse.extract_zip(Path(dl["path"]), out_dir, CFG["file_types"])
 
-    @task(max_active_tis_per_dag=4)
+    @task(pool="parse")
     def parse_to_parquet(file_type: str, quarter: str, extracted: dict) -> dict:
-        out = LAKE / "raw" / "faers" / file_type / f"quarter={quarter}" / f"{file_type}.parquet"
+        t0 = time.perf_counter()
+        out = _raw_path(file_type, quarter)
         res = parse.to_parquet(Path(extracted[file_type]), out, CFG["parse"])
-        contract = quality.check_contract(file_type, res["columns"], SCHEMA)
-        return {
-            "file_type": file_type,
-            "rows": res["rows"],
-            "path": res["path"],
-            "encoding": res["encoding"],
-            "extra_columns": contract["extra_columns"],
-        }
+        seconds = round(time.perf_counter() - t0, 2)
+        summary = quality.summarize_parse(file_type, res, SCHEMA)
+        return {**summary, "parse_seconds": seconds, "peak_rss_mb": _peak_rss_mb()}
 
     @task
-    def validate(quarter: str, results: list[dict], dl: dict) -> dict:
+    def ingest_deleted(quarter: str, dl: dict) -> dict:
+        year, q = parse_quarter(quarter)
+        name = parse.deleted_member_name(CFG["deleted"]["member_pattern"], year, q)
+        t0 = time.perf_counter()
+        member, raw = parse.read_member(Path(dl["path"]), name)
+        out = _raw_path("deleted", quarter)
+        res = parse.parse_deleted(raw, Path(member).name, out, CFG["parse"])
+        res["parse_seconds"] = round(time.perf_counter() - t0, 2)
+        quality.check_contract("deleted", res["columns"], SCHEMA)
+        res.pop("columns")
+        return res
+
+    @task
+    def validate(quarter: str, results: list[dict], deleted: dict, dl: dict) -> dict:
         results = list(results)
-        empty = [r["file_type"] for r in results if r["rows"] == 0]
-        if empty:
-            raise ValueError(f"Arquivos sem linhas em {quarter}: {empty}")
-        return {
-            "quarter": quarter,
-            "zip_sha256": dl["sha256"],
-            "zip_bytes": dl["bytes"],
-            "rows": {r["file_type"]: r["rows"] for r in results},
-            "encodings": {r["file_type"]: r["encoding"] for r in results},
-            "extra_columns": {r["file_type"]: r["extra_columns"] for r in results},
-        }
+        quality.check_rows(results)
+        demo = next(r["path"] for r in results if r["file_type"] == "demo")
+        in_demo = quality.count_deleted_in_demo(demo, deleted["path"])
+        run_id = get_current_context()["run_id"]
+        return quality.build_manifest(quarter, dl, results, deleted, run_id, in_demo)
 
     @task(outlets=[RAW_ASSET])
     def publish_manifest(manifest: dict) -> str:
@@ -124,7 +150,8 @@ def faers_ingest():
     parsed = parse_to_parquet.partial(quarter=quarter, extracted=ex).expand(
         file_type=CFG["file_types"]
     )
-    manifest = validate(quarter, parsed, dl)
+    deleted = ingest_deleted(quarter, dl)
+    manifest = validate(quarter, parsed, deleted, dl)
     publish_manifest(manifest)
 
 

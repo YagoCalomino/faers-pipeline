@@ -4,6 +4,11 @@
     "description": "Single writer for the DuckDB warehouse file (dbt runs)",
     "include_deferred": false
   },
+  "parse": {
+    "slots": 2,
+    "description": "FAERS .txt -> Parquet parses running at once (memory: see parse.duckdb in config/faers.yaml)",
+    "include_deferred": false
+  },
   "rxnorm_api": {
     "slots": 4,
     "description": "Concurrent calls to the NLM RxNav API (rate limit)",
