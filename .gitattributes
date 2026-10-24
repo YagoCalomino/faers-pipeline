@@ -2,3 +2,5 @@
 *.zip binary
 *.parquet binary
 *.duckdb binary
+# Real FAERS bytes (CRLF/LF as in the source zip): never normalize line endings
+tests/fixtures/faers_sample/** -text

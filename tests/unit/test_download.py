@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 from unittest import mock
 
 import requests
@@ -45,3 +47,38 @@ def test_requests_ask_for_identity_encoding():
     headers = get.call_args.kwargs["headers"]
     assert headers["Accept-Encoding"] == "identity"
     assert headers["Range"] == "bytes=0-3"
+
+
+# --- ingest log / source_changed ----------------------------------------------------------
+
+
+def _info(sha: str, size: int = 10) -> dict:
+    return {"url": URL, "sha256": sha, "bytes": size, "path": "/x/faers_ascii_2024q3.zip"}
+
+
+def test_first_download_is_logged_without_change(tmp_path):
+    log_path = tmp_path / "_meta" / "ingest_log.jsonl"
+    res = download.record_download(log_path, "2024Q3", _info("aa"), "scheduled__1")
+    assert res == {"source_changed": False, "previous_sha256": None}
+    (entry,) = [json.loads(x) for x in log_path.read_text(encoding="utf-8").splitlines()]
+    assert entry["quarter"] == "2024Q3" and entry["sha256"] == "aa" and entry["bytes"] == 10
+    assert entry["run_id"] == "scheduled__1" and entry["timestamp"]
+
+
+def test_same_zip_again_is_not_a_change(tmp_path):
+    log_path = tmp_path / "ingest_log.jsonl"
+    download.record_download(log_path, "2024Q3", _info("aa"), "r1")
+    res = download.record_download(log_path, "2024Q3", _info("aa"), "r2")
+    assert res == {"source_changed": False, "previous_sha256": "aa"}
+    assert len(log_path.read_text(encoding="utf-8").splitlines()) == 2  # append-only
+
+
+def test_changed_zip_is_flagged_and_logged(tmp_path, caplog):
+    log_path = tmp_path / "ingest_log.jsonl"
+    download.record_download(log_path, "2024Q3", _info("aa"), "r1")
+    download.record_download(log_path, "2024Q4", _info("cc"), "r2")  # other quarter
+    with caplog.at_level(logging.WARNING, logger=download.__name__):
+        res = download.record_download(log_path, "2024Q3", _info("bb", 11), "r3")
+    assert res == {"source_changed": True, "previous_sha256": "aa"}
+    assert "source_changed" in caplog.text and "2024Q3" in caplog.text
+    assert download.last_logged(log_path, "2024Q3")["sha256"] == "bb"
