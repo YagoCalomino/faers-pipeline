@@ -145,6 +145,8 @@ services:
     working_dir: /opt/project
     volumes:
       - ../..:/opt/project
+      # Same data path as the Airflow services, so config/*.yaml paths work here too.
+      - ../../data:/opt/airflow/data
     environment:
       <<: *airflow-common-env
       PYTHONPATH: /opt/project/src

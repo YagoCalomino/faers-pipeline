@@ -1,0 +1,22 @@
+version: 2
+
+sources:
+  - name: faers_raw
+    description: >
+      FAERS quarterly ASCII files parsed to Parquet by the faers_ingest DAG (all columns text,
+      plus _source_file and _ingested_at). Partitioned as quarter=YYYYQn.
+    config:
+      meta:
+        # dbt-duckdb 1.11 reads external_location from the source meta; '{name}' is replaced
+        # by the table name. meta sits under config (the layout the v2 parser accepts).
+        external_location: >-
+          read_parquet('{{ env_var('LAKE_PATH') }}/raw/faers/{name}/quarter=*/{name}.parquet',
+          hive_partitioning = true)
+    tables:
+      - name: demo
+      - name: drug
+      - name: reac
+      - name: outc
+      - name: indi
+      - name: deleted
+        description: Case ids FDA removed (Deleted/DELETEyyQq.txt); one caseid per row.

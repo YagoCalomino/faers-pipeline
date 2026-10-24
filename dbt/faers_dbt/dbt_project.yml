@@ -1,0 +1,24 @@
+name: faers_dbt
+version: "0.1.0"
+config-version: 2
+profile: faers_dbt
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+# Vars have no defaults here on purpose: scripts/dbt_run.py passes them with --vars, read from
+# config/faers.yaml (window_*) and config/signals.yaml (signal_*), so values live in one place.
+#   window_start_quarter, window_end_quarter, signal_drug_roles, signal_min_cases
+
+models:
+  faers_dbt:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: table
+      +schema: intermediate

@@ -47,3 +47,14 @@ paths:
   lake: "/opt/airflow/data/lake"
   ingest_log: "/opt/airflow/data/lake/_meta/faers/ingest_log.jsonl"   # append-only
   warehouse: "/opt/airflow/data/warehouse/faers.duckdb"
+
+# dbt (Phase 3). dbt is the only writer of paths.warehouse. The DuckDB file stays on the bind
+# mount: a 2026-10-24 benchmark (CTAS of DEMO + DRUG, 8 quarters) showed no write gain from a
+# named Docker volume (68-82 s vs 79-82 s), only ~1 s faster cold reads.
+dbt:
+  threads: 2
+  memory_limit: "3GB"
+  temp_directory: "/opt/airflow/data/tmp/duckdb"
+  ci:                       # target ci: the test lake built from tests/fixtures/faers_sample
+    threads: 2
+    memory_limit: "1GB"

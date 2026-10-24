@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: int_faers__case_latest
+    description: >
+      One row per caseid (deduplication): highest case_version, then latest fda_date, then
+      latest source_quarter, then highest primaryid. Deleted cases removed entirely.
+      init_quarter is the quarter of init_fda_date (first receipt by FDA).
+    columns:
+      - name: caseid
+        data_tests: [unique, not_null]
+      - name: primaryid
+        data_tests: [not_null]
+      - name: source_quarter
+        data_tests: [not_null]
+
+  - name: int_faers__drug_latest
+    description: DRUG rows of the winning (primaryid, source_quarter) of each case.
+    columns:
+      - name: caseid
+        data_tests: [not_null]
+
+  - name: int_faers__reaction_latest
+    description: REAC rows of the winning (primaryid, source_quarter) of each case.
+    columns:
+      - name: caseid
+        data_tests: [not_null]

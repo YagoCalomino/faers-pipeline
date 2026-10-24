@@ -28,3 +28,6 @@ config/airflow.cfg
 .idea/
 .DS_Store
 Thumbs.db
+
+# dbt anonymous usage id (written by dbt on first run)
+.user.yml

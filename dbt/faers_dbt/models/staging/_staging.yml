@@ -1,0 +1,95 @@
+version: 2
+
+models:
+  - name: stg_faers__demo
+    description: DEMO typed; one row per (primaryid, source_quarter).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [primaryid, source_quarter]
+    columns:
+      - name: primaryid
+        data_tests: [not_null]
+      - name: caseid
+        data_tests: [not_null]
+      - name: sex
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [M, F, UNK]
+
+  - name: stg_faers__drug
+    columns:
+      - name: primaryid
+        data_tests: [not_null]
+      - name: caseid
+        data_tests: [not_null]
+      - name: role_code
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [PS, SS, C, I, DN]
+
+  - name: stg_faers__reac
+    columns:
+      - name: primaryid
+        data_tests: [not_null]
+      - name: caseid
+        data_tests: [not_null]
+
+  - name: stg_faers__outc
+    columns:
+      - name: primaryid
+        data_tests: [not_null]
+      - name: caseid
+        data_tests: [not_null]
+
+  - name: stg_faers__indi
+    columns:
+      - name: primaryid
+        data_tests: [not_null]
+      - name: caseid
+        data_tests: [not_null]
+
+  - name: stg_faers__deleted
+    columns:
+      - name: caseid
+        data_tests: [not_null]
+
+unit_tests:
+  - name: parse_faers_date_full_partial_empty_invalid
+    description: >
+      parse_faers_date through stg_faers__demo.event_dt: YYYYMMDD, YYYYMM and YYYY become the
+      first day of the period; empty, NULL and invalid values become NULL without a cast error.
+    model: stg_faers__demo
+    given:
+      # format: sql because the source is an external_location (read_parquet): dbt cannot
+      # look up its columns, which the dict format needs.
+      - input: source('faers_raw', 'demo')
+        format: sql
+        rows: |
+          select
+              primaryid, primaryid as caseid, '1' as caseversion, event_dt,
+              null::varchar as i_f_code, null::varchar as fda_dt, null::varchar as init_fda_dt,
+              null::varchar as age, null::varchar as age_cod, null::varchar as age_grp,
+              null::varchar as sex, null::varchar as reporter_country,
+              null::varchar as occr_country, '2025Q1' as quarter, 'x.txt' as _source_file
+          from (values
+              ('1', '20250315'), ('2', '202503'), ('3', '2025'), ('4', ''),
+              ('5', null), ('6', '20251399'), ('7', '20250230'), ('8', '202513'),
+              ('9', '2025AB01'), ('10', ' 20240229 '), ('11', '2025031')
+          ) as t(primaryid, event_dt)
+    expect:
+      format: dict
+      rows:
+        - {primaryid: 1, event_date: "2025-03-15"}
+        - {primaryid: 2, event_date: "2025-03-01"}
+        - {primaryid: 3, event_date: "2025-01-01"}
+        - {primaryid: 4, event_date: null}
+        - {primaryid: 5, event_date: null}
+        - {primaryid: 6, event_date: null}
+        - {primaryid: 7, event_date: null}
+        - {primaryid: 8, event_date: null}
+        - {primaryid: 9, event_date: null}
+        - {primaryid: 10, event_date: "2024-02-29"}
+        - {primaryid: 11, event_date: null}

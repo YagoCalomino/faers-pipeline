@@ -1,0 +1,19 @@
+# Every value comes from the environment, set by scripts/dbt_run.py from config/faers.yaml.
+faers_dbt:
+  target: duckdb_local
+  outputs:
+    duckdb_local:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH') }}"
+      threads: "{{ env_var('DBT_THREADS') | as_number }}"
+      settings:
+        memory_limit: "{{ env_var('DBT_MEMORY_LIMIT') }}"
+        temp_directory: "{{ env_var('DUCKDB_TEMP_DIR') }}"
+    ci:
+      # Test lake and database in a throwaway folder (DBT_CI_DIR); never touches data/.
+      type: duckdb
+      path: "{{ env_var('DBT_CI_DIR') }}/faers_ci.duckdb"
+      threads: "{{ env_var('DBT_THREADS') | as_number }}"
+      settings:
+        memory_limit: "{{ env_var('DBT_MEMORY_LIMIT') }}"
+        temp_directory: "{{ env_var('DBT_CI_DIR') }}/duckdb_tmp"
