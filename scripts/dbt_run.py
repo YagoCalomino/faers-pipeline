@@ -10,6 +10,10 @@ Variables already set in the environment win (the ci target sets LAKE_PATH and D
 Usage (inside the container, e.g. via make):
     python -I scripts/dbt_run.py build
     python -I scripts/dbt_run.py --ci build          # target ci (LAKE_PATH, DBT_CI_DIR required)
+    python -I scripts/dbt_run.py --rebuild build     # delete the warehouse file first
+
+The warehouse .duckdb only holds dbt outputs (the Parquet lake is the source), so --rebuild can
+delete it at any time; never run it while an ingestion is writing the lake.
 """
 
 from __future__ import annotations
@@ -54,16 +58,27 @@ def dbt_env(ci: bool) -> dict:
     env.setdefault("LAKE_PATH", faers["paths"]["lake"])
     env.setdefault("DUCKDB_PATH", faers["paths"]["warehouse"])
     env.setdefault("DUCKDB_TEMP_DIR", dbt_cfg["temp_directory"])
-    env["DBT_THREADS"] = str(dbt_cfg["threads"])
-    env["DBT_MEMORY_LIMIT"] = str(dbt_cfg["memory_limit"])
-    env["DBT_PROFILES_DIR"] = str(PROJECT_DIR)
+    env.setdefault("DBT_THREADS", str(dbt_cfg["threads"]))
+    env.setdefault("DBT_MEMORY_LIMIT", str(dbt_cfg["memory_limit"]))
+    env.setdefault("DBT_PROFILES_DIR", str(PROJECT_DIR))
     env["DBT_PROJECT_DIR"] = str(PROJECT_DIR)
     return env
 
 
+def delete_warehouse(path: Path) -> None:
+    """Removes the DuckDB file and its WAL (dbt outputs only; rebuilt from the lake)."""
+    for f in (path, path.with_name(path.name + ".wal")):
+        if f.exists():
+            f.unlink()
+            print(f"deleted {f}", flush=True)
+
+
 def main(argv: list[str]) -> int:
     ci = "--ci" in argv
-    args = [a for a in argv if a != "--ci"]
+    rebuild = "--rebuild" in argv
+    if ci and rebuild:
+        sys.exit("--rebuild only applies to the local warehouse, not to the ci target")
+    args = [a for a in argv if a not in ("--ci", "--rebuild")]
     if not args:
         sys.exit(__doc__)
     if ci:
@@ -71,6 +86,8 @@ def main(argv: list[str]) -> int:
     if args[0] in WITH_VARS:
         args += ["--vars", json.dumps(dbt_vars())]
     env = dbt_env(ci)
+    if rebuild:
+        delete_warehouse(Path(env["DUCKDB_PATH"]))
     if not ci:
         Path(env["DUCKDB_PATH"]).parent.mkdir(parents=True, exist_ok=True)
         Path(env["DUCKDB_TEMP_DIR"]).mkdir(parents=True, exist_ok=True)

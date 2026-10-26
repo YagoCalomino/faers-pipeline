@@ -4,11 +4,11 @@ COMPOSE := docker compose --env-file .env -f infra/docker/docker-compose.yml
 DEV     := $(COMPOSE) run --rm --no-deps airflow-dev
 
 .PHONY: help env build up down logs ps lint format test fernet import-errors \
-	dbt-deps dbt-build dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci
+	dbt-deps dbt-build dbt-rebuild dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci reconcile
 
 help:
 	@echo "Targets: env build up down logs ps lint format test fernet import-errors"
-	@echo "dbt:     dbt-deps dbt-build dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci"
+	@echo "dbt:     dbt-deps dbt-build dbt-rebuild dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci reconcile"
 
 # Create .env from the template the first time.
 env: .env
@@ -59,8 +59,17 @@ dbt-deps: .env
 dbt-build: .env
 	$(DBT) build
 
+# Deletes the warehouse .duckdb (dbt outputs only; the lake is the source) and builds everything.
+# Never run while an ingestion is writing the lake.
+dbt-rebuild: .env
+	$(DBT) --rebuild build
+
 dbt-test: .env
 	$(DBT) test
+
+# Raw lake -> warehouse counts recomputed independently; exit 1 on any divergence.
+reconcile: .env
+	$(DEV) python -I scripts/reconcile.py
 
 dbt-docs: .env
 	$(DBT) docs generate

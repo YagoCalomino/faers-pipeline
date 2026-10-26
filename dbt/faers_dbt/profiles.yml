@@ -1,4 +1,8 @@
 # Every value comes from the environment, set by scripts/dbt_run.py from config/faers.yaml.
+# memory_limit and temp_directory go in config_options (applied once, at duckdb.connect), not in
+# settings: dbt-duckdb 1.11 re-runs `SET <setting>` on every new cursor, and DuckDB refuses
+# `SET temp_directory` once spill files exist ("Cannot switch temporary directory after the
+# current one has been used"), which failed builds intermittently after a spill.
 faers_dbt:
   target: duckdb_local
   outputs:
@@ -6,7 +10,7 @@ faers_dbt:
       type: duckdb
       path: "{{ env_var('DUCKDB_PATH') }}"
       threads: "{{ env_var('DBT_THREADS') | as_number }}"
-      settings:
+      config_options:
         memory_limit: "{{ env_var('DBT_MEMORY_LIMIT') }}"
         temp_directory: "{{ env_var('DUCKDB_TEMP_DIR') }}"
     ci:
@@ -14,6 +18,6 @@ faers_dbt:
       type: duckdb
       path: "{{ env_var('DBT_CI_DIR') }}/faers_ci.duckdb"
       threads: "{{ env_var('DBT_THREADS') | as_number }}"
-      settings:
+      config_options:
         memory_limit: "{{ env_var('DBT_MEMORY_LIMIT') }}"
         temp_directory: "{{ env_var('DBT_CI_DIR') }}/duckdb_tmp"
