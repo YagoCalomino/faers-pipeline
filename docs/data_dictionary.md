@@ -14,6 +14,9 @@ Lineage:
   `stg_rxnorm__term_lookup` → `int_faers__drug_resolved` (`int_faers__drug_latest` ⨝ name map)
   → `dim_ingredient`; `bridge_drug_ingredient` (`dim_drug` ⨝ name map ⨝ `dim_ingredient`);
   `signals.mart_dq_rxnorm_coverage` (`int_faers__drug_resolved`, `fct_case`).
+- Signals: `int_signals__drug_cases`, `int_signals__reaction_cases`, `fct_case`,
+  `dim_ingredient`, `dim_reaction` → `signals.mart_signals` → `signals.mart_signals_top`;
+  `signals.mart_dq_metrics` (staging, intermediate, core and `mart_dq_rxnorm_coverage`).
 
 General conventions:
 
@@ -249,6 +252,54 @@ Grain: one row per (`period_key`, `match_type`, `fallback_reason`). Source:
 Coverage of the build of 2026-10-26 (`ALL`): 7,182,171 PS/SS lines; exact 98.982%, normalized
 0.069%, fallback 0.948% (no match 62,936 lines, partial combination 5,205, not in name map 12).
 Normalized share per in-window quarter: 98.84% (2026Q2) to 99.19% (2025Q2).
+
+### `mart_signals`
+
+Grain: one row per (`period_key`, `ingredient_id`, `reaction_key`) with at least
+`signal_min_cases` (3) distinct cases. 1,876,964 rows in the build of 2026-10-26 (674,947 in
+`ALL`). Source: `int_signals__drug_cases` (distinct case × ingredient in PS/SS lines, from
+`int_faers__drug_resolved`), `int_signals__reaction_cases` (distinct case × PT), `fct_case`,
+`dim_ingredient`, `dim_reaction`. Method and sources: `docs/limitations.md` ("Signals").
+
+| Column | Type | Description |
+|---|---|---|
+| `period_key` | varchar | Window quarter (`quarter_key`) or `ALL` (every loaded case). |
+| `ingredient_key`, `ingredient_id`, `ingredient_name` | varchar | Ingredient (FK `dim_ingredient`). |
+| `reaction_key`, `reaction_pt` | varchar | MedDRA PT (FK `dim_reaction`). |
+| `a`, `b`, `c`, `d` | bigint | 2×2 cells in distinct cases; a + b + c + d = `n_total`. |
+| `n_drug`, `n_reac`, `n_total` | bigint | Cases of the period with the ingredient, with the PT, and all cases. |
+| `prr`, `prr_lcl`, `prr_ucl` | double | PRR and its 95% CI (null when c = 0). |
+| `ror`, `ror_lcl`, `ror_ucl` | double | ROR and its 95% CI (null when b, c or d = 0). |
+| `chi2` | double | Pearson chi-squared, 1 df, no continuity correction. |
+| `is_computable` | boolean | PRR and ROR both defined. |
+| `is_signal_evans` | boolean | a ≥ 3, PRR ≥ 2, chi-squared ≥ 4 (`config/signals.yaml`). |
+| `is_signal_ror` | boolean | a ≥ 3 and `ror_lcl` > 1. |
+| `is_provisional_period` | boolean | The period is the last quarter of the window (cohort still growing). |
+| `match_type`, `is_fallback`, `is_generic_fallback` | varchar / boolean | From `dim_ingredient`. |
+
+### `mart_signals_top`
+
+Grain: one row per (`ingredient_id`, `reaction_key`): the top `top.n_per_ingredient` (20)
+reactions of each ingredient in `ALL`, ranked by `top.order_by` (`ror_lcl`) descending, then
+`a` descending. Computable pairs only; generic fallback ingredients excluded. 48,333 rows for
+3,137 ingredients. `trend` lists `period_key`, `a` and `prr` for each window quarter where the
+pair reached 3 cases (a missing quarter had fewer). Other columns as in `mart_signals`, plus
+`rank_in_ingredient` and `ranked_by`.
+
+### `mart_dq_metrics`
+
+Grain: one row per (`period_basis`, `period_key`, `metric_group`, `metric`); `value` (double)
+and `unit` (`rows`, `cases`, `lines`, `pct`). 297 rows.
+
+| `metric_group` | `period_basis` | Content |
+|---|---|---|
+| `raw_rows` | `file_quarter`, `all` | Rows of DEMO, DRUG, REAC, OUTC and INDI per file. |
+| `deduplication` | `file_quarter`, `all` | DEMO rows, winning versions, deleted ids listed and found; in `ALL` also distinct caseids, superseded versions, cases after deduplication and percentages removed. |
+| `rxnorm_coverage` | `init_quarter`, `all` | From `mart_dq_rxnorm_coverage`: PS/SS lines, normalized lines and percentages by match type. |
+| `missing_values` | `init_quarter`, `all` | % of cases without event date, sex, age or reporter country (blank counts as missing); % of drug lines without `prod_ai`; % of reaction lines without PT. |
+| `role_mix` | `file_quarter`, `all` | DRUG lines (every version) and percentage per ROLE_COD (PS, SS, C, I, DN). |
+
+`file_quarter` is the quarter of the FAERS file; `init_quarter` the case's `quarter_key`.
 
 ## Reference seeds
 

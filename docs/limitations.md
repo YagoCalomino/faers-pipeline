@@ -82,3 +82,66 @@ ingredients; a signal can be split between such a fallback and the reference ing
   Drug lines without `PROD_AI` use the reported drug name, which is not looked up.
 - **Version.** Every lookup is stamped with the RxNorm release it used. The cache has no
   automatic expiry; refreshing it after a new RxNorm release is a manual decision.
+
+## Signals (PRR, ROR)
+
+`signals.mart_signals` measures disproportionality: whether a reaction is reported more often
+with an ingredient than with all other drugs in FAERS. It does not measure incidence or risk,
+and a signal is a hypothesis for review, not evidence that the drug causes the reaction.
+
+### Method
+
+For each period (each quarter of the window by `quarter_key`, and `ALL` with every loaded
+case) and each pair (ingredient, MedDRA preferred term), a 2×2 table of distinct cases:
+
+| | with the reaction | without the reaction |
+|---|---|---|
+| with the ingredient (PS or SS) | a | b |
+| without the ingredient | c | d |
+
+`n_drug`, `n_reac` and `n_total` are counted over all cases of the period, so
+a + b + c + d = `n_total` in every row (tested). A case with a combination product counts once
+for each of its ingredients; counts are always distinct cases, never drug or reaction lines.
+Only pairs with at least `signal_min_cases` cases (3) are stored.
+
+- PRR = [a/(a+b)] / [c/(c+d)]; 95% CI exp(ln PRR ± 1.96·SE), SE = √(1/a − 1/(a+b) + 1/c − 1/(c+d)).
+- ROR = ad/(bc); 95% CI exp(ln ROR ± 1.96·SE), SE = √(1/a + 1/b + 1/c + 1/d).
+- χ² = N(ad − bc)² / [(a+b)(c+d)(a+c)(b+d)], Pearson, 1 degree of freedom, no continuity
+  correction.
+- Evans criterion (`is_signal_evans`): a ≥ 3, PRR ≥ 2, χ² ≥ 4. ROR criterion (`is_signal_ror`):
+  a ≥ 3 and lower bound of the ROR 95% CI > 1. Thresholds and z live in `config/signals.yaml`.
+- PRR is undefined when c = 0 and ROR when b, c or d is 0; such rows are kept with null values
+  and `is_computable = false`.
+
+Sources:
+
+- Evans SJW, Waller PC, Davis S. Use of proportional reporting ratios (PRRs) for signal
+  generation from spontaneous adverse drug reaction reports. *Pharmacoepidemiology and Drug
+  Safety* 2001;10(6):483–486. doi:10.1002/pds.677. Criterion as stated in the abstract: "3 or
+  more cases, PRR at least 2, chi-squared of at least 4". The abstract does not say whether the
+  chi-squared uses a continuity (Yates) correction; the full text was not available, so the
+  uncorrected statistic used here is not confirmed against it.
+- van Puijenbroek EP, Bate A, Leufkens HGM, Lindquist M, Orre R, Egberts ACG. A comparison of
+  measures of disproportionality for signal detection in spontaneous reporting systems for
+  adverse drug reactions. *Pharmacoepidemiology and Drug Safety* 2002;11(1):3–10.
+  doi:10.1002/pds.668. Reporting odds ratio and the use of the lower 1.96·SE bound.
+- The standard errors on the log scale are the usual large-sample formulas for a risk ratio
+  and an odds ratio; the PRR form above matches published tables of disproportionality
+  formulas. They were checked against an independent computation in plain Python (dbt test
+  `assert_signal_statistics_known_values` and a recalculation of two real pairs).
+
+### Limits of the signals
+
+- **Many signals.** With a ≥ 3, about 61% of the stored pairs in `ALL` meet the Evans criterion
+  (414,726 of 674,947 in the build of 2026-10-26). The criteria screen; they do not confirm.
+- **Reporting artefacts.** Clusters of reports (litigation, publicity, one reporter submitting
+  many cases) produce strong disproportionality without a pharmacological cause.
+- **Confounding by indication and co-medication.** A drug is reported with the reactions of
+  the disease it treats and of the drugs it is given with.
+- **Multiplicity.** Hundreds of thousands of pairs are tested per period; with a 95% interval,
+  chance alone produces many lower bounds above 1.
+- **Provisional quarter.** The most recent quarter's cohort still grows as later files are
+  loaded (`is_provisional_period`).
+- **Fallback ingredients.** Names without an RxNorm match are their own ingredient
+  (`match_type = 'fallback'`); a signal can be split between a fallback text and the RxNorm
+  ingredient. Generic fallbacks (`is_generic_fallback`) are excluded from `mart_signals_top`.
