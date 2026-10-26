@@ -21,6 +21,7 @@ from airflow.sdk import (
 )
 
 from faers_pipeline import download, files, parse, quality
+from faers_pipeline.callbacks import on_task_failure
 from faers_pipeline.config import (
     build_url,
     load_config,
@@ -62,6 +63,7 @@ def _peak_rss_mb() -> float:
         "retries": 3,
         "retry_delay": pendulum.duration(minutes=10),
         "retry_exponential_backoff": True,
+        "on_failure_callback": on_task_failure,
     },
     tags=["faers", "ingest"],
 )
@@ -143,6 +145,18 @@ def faers_ingest():
         quality.write_manifest(manifest, path)
         return str(path)
 
+    @task
+    def cleanup_extracted(quarter: str, manifest_path: str) -> dict:
+        """Deletes the quarter's extracted .txt files (config cleanup_extracted), only when the
+        manifest just written vouches for every Parquet file. The zip stays."""
+        if not CFG.get("cleanup_extracted", False):
+            return {"quarter": quarter, "status": "disabled"}
+        res = files.cleanup_extracted(
+            LANDING, quarter, Path(manifest_path), CFG["file_types"], dry_run=False
+        )
+        print("cleanup:", res)
+        return res
+
     quarter = resolve_quarter()
     url = wait_for_release(quarter)
     dl = download_zip(quarter, url)
@@ -152,7 +166,7 @@ def faers_ingest():
     )
     deleted = ingest_deleted(quarter, dl)
     manifest = validate(quarter, parsed, deleted, dl)
-    publish_manifest(manifest)
+    cleanup_extracted(quarter, publish_manifest(manifest))
 
 
 faers_ingest()

@@ -14,6 +14,7 @@ import pendulum
 from airflow.sdk import Asset, Param, TriggerRule, dag, get_current_context, task
 
 from faers_pipeline import rxnorm
+from faers_pipeline.callbacks import on_task_failure
 from faers_pipeline.config import load_config
 
 CFG = load_config("faers.yaml")
@@ -41,6 +42,7 @@ SEP = LOOKUP["combination_separator"]
         "retries": 3,
         "retry_delay": pendulum.duration(minutes=5),
         "retry_exponential_backoff": True,
+        "on_failure_callback": on_task_failure,
     },
     params={
         "max_names": Param(

@@ -22,6 +22,7 @@ FAERS_TASKS = {
     "ingest_deleted",
     "validate",
     "publish_manifest",
+    "cleanup_extracted",
 }
 
 
@@ -142,3 +143,63 @@ def rx_limit():
 
     cfg = yaml.safe_load((REPO / "config" / "rxnorm.yaml").read_text(encoding="utf-8"))
     return cfg["lookup"]["max_names"]
+
+
+def test_cleanup_runs_after_the_manifest(faers_dag):
+    task = faers_dag.get_task("cleanup_extracted")
+    assert task.upstream_task_ids == {"resolve_quarter", "publish_manifest"}
+
+
+@pytest.fixture(scope="module")
+def transform_dag(bag):
+    dag = bag.dags.get("faers_transform")
+    assert dag is not None
+    return dag
+
+
+def test_faers_transform_shape(transform_dag):
+    assert set(transform_dag.task_ids) == {
+        "wait_for_writers_idle",
+        "build_warehouse",
+        "reconcile_warehouse",
+        "publish_warehouse",
+    }
+    assert transform_dag.catchup is False and transform_dag.max_active_runs == 1
+    assert transform_dag.get_task("wait_for_writers_idle").mode == "reschedule"
+    assert transform_dag.get_task("reconcile_warehouse").upstream_task_ids == {"build_warehouse"}
+    assert transform_dag.get_task("publish_warehouse").upstream_task_ids == {
+        "build_warehouse",
+        "reconcile_warehouse",
+    }
+
+
+def test_faers_transform_runs_on_the_rxnorm_asset_only(transform_dag, rxnorm_dag):
+    condition = repr(transform_dag.timetable.asset_condition)
+    assert "rxnorm_name_map" in condition and "faers_raw_parquet" not in condition
+    published = {o.name for o in rxnorm_dag.get_task("build_name_map").outlets}
+    assert published == {"rxnorm_name_map"}
+
+
+def test_warehouse_writers_use_the_one_slot_pool(transform_dag):
+    for task_id in ("build_warehouse", "reconcile_warehouse"):
+        assert transform_dag.get_task(task_id).pool == "duckdb_writer"
+    pools = json.loads(POOLS.read_text(encoding="utf-8"))
+    assert pools["duckdb_writer"]["slots"] == 1
+
+
+def test_warehouse_asset_only_after_build_and_reconcile(transform_dag):
+    task = transform_dag.get_task("publish_warehouse")
+    assert {o.name for o in task.outlets} == {"faers_warehouse"}
+    assert task.trigger_rule == "all_success"
+    for task_id in ("build_warehouse", "reconcile_warehouse"):
+        assert not transform_dag.get_task(task_id).outlets
+
+
+def test_every_task_has_the_failure_callback(bag):
+    from faers_pipeline.callbacks import on_task_failure
+
+    for dag_id, dag in bag.dags.items():
+        for task in dag.tasks:
+            cbs = task.on_failure_callback
+            cbs = cbs if isinstance(cbs, list) else [cbs]
+            assert on_task_failure in cbs, f"{dag_id}.{task.task_id}"
