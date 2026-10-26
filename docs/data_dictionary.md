@@ -1,12 +1,19 @@
 # Data dictionary: core marts
 
-Schema `core` of the DuckDB warehouse (`data/warehouse/faers.duckdb`), built by dbt from the
-FAERS quarterly ASCII files loaded in the lake (8 quarters, 2024Q3 to 2026Q2). Row counts are
-those of the build of 2026-10-24.
+Schemas `core` and `signals` of the DuckDB warehouse (`data/warehouse/faers.duckdb`), built by
+dbt from the FAERS quarterly ASCII files loaded in the lake (8 quarters, 2024Q3 to 2026Q2) and
+the RxNorm lookups of the `rxnorm_enrich` DAG (RxNorm release 05-Oct-2026). Row counts are
+those of the build of 2026-10-26.
 
-Lineage: `faers_raw` (Parquet, all text) → `staging` (typed views) → `intermediate`
-(deduplication: `int_faers__case_latest`, `int_faers__drug_latest`, `int_faers__reaction_latest`,
-`int_faers__outcome_latest`) → `core`. Facts read only from the `int_faers__*_latest` models.
+Lineage:
+
+- `faers_raw` (Parquet, all text) → `staging` (typed views) → `intermediate` (deduplication:
+  `int_faers__case_latest`, `int_faers__drug_latest`, `int_faers__reaction_latest`,
+  `int_faers__outcome_latest`) → `core`. Facts read only from the `int_faers__*_latest` models.
+- `rxnorm_raw` (Parquet: `term_lookup` cache, `name_map`) → `stg_rxnorm__name_map`,
+  `stg_rxnorm__term_lookup` → `int_faers__drug_resolved` (`int_faers__drug_latest` ⨝ name map)
+  → `dim_ingredient`; `bridge_drug_ingredient` (`dim_drug` ⨝ name map ⨝ `dim_ingredient`);
+  `signals.mart_dq_rxnorm_coverage` (`int_faers__drug_resolved`, `fct_case`).
 
 General conventions:
 
@@ -58,9 +65,54 @@ member). Source: `int_faers__drug_latest`.
 | `n_drug_lines` | hugeint | DRUG lines of the winning versions with this `prod_ai`. |
 | `is_unknown` | boolean | True for the unknown member. |
 
-Caveats: not yet mapped to RxNorm ingredients (Phase 5 adds the ingredient without changing
-this grain). Salts, combinations and spelling variants are separate members. 216,354 drug lines
-(1.85%) have no `prod_ai` and point to the unknown member; 21 of them are PS or SS.
+Caveats: salts, combinations and spelling variants are separate members; their RxNorm
+ingredients are reached through `bridge_drug_ingredient`. 216,354 drug lines (1.85%) have no
+`prod_ai` and point to the unknown member; 21 of them are PS or SS.
+
+### `dim_ingredient`
+
+Grain: one row per ingredient. 95,910 rows: 3,477 RxNorm ingredients, 92,432 fallback
+ingredients and the unknown member. Source: `int_faers__drug_resolved`.
+
+| Column | Type | Description |
+|---|---|---|
+| `ingredient_key` | varchar | Surrogate key of `ingredient_id`. Primary key. |
+| `ingredient_id` | varchar | RxCUI of the RxNorm ingredient (term type IN); `FB:<text>` for a fallback ingredient; `(unknown)`. |
+| `ingredient_rxcui` | varchar | The RxCUI, null for fallback and unknown. |
+| `ingredient_name` | varchar | RxNorm ingredient name (lower case, e.g. `amlodipine`); for a fallback, the cleaned text. |
+| `best_match_type` | varchar | Strongest layer that produced this ingredient: `exact`, `normalized`, `approx_accepted` or `fallback`. |
+| `is_fallback` | boolean | No accepted RxNorm match (`FB:` id). |
+| `is_generic_fallback` | boolean | Fallback whose text is a generic class word listed in `config/rxnorm.yaml` `generic_terms` (HERBALS, VITAMINS, MINERALS, DIETARY SUPPLEMENT, UNSPECIFIED INGREDIENT). |
+| `is_unknown` | boolean | Unknown member (drug line without any text). |
+| `n_drug_line_rows` | bigint | Rows of `int_faers__drug_resolved` (all roles). |
+| `n_signal_role_rows` | bigint | Rows with role in `signal_drug_roles` (PS, SS). |
+| `n_cases_signal_roles` | bigint | Distinct cases with this ingredient in a PS/SS line. |
+
+Caveats: most fallback ingredients come from texts that were never looked up (names used only as
+concomitant, interacting or not administered, and reported drug names of lines without
+`prod_ai`). Row counts overstate cases: tirzepatide has 388,946 PS/SS rows and 114,788 distinct
+cases. Count cases with `count(distinct case_id)` or `n_cases_signal_roles`.
+
+### `bridge_drug_ingredient`
+
+Grain: one row per (`drug_key`, `ingredient_key`). 14,556 rows for 10,029 drugs. Source:
+`dim_drug`, `stg_rxnorm__name_map`, `dim_ingredient`.
+
+| Column | Type | Description |
+|---|---|---|
+| `drug_key` | varchar | FK `dim_drug`. |
+| `ingredient_key` | varchar | FK `dim_ingredient`. |
+| `ingredient_id` | varchar | As in `dim_ingredient`. |
+| `match_type` | varchar | Layer of this ingredient for this `prod_ai`: `exact`, `normalized`, `approx_accepted` or `fallback`. |
+| `is_generic_fallback` | boolean | As in `dim_ingredient`. |
+| `lookup_term` | varchar | Part of the `prod_ai` that produced the ingredient (combinations are split on a backslash). |
+| `n_parts` | integer | Number of parts of the `prod_ai`. |
+
+A combination `prod_ai` has one row per ingredient (`SACUBITRIL\VALSARTAN` → sacubitril,
+valsartan). When only some parts match, each unmatched part becomes `FB:<part>`
+(`GIMERACIL\OTERACIL POTASSIUM\TEGAFUR` → `FB:GIMERACIL`, `FB:OTERACIL POTASSIUM`, tegafur). A
+`prod_ai` without any match maps to `FB:<prod_ai>`; the unknown drug to the unknown ingredient.
+Joining `fct_case_drug` through the bridge multiplies rows on purpose: count distinct cases.
 
 ### `dim_reaction`
 
@@ -131,13 +183,13 @@ Grain: one row per DRUG line of the winning version; key (`case_id`, `drug_seq`,
 |---|---|---|
 | `case_id` | bigint | FK `fct_case`. |
 | `drug_seq` | integer | Drug position within the case version (`DRUG_SEQ`). |
-| `drug_line_seq` | bigint | Line number within the position (1 for most positions). |
+| `drug_line_seq` | bigint | Line number within the position (1 for most positions), computed in `int_faers__drug_latest`. |
 | `drug_key` | varchar | FK `dim_drug` (cleaned `prod_ai`). |
 | `role_code` | varchar | PS primary suspect, SS secondary suspect, C concomitant, I interacting, DN drug not administered (FK `seed_role_codes`). |
 | `route` | varchar | Route of administration. |
 | `drug_name_raw` | varchar | `DRUGNAME` as reported (valid trade name or verbatim). |
 | `active_ingredient_raw` | varchar | `PROD_AI` as reported. |
-| `drug_text_clean` | varchar | Cleaned `prod_ai`, else cleaned `drugname` (lookup text for Phase 5). |
+| `drug_text_clean` | varchar | Cleaned `prod_ai`, else cleaned `drugname`; key of the RxNorm name map. |
 | `primaryid` | bigint | Winning version. |
 | `source_quarter` | varchar | File quarter of the winning version. |
 
@@ -176,6 +228,28 @@ Grain: one row per (case, outcome code) of the winning version. 2,068,441 rows
 | `primaryid` | bigint | Winning version. |
 | `source_quarter` | varchar | File quarter of the winning version. |
 
+## Signals schema
+
+### `mart_dq_rxnorm_coverage`
+
+Grain: one row per (`period_key`, `match_type`, `fallback_reason`). Source:
+`int_faers__drug_resolved`, `fct_case`. First part of the planned `mart_dq_metrics`.
+
+| Column | Type | Description |
+|---|---|---|
+| `period_key` | varchar | In-window `quarter_key` (2024Q3 to 2026Q2) or `ALL` (every loaded case). |
+| `match_type` | varchar | Weakest layer among the parts of the line's drug text: `exact`, `normalized`, `approx_accepted` or `fallback`. |
+| `fallback_reason` | varchar | For fallback lines: `not_in_name_map` (text never looked up), `no_match` (no part matched) or `partial_combination` (some parts matched). |
+| `is_normalized` | boolean | `match_type` is not `fallback`. |
+| `n_lines` | bigint | Drug lines with role in `signal_drug_roles` (PS, SS). |
+| `n_lines_generic_fallback` | bigint | Lines with at least one generic fallback ingredient. |
+| `n_lines_period` | bigint | PS/SS lines of the period. |
+| `pct_lines` | decimal | `n_lines` / `n_lines_period` × 100. |
+
+Coverage of the build of 2026-10-26 (`ALL`): 7,182,171 PS/SS lines; exact 98.982%, normalized
+0.069%, fallback 0.948% (no match 62,936 lines, partial combination 5,205, not in name map 12).
+Normalized share per in-window quarter: 98.84% (2026Q2) to 99.19% (2025Q2).
+
 ## Reference seeds
 
 | Seed | Content | Source |
@@ -197,4 +271,5 @@ Grain: one row per (case, outcome code) of the winning version. 2,068,441 rows
 - **MedDRA versions.** PTs are stored as text without a version; renamed terms split counts.
 - **Recent cohorts.** Under the `init_fda_dt` anchor, the cohorts of the last quarters can still
   grow when later quarters are loaded.
-- **Drug names.** `prod_ai` is not normalized to an ingredient vocabulary yet (Phase 5).
+- **Drug names.** RxNorm normalization favours precision: approximate matches are off and
+  ambiguous exact matches are not resolved (see `docs/limitations.md`).
