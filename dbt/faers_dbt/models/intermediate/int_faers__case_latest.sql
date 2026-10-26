@@ -37,6 +37,7 @@ select
     age_group,
     sex,
     reporter_country,
-    occurrence_country
+    occurrence_country,
+    reporter_occupation
 from ranked
 where version_rank = 1

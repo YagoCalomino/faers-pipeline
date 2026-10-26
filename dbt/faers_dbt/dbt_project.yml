@@ -22,3 +22,11 @@ models:
     intermediate:
       +materialized: table
       +schema: intermediate
+    marts:
+      core:
+        +materialized: table
+        +schema: core
+
+seeds:
+  faers_dbt:
+    +schema: seeds

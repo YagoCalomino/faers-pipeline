@@ -25,3 +25,9 @@ models:
     columns:
       - name: caseid
         data_tests: [not_null]
+
+  - name: int_faers__outcome_latest
+    description: OUTC rows of the winning (primaryid, source_quarter) of each case.
+    columns:
+      - name: caseid
+        data_tests: [not_null]

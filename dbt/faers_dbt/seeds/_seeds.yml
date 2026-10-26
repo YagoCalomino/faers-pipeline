@@ -1,0 +1,28 @@
+version: 2
+
+seeds:
+  - name: seed_outcome_codes
+    description: >
+      FAERS patient outcome codes (OUTC file, outc_cod) with the meaning text of the FDA
+      "ASC_NTS" file shipped in each quarterly ASCII zip (revision of January 2025). The same 7
+      codes, and only these, appear in the 8 loaded quarters.
+    config:
+      column_types:
+        outcome_code: varchar
+        outcome_description: varchar
+    columns:
+      - name: outcome_code
+        data_tests: [unique, not_null]
+
+  - name: seed_role_codes
+    description: >
+      FAERS drug role codes (DRUG file, role_cod) with the meaning text of the FDA "ASC_NTS" file
+      (revision of January 2025). DN (drug not administered) appears from 2024Q4 in the loaded
+      data.
+    config:
+      column_types:
+        role_code: varchar
+        role_description: varchar
+    columns:
+      - name: role_code
+        data_tests: [unique, not_null]

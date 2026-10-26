@@ -1,0 +1,157 @@
+version: 2
+
+models:
+  - name: dim_quarter
+    description: >
+      Calendar quarters from the earliest init_quarter of the loaded cases to the window end
+      (vars window_start_quarter / window_end_quarter set is_in_window), plus the period 'ALL'
+      (every loaded case) and the unknown member.
+    columns:
+      - name: quarter_key
+        description: "'YYYYQn', 'ALL' or '(unknown)'."
+        data_tests: [unique, not_null]
+      - name: period_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [quarter, all, unknown]
+
+  - name: dim_drug
+    description: >
+      One row per product active ingredient text (prod_ai cleaned: upper case, trimmed, inner
+      spaces collapsed) of the winning case versions, plus the unknown member for drug lines
+      without prod_ai. Not yet mapped to RxNorm (Phase 5).
+    columns:
+      - name: drug_key
+        description: Surrogate key, dbt_utils.generate_surrogate_key(prod_ai_clean).
+        data_tests: [unique, not_null]
+      - name: prod_ai_clean
+        description: Natural key.
+        data_tests: [unique, not_null]
+      - name: most_common_drug_name_raw
+        description: Most frequent DRUGNAME reported with this prod_ai (ties alphabetical).
+      - name: n_drug_lines
+        description: DRUG lines of the winning versions with this prod_ai.
+
+  - name: dim_reaction
+    description: >
+      One row per MedDRA preferred term (PT) of the winning case versions, plus the unknown
+      member. The ASCII extract has no MedDRA version field.
+    columns:
+      - name: reaction_key
+        data_tests: [unique, not_null]
+      - name: reaction_pt
+        data_tests: [unique, not_null]
+
+  - name: dim_outcome
+    description: FAERS outcome codes (seed_outcome_codes) plus the unknown member.
+    columns:
+      - name: outcome_code
+        data_tests: [unique, not_null]
+
+  - name: fct_case
+    description: >
+      One row per deduplicated case (same rows as int_faers__case_latest). quarter_key is the
+      quarter of init_fda_dt (ADR 0001); source_quarter is the file of the winning version.
+    columns:
+      - name: case_id
+        data_tests: [unique, not_null]
+      - name: quarter_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_quarter')
+                field: quarter_key
+      - name: source_quarter
+        data_tests: [not_null]
+      - name: is_in_window
+        data_tests: [not_null]
+      - name: sex
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [M, F, UNK]
+
+  - name: fct_case_drug
+    description: >
+      One row per DRUG line of the winning case version (case_id, drug_seq, drug_line_seq).
+      Lines of the same drug position differ only in dosage fields.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [case_id, drug_seq, drug_line_seq]
+    columns:
+      - name: case_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_case')
+                field: case_id
+      - name: drug_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_drug')
+                field: drug_key
+      - name: role_code
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [PS, SS, C, I, DN]
+          - relationships:
+              arguments:
+                to: ref('seed_role_codes')
+                field: role_code
+
+  - name: fct_case_reaction
+    description: >
+      One row per REAC line of the winning case version (case_id, reaction_key,
+      reaction_line_seq). Use distinct (case_id, reaction_key) for case-level counts.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [case_id, reaction_key, reaction_line_seq]
+    columns:
+      - name: case_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_case')
+                field: case_id
+      - name: reaction_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_reaction')
+                field: reaction_key
+
+  - name: fct_case_outcome
+    description: One row per (case, outcome code) of the winning case version.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [case_id, outcome_code]
+    columns:
+      - name: case_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('fct_case')
+                field: case_id
+      - name: outcome_code
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [DE, LT, HO, DS, CA, RI, OT]
+          - relationships:
+              arguments:
+                to: ref('dim_outcome')
+                field: outcome_code

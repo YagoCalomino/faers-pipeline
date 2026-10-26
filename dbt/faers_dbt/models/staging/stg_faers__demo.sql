@@ -22,6 +22,7 @@ select
     case when upper(trim(sex)) in ('M', 'F') then upper(trim(sex)) else 'UNK' end as sex,
     {{ nullif_blank('upper(reporter_country)') }}   as reporter_country,
     {{ nullif_blank('upper(occr_country)') }}       as occurrence_country,
+    {{ nullif_blank('upper(occp_cod)') }}           as reporter_occupation,
     quarter                                         as source_quarter,
     _source_file                                    as source_file
 from {{ source('faers_raw', 'demo') }}

@@ -31,3 +31,25 @@
         '{{ role }}'{{ ", " if not loop.last }}
     {%- endfor -%}
 {%- endmacro %}
+
+{#- 'YYYYQn' -> first day of the quarter. -#}
+{% macro quarter_start_date(label) -%}
+    make_date(cast(left({{ label }}, 4) as integer),
+              (cast(right({{ label }}, 1) as integer) - 1) * 3 + 1, 1)
+{%- endmacro %}
+
+{#- Natural key of the explicit 'unknown' member of every dimension. Lower case and in
+    parentheses so it cannot collide with a cleaned (upper-case) source value. -#}
+{% macro unknown_member() -%}
+    '(unknown)'
+{%- endmacro %}
+
+{#- dim_drug natural key: prod_ai cleaned (upper, trim, inner spaces collapsed), else unknown. -#}
+{% macro drug_natural_key(prod_ai_column) -%}
+    coalesce({{ clean_text(prod_ai_column) }}, {{ unknown_member() }})
+{%- endmacro %}
+
+{#- dim_reaction natural key: MedDRA PT as reported (trimmed), else unknown. -#}
+{% macro reaction_natural_key(pt_column) -%}
+    coalesce({{ nullif_blank(pt_column) }}, {{ unknown_member() }})
+{%- endmacro %}

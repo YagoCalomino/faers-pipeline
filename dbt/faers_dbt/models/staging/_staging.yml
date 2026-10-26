@@ -73,7 +73,8 @@ unit_tests:
               null::varchar as i_f_code, null::varchar as fda_dt, null::varchar as init_fda_dt,
               null::varchar as age, null::varchar as age_cod, null::varchar as age_grp,
               null::varchar as sex, null::varchar as reporter_country,
-              null::varchar as occr_country, '2025Q1' as quarter, 'x.txt' as _source_file
+              null::varchar as occr_country, null::varchar as occp_cod,
+              '2025Q1' as quarter, 'x.txt' as _source_file
           from (values
               ('1', '20250315'), ('2', '202503'), ('3', '2025'), ('4', ''),
               ('5', null), ('6', '20251399'), ('7', '20250230'), ('8', '202513'),

@@ -1,0 +1,8 @@
+outcome_code,outcome_description
+DE,Death
+LT,Life-Threatening
+HO,Hospitalization - Initial or Prolonged
+DS,Disability
+CA,Congenital Anomaly
+RI,Required Intervention to Prevent Permanent Impairment/Damage
+OT,Other Serious (Important Medical Event)
