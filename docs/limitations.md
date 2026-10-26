@@ -130,6 +130,24 @@ Sources:
   formulas. They were checked against an independent computation in plain Python (dbt test
   `assert_signal_statistics_known_values` and a recalculation of two real pairs).
 
+### Continuity correction (Yates)
+
+Because the Evans paper may have used a continuity-corrected χ², the Evans flag was also
+computed with Yates' correction, χ² = N(max(|ad − bc| − N/2, 0))² / [(a+b)(c+d)(a+c)(b+d)],
+in a one-off analysis on the build of 2026-10-26 (the mart was not changed):
+
+| Period | a band | Evans pairs (uncorrected) | Evans pairs (Yates) | Lose the flag | Share lost |
+|---|---|---|---|---|---|
+| `ALL` | a < 10 | 208,813 | 194,444 | 14,369 | 6.9% |
+| `ALL` | a ≥ 10 | 205,913 | 205,910 | 3 | 0.001% |
+| `2025Q4` | a < 10 | 72,471 | 68,765 | 3,706 | 5.1% |
+| `2025Q4` | a ≥ 10 | 38,375 | 38,375 | 0 | 0% |
+
+No pair gains the flag with the correction (it can only lower χ²). Overall 3.5% of the Evans
+pairs in `ALL` (14,372 of 414,726) and 3.3% in `2025Q4` would lose it, all but 3 of them with
+a < 10, most with a = 3 to 5. The choice matters only for pairs with few cases, which the other
+two criteria (a ≥ 3, PRR ≥ 2) already make fragile; the ROR criterion does not use χ².
+
 ### Limits of the signals
 
 - **Many signals.** With a ≥ 3, about 61% of the stored pairs in `ALL` meet the Evans criterion

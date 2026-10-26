@@ -111,6 +111,14 @@ make reconcile                    # lake -> warehouse counts, exit 1 on divergen
 
 Do not run a build while an ingestion is writing the lake.
 
+**Host memory.** A full build is the heaviest step of the pipeline. Measured on 2026-10-26 (8
+quarters, `faers_transform` in Airflow): the dbt process peaked at about 3.1 GB and the
+scheduler container's cgroup `memory.peak` at 4,012 MiB (about 4 GiB), with DuckDB's
+`memory_limit` at 2.5GB (`config/faers.yaml`, `dbt.memory_limit`). Docker's VM on the development host
+has about 8 GB, shared with the host's own programs: close heavy programs (browsers with many tabs, IDEs, other containers) before
+triggering `faers_transform` or `make dbt-rebuild`. Lowering `memory_limit` is not the fix: the
+signal marts already ran out of memory at that limit before they were reworked.
+
 ## Failures
 
 Every task of the three DAGs has a failure callback that, when the task fails for good (after
