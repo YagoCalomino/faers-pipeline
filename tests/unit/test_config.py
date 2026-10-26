@@ -63,3 +63,48 @@ def test_schedule_quarters_are_valid(faers_cfg):
     start = quarter_start(faers_cfg["schedule"]["start_quarter"])
     end = quarter_start(faers_cfg["schedule"]["end_quarter"])
     assert start <= end
+
+
+def test_config_files_have_no_duplicate_keys():
+    """A repeated key silently overrides the first one in PyYAML."""
+    from pathlib import Path
+
+    import yaml
+
+    class StrictLoader(yaml.SafeLoader):
+        pass
+
+    def mapping(loader, node, deep=False):
+        keys = [loader.construct_object(k, deep=deep) for k, _ in node.value]
+        assert len(keys) == len(set(keys)), f"duplicate keys in {node.start_mark}"
+        return loader.construct_mapping(node, deep)
+
+    StrictLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, mapping)
+    config_dir = Path(__file__).resolve().parents[2] / "config"
+    for path in sorted(config_dir.glob("*.yaml")):
+        yaml.load(path.read_text(encoding="utf-8"), Loader=StrictLoader)
+
+
+def test_rxnorm_coverage_and_generic_terms_shape():
+    from pathlib import Path
+
+    import yaml
+
+    path = Path(__file__).resolve().parents[2] / "config" / "rxnorm.yaml"
+    cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert 0 < cfg["coverage"]["min_ps_ss_row_coverage"] <= 1
+    terms = cfg["generic_terms"]
+    assert terms and all(t == t.strip().upper() for t in terms)
+
+
+def test_rxnorm_cache_lives_where_dbt_reads_it():
+    """dbt reads LAKE_PATH/raw/rxnorm/{cache,name_map}; the DAG writes to config paths."""
+    from pathlib import Path
+
+    import yaml
+
+    cfg_dir = Path(__file__).resolve().parents[2] / "config"
+    lake = yaml.safe_load((cfg_dir / "faers.yaml").read_text(encoding="utf-8"))["paths"]["lake"]
+    rx = yaml.safe_load((cfg_dir / "rxnorm.yaml").read_text(encoding="utf-8"))
+    assert rx["cache"]["path"] == f"{lake}/raw/rxnorm/cache"
+    assert rx["name_map"]["path"] == f"{lake}/raw/rxnorm/name_map"

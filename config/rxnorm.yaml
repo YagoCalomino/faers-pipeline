@@ -46,9 +46,8 @@ lookup:
   # Results are written to cache/_pending every N terms of a chunk (atomic files), so an
   # interrupted task loses at most N lookups; a retry skips the terms already written.
   flush_every_terms: 25
-  # Names per run, most frequent first; null = every name in scope. Kept small until the
-  # approximate-match threshold is calibrated (Phase 5, step 4).
-  max_names: 200
+  # Names per run, most frequent first; null = every name in scope (a DAG param can lower it).
+  max_names: null
   random_seed: 42          # used when a run selects names at random (calibration samples)
 
 cache:
@@ -73,11 +72,25 @@ match_layers:
 approximate_rules:
   source: RXNORM                   # ignore candidates from other sources (MMSL, VANDF, ...)
   require_ingredient: true         # the candidate must resolve to at least one IN
-  min_score: null                  # TODO(Phase 5): calibrate on a labelled sample
+  # Calibrated 2026-10-26 on a manually labelled sample (data/spikes/rxnorm_calibration_sample.csv):
+  # 6 of 20 approximate matches correct; no score threshold separates right from wrong (wrong
+  # matches at 8.0-12.9 and 20.7, right ones at 10.1-15.3). Approximate matching is off: null
+  # never accepts, so these terms fall back to their own text.
+  min_score: null
 
 # Name map derived from the cache: one row per (drug_text_clean, ingredient_rxcui).
 name_map:
   path: "/opt/airflow/data/lake/raw/rxnorm/name_map"
+
+# Generic class words that FAERS reports as an "ingredient" (no single RxNorm ingredient). They
+# stay as fallback ingredients FB:<term>; dbt flags them with is_generic_fallback. Editable list
+# of cleaned terms (upper case); dbt reads it through scripts/dbt_run.py.
+generic_terms:
+  - HERBALS
+  - VITAMINS
+  - MINERALS
+  - DIETARY SUPPLEMENT
+  - UNSPECIFIED INGREDIENT
 
 coverage:
   min_ps_ss_row_coverage: 0.85     # initial target from the plan; adjust after measuring
