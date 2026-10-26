@@ -49,3 +49,36 @@ def parse_cfg(faers_cfg, tmp_path) -> dict:
 def sample_zip(tmp_path_factory) -> Path:
     """Zips the 2026Q2 sample folder with the same member paths as the FDA zip."""
     return zip_folder(SAMPLE_DIR, tmp_path_factory.mktemp("zip") / "faers_ascii_2026q2.zip")
+
+
+@pytest.fixture(scope="session")
+def fixture_lake(tmp_path_factory, faers_cfg, schema_cfg) -> Path:
+    """The 4 real fixture quarters parsed into a lake (same code as scripts/build_test_lake.py),
+    with one manifest per quarter built from the Parquet files written."""
+    import json
+
+    import pyarrow.parquet as pq
+
+    from faers_pipeline.local_ingest import ingest_quarter, raw_path
+
+    root = tmp_path_factory.mktemp("lake_root")
+    lake, work = root / "lake", root / "work"
+    cfg = make_parse_cfg(faers_cfg, root)
+    full = {**faers_cfg, "parse": cfg}
+    for q in SAMPLE_QUARTERS:
+        ingest_quarter(SAMPLE_ROOT / q, q, lake, work, full, schema_cfg)
+        manifest = {
+            "quarter": q,
+            "file_types": {
+                ft: {
+                    "path": str(raw_path(lake, ft, q)),
+                    "rows": pq.ParquetFile(raw_path(lake, ft, q)).metadata.num_rows,
+                }
+                for ft in faers_cfg["file_types"]
+            },
+            "deleted": {"path": str(raw_path(lake, "deleted", q))},
+        }
+        path = lake / "_meta" / "faers" / f"quarter={q}" / "manifest.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(manifest), encoding="utf-8")
+    return lake

@@ -4,11 +4,13 @@ COMPOSE := docker compose --env-file .env -f infra/docker/docker-compose.yml
 DEV     := $(COMPOSE) run --rm --no-deps airflow-dev
 
 .PHONY: help env build up down logs ps lint format test fernet import-errors \
-	dbt-deps dbt-build dbt-rebuild dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci reconcile
+	dbt-deps dbt-build dbt-rebuild dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci reconcile \
+	cleanup-extracted
 
 help:
 	@echo "Targets: env build up down logs ps lint format test fernet import-errors"
 	@echo "dbt:     dbt-deps dbt-build dbt-rebuild dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci reconcile"
+	@echo "disk:    cleanup-extracted (dry run; EXECUTE=1 deletes)"
 
 # Create .env from the template the first time.
 env: .env
@@ -59,10 +61,11 @@ dbt-deps: .env
 dbt-build: .env
 	$(DBT) build
 
-# Deletes the warehouse .duckdb (dbt outputs only; the lake is the source) and builds everything.
+# Full build into data/warehouse/_build/ (same file name), swapped in only if every model and
+# test passes (atomic; a failure keeps the previous warehouse). Same code as faers_transform.
 # Never run while an ingestion is writing the lake.
 dbt-rebuild: .env
-	$(DBT) --rebuild build
+	$(DBT) --atomic build
 
 dbt-test: .env
 	$(DBT) test
@@ -87,3 +90,7 @@ dbt-ci: .env
 		&& export LAKE_PATH=$(CI_DIR)/lake DBT_CI_DIR=$(CI_DIR) \
 		&& python -I scripts/dbt_run.py --ci deps \
 		&& python -I scripts/dbt_run.py --ci build"
+
+# Extracted .txt files of ingested quarters (zips, lake, manifests untouched). Dry run by default.
+cleanup-extracted: .env
+	$(DEV) python -I scripts/cleanup_extracted.py $(if $(EXECUTE),--execute,)
