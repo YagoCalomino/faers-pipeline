@@ -82,7 +82,7 @@ ingredients and the unknown member. Source: `int_faers__drug_resolved`.
 | `ingredient_name` | varchar | RxNorm ingredient name (lower case, e.g. `amlodipine`); for a fallback, the cleaned text. |
 | `best_match_type` | varchar | Strongest layer that produced this ingredient: `exact`, `normalized`, `approx_accepted` or `fallback`. |
 | `is_fallback` | boolean | No accepted RxNorm match (`FB:` id). |
-| `is_generic_fallback` | boolean | Fallback whose text is a generic class word listed in `config/rxnorm.yaml` `generic_terms` (HERBALS, VITAMINS, MINERALS, DIETARY SUPPLEMENT, UNSPECIFIED INGREDIENT). |
+| `is_generic_fallback` | boolean | Fallback whose text is a generic class word listed in `config/rxnorm.yaml` `generic_terms` (HERBALS, VITAMINS, MINERALS, DIETARY SUPPLEMENT, UNSPECIFIED INGREDIENT, DEVICE). |
 | `is_unknown` | boolean | Unknown member (drug line without any text). |
 | `n_drug_line_rows` | bigint | Rows of `int_faers__drug_resolved` (all roles). |
 | `n_signal_role_rows` | bigint | Rows with role in `signal_drug_roles` (PS, SS). |

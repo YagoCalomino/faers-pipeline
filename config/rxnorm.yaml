@@ -91,6 +91,7 @@ generic_terms:
   - MINERALS
   - DIETARY SUPPLEMENT
   - UNSPECIFIED INGREDIENT
+  - DEVICE
 
 coverage:
   min_ps_ss_row_coverage: 0.85     # initial target from the plan; adjust after measuring

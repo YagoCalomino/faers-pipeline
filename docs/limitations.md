@@ -35,7 +35,7 @@ of the test.
 ### Generic terms
 
 Some reports name a class of products instead of an ingredient (HERBALS, VITAMINS, MINERALS,
-DIETARY SUPPLEMENT, UNSPECIFIED INGREDIENT). They have no single RxNorm ingredient and stay as
+DIETARY SUPPLEMENT, UNSPECIFIED INGREDIENT, DEVICE). They have no single RxNorm ingredient and stay as
 fallback ingredients; `dim_ingredient` flags them with `is_generic_fallback`, from the
 editable list `generic_terms` in `config/rxnorm.yaml`.
 
