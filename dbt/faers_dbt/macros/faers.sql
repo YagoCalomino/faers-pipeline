@@ -53,3 +53,23 @@
 {% macro reaction_natural_key(pt_column) -%}
     coalesce({{ nullif_blank(pt_column) }}, {{ unknown_member() }})
 {%- endmacro %}
+
+{#- Fallback ingredient id: the text itself, prefixed (no RxNorm match). Same as the Python
+    name-map builder (faers_pipeline.rxnorm.FALLBACK_PREFIX). -#}
+{% macro fallback_ingredient_id(text_column) -%}
+    'FB:' || {{ text_column }}
+{%- endmacro %}
+
+{#- True for a fallback ingredient whose text is a generic class word listed in
+    config/rxnorm.yaml generic_terms (var rxnorm_generic_terms, passed by scripts/dbt_run.py). -#}
+{% macro is_generic_fallback(ingredient_id_column, ingredient_name_column) -%}
+    {%- set terms = var('rxnorm_generic_terms') -%}
+    {%- if terms | length > 0 -%}
+    (starts_with({{ ingredient_id_column }}, 'FB:') and {{ ingredient_name_column }} in (
+        {%- for t in terms -%}
+            '{{ t | replace("'", "''") }}'{{ ", " if not loop.last }}
+        {%- endfor -%}))
+    {%- else -%}
+    false
+    {%- endif -%}
+{%- endmacro %}

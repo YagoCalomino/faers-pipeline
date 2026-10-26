@@ -20,7 +20,7 @@ models:
     description: >
       One row per product active ingredient text (prod_ai cleaned: upper case, trimmed, inner
       spaces collapsed) of the winning case versions, plus the unknown member for drug lines
-      without prod_ai. Not yet mapped to RxNorm (Phase 5).
+      without prod_ai. RxNorm ingredients are reached through bridge_drug_ingredient.
     columns:
       - name: drug_key
         description: Surrogate key, dbt_utils.generate_surrogate_key(prod_ai_clean).
@@ -155,3 +155,56 @@ models:
               arguments:
                 to: ref('dim_outcome')
                 field: outcome_code
+
+  - name: dim_ingredient
+    description: >
+      One row per ingredient of the drug lines: RxNorm ingredients (IN RxCUI), fallback
+      ingredients FB:<text> (no accepted RxNorm match) and the unknown member.
+      n_cases_signal_roles counts distinct cases (PS/SS lines), never lines.
+    columns:
+      - name: ingredient_key
+        description: Surrogate key, dbt_utils.generate_surrogate_key(ingredient_id).
+        data_tests: [unique, not_null]
+      - name: ingredient_id
+        description: IN RxCUI, FB:<text> or '(unknown)'.
+        data_tests: [unique, not_null]
+      - name: best_match_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [exact, normalized, approx_accepted, fallback]
+      - name: is_generic_fallback
+        description: >
+          Fallback ingredient whose text is a generic class word listed in config/rxnorm.yaml
+          generic_terms (e.g. HERBALS, VITAMINS).
+        data_tests: [not_null]
+
+  - name: bridge_drug_ingredient
+    description: >
+      dim_drug -> dim_ingredient. One row per (drug_key, ingredient_key); a combination prod_ai
+      has one row per ingredient. fct_case_drug keeps its grain; joining through this bridge
+      multiplies rows on purpose, so count distinct cases.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [drug_key, ingredient_key]
+    columns:
+      - name: drug_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_drug')
+                field: drug_key
+      - name: ingredient_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_ingredient')
+                field: ingredient_key
+      - name: match_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [exact, normalized, approx_accepted, fallback]

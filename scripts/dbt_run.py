@@ -3,8 +3,8 @@
 dbt cannot read the project's YAML config by itself, so this wrapper passes it in:
 - environment for profiles.yml: DUCKDB_PATH, LAKE_PATH, DUCKDB_TEMP_DIR, DBT_THREADS,
   DBT_MEMORY_LIMIT (config/faers.yaml: paths.*, dbt.*);
-- --vars for the models: window_start_quarter / window_end_quarter (faers.yaml schedule) and
-  signal_drug_roles / signal_min_cases (signals.yaml).
+- --vars for the models: window_start_quarter / window_end_quarter (faers.yaml schedule),
+  signal_drug_roles / signal_min_cases (signals.yaml) and rxnorm_generic_terms (rxnorm.yaml).
 Variables already set in the environment win (the ci target sets LAKE_PATH and DBT_CI_DIR).
 
 Usage (inside the container, e.g. via make):
@@ -38,11 +38,13 @@ WITH_VARS = {"build", "run", "test", "parse", "compile", "ls", "list", "show", "
 def dbt_vars() -> dict:
     faers = load_config("faers.yaml")
     signals = load_config("signals.yaml")
+    rxnorm = load_config("rxnorm.yaml")
     return {
         "window_start_quarter": faers["schedule"]["start_quarter"],
         "window_end_quarter": faers["schedule"]["end_quarter"],
         "signal_drug_roles": signals["signal_drug_roles"],
         "signal_min_cases": signals["signal_min_cases"],
+        "rxnorm_generic_terms": rxnorm["generic_terms"] or [],
     }
 
 

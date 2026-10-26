@@ -15,7 +15,13 @@ models:
         data_tests: [not_null]
 
   - name: int_faers__drug_latest
-    description: DRUG rows of the winning (primaryid, source_quarter) of each case.
+    description: >
+      DRUG rows of the winning (primaryid, source_quarter) of each case. drug_line_seq numbers
+      the lines of one drug position (dosage regimens).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [caseid, drug_seq, drug_line_seq]
     columns:
       - name: caseid
         data_tests: [not_null]
@@ -31,3 +37,30 @@ models:
     columns:
       - name: caseid
         data_tests: [not_null]
+
+  - name: int_faers__drug_resolved
+    description: >
+      Drug lines of the winning versions with their ingredients (int_faers__drug_latest joined
+      to the RxNorm name map on drug_text_clean). A combination line has one row per
+      ingredient: count cases per ingredient with count(distinct caseid). Lines whose text is
+      not in the map get the fallback ingredient FB:<drug_text_clean>.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [caseid, drug_seq, drug_line_seq, ingredient_id]
+    columns:
+      - name: caseid
+        data_tests: [not_null]
+      - name: ingredient_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_ingredient')
+                field: ingredient_id
+      - name: match_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [exact, normalized, approx_accepted, fallback]

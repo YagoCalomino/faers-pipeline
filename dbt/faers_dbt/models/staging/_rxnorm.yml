@@ -1,0 +1,49 @@
+version: 2
+
+models:
+  - name: stg_rxnorm__name_map
+    description: >
+      RxNorm name map built by the rxnorm_enrich DAG from the lookup cache. Grain:
+      (drug_text_clean, ingredient_rxcui). drug_text_clean is the cleaned prod_ai (same key as
+      dim_drug); combinations (parts separated by a backslash) have one row per ingredient.
+      Approximate matches are off (config/rxnorm.yaml approximate_rules.min_score null), so
+      match_type is exact, normalized or fallback.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [drug_text_clean, ingredient_rxcui]
+    columns:
+      - name: drug_text_clean
+        data_tests: [not_null]
+      - name: ingredient_rxcui
+        description: RxCUI of the ingredient (IN), or FB:<part> for a part without a match.
+        data_tests: [not_null]
+      - name: ingredient_name
+        data_tests: [not_null]
+      - name: match_type
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [exact, normalized, approx_accepted, fallback]
+      - name: name_match_type
+        description: Weakest match_type among the parts of the name.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [exact, normalized, approx_accepted, fallback]
+      - name: rxnorm_version
+        description: RxNorm release the lookup used (getRxNormVersion), e.g. 05-Oct-2026.
+
+  - name: stg_rxnorm__term_lookup
+    description: >
+      RxNorm lookup cache: one row per (lookup_term, ingredient_rxcui); not_found and error
+      terms have one row without ingredient. matched and not_found are never looked up again.
+    columns:
+      - name: lookup_term
+        data_tests: [not_null]
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [matched, not_found, error]

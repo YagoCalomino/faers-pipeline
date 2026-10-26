@@ -12,7 +12,8 @@ clean-targets: ["target", "dbt_packages"]
 
 # Vars have no defaults here on purpose: scripts/dbt_run.py passes them with --vars, read from
 # config/faers.yaml (window_*) and config/signals.yaml (signal_*), so values live in one place.
-#   window_start_quarter, window_end_quarter, signal_drug_roles, signal_min_cases
+#   window_start_quarter, window_end_quarter, signal_drug_roles, signal_min_cases,
+#   rxnorm_generic_terms (config/rxnorm.yaml generic_terms)
 
 models:
   faers_dbt:
@@ -26,6 +27,9 @@ models:
       core:
         +materialized: table
         +schema: core
+      signals:
+        +materialized: table
+        +schema: signals
 
 seeds:
   faers_dbt:

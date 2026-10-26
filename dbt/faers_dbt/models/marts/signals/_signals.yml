@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: mart_dq_rxnorm_coverage
+    description: >
+      RxNorm coverage of the drug lines in the signal roles (PS, SS) per period (in-window
+      quarter_key and ALL), by match_type. A line counts once with the weakest layer of its
+      name. fallback_reason: not_in_name_map (text never looked up), no_match (no part
+      matched) or partial_combination (some parts matched). First part of mart_dq_metrics.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [period_key, match_type, fallback_reason]
+    columns:
+      - name: period_key
+        data_tests: [not_null]
+      - name: match_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [exact, normalized, approx_accepted, fallback]
+      - name: fallback_reason
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [not_in_name_map, no_match, partial_combination]

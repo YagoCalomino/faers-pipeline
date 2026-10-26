@@ -20,3 +20,20 @@ sources:
       - name: indi
       - name: deleted
         description: Case ids FDA removed (Deleted/DELETEyyQq.txt); one caseid per row.
+
+  - name: rxnorm_raw
+    description: >
+      RxNorm lookups written by the rxnorm_enrich DAG (no DuckDB writes). term_lookup is the
+      cache (one row per lookup term and ingredient); name_map is derived from it (one row per
+      cleaned drug text and ingredient). Both are single Parquet files replaced atomically.
+    tables:
+      - name: term_lookup
+        config:
+          meta:
+            external_location: >-
+              read_parquet('{{ env_var('LAKE_PATH') }}/raw/rxnorm/cache/term_lookup.parquet')
+      - name: name_map
+        config:
+          meta:
+            external_location: >-
+              read_parquet('{{ env_var('LAKE_PATH') }}/raw/rxnorm/name_map/name_map.parquet')
