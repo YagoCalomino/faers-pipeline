@@ -53,6 +53,7 @@ def dbt_vars() -> dict:
         "window_end_quarter": faers["schedule"]["end_quarter"],
         "signal_drug_roles": signals["signal_drug_roles"],
         "signal_min_cases": signals["signal_min_cases"],
+        "signals": {k: signals[k] for k in ("ci_z", "thresholds", "top")},
         "rxnorm_generic_terms": rxnorm["generic_terms"] or [],
     }
 

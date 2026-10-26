@@ -1,11 +1,31 @@
-# STUB (Phase 7). Values come from the plan (section 6.7); exposed later as dbt vars.
+# Disproportionality signals (Phase 7). Passed to dbt as vars by faers_pipeline.warehouse
+# (signal_drug_roles, signal_min_cases and the whole file as `signals`). Sources of the
+# formulas and criteria: docs/limitations.md ("Signals").
+
+# Drug roles that count as exposure (FAERS ROLE_COD): primary and secondary suspect.
 signal_drug_roles: [PS, SS]
+
+# Pairs with fewer distinct cases than this (cell a) are not stored in mart_signals.
 signal_min_cases: 3
+
+# Two-sided 95% confidence intervals of PRR and ROR on the log scale: exp(ln(x) +/- z * SE).
+ci_z: 1.96
+
 thresholds:
-  evans:            # a >= 3, PRR >= 2, chi2 >= 4
+  # Evans, Waller & Davis (2001): at least 3 cases, PRR at least 2, chi-squared at least 4.
+  # Chi-squared: Pearson, 1 degree of freedom, no continuity correction (the abstract does not
+  # state one; not confirmed against the full text).
+  evans:
     min_cases: 3
     min_prr: 2
     min_chi2: 4
-  ror:              # a >= 3, lower 95% CI of ROR > 1
+  # Lower bound of the 95% CI of the ROR above 1, with at least 3 cases.
+  ror:
     min_cases: 3
     min_ror_lcl: 1
+
+# mart_signals_top: top reactions per ingredient in the period ALL.
+top:
+  n_per_ingredient: 20
+  # Ranking column, descending: ror_lcl (lower bound of the ROR 95% CI) or prr.
+  order_by: ror_lcl

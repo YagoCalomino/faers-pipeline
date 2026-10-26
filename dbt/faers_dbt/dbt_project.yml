@@ -14,6 +14,7 @@ clean-targets: ["target", "dbt_packages"]
 # config/faers.yaml (window_*) and config/signals.yaml (signal_*), so values live in one place.
 #   window_start_quarter, window_end_quarter, signal_drug_roles, signal_min_cases,
 #   rxnorm_generic_terms (config/rxnorm.yaml generic_terms)
+#   signals (config/signals.yaml: ci_z, thresholds, top)
 
 models:
   faers_dbt:

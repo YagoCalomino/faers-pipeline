@@ -24,3 +24,99 @@ models:
           - accepted_values:
               arguments:
                 values: [not_in_name_map, no_match, partial_combination]
+
+  - name: mart_signals
+    description: >
+      Disproportionality per (period, ingredient, reaction PT) in distinct cases. period_key is a
+      window quarter (quarter_key) or ALL. 2x2 cells a, b, c, d over all cases of the period
+      (a + b + c + d = n_total). Only pairs with a >= signal_min_cases. PRR is null only when
+      c = 0, ROR when b, c or d is 0; such rows stay with is_computable = false.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [period_key, ingredient_id, reaction_key]
+    columns:
+      - name: period_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_quarter')
+                field: quarter_key
+      - name: ingredient_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_ingredient')
+                field: ingredient_key
+      - name: reaction_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_reaction')
+                field: reaction_key
+      - name: a
+        data_tests: [not_null]
+      - name: match_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [exact, normalized, approx_accepted, fallback]
+      - name: is_provisional_period
+        data_tests: [not_null]
+
+  - name: mart_signals_top
+    description: >
+      Top reactions per ingredient in the period ALL (config/signals.yaml top), ranked by
+      ranked_by descending; generic fallback ingredients excluded. trend lists a and PRR per
+      window quarter where the pair reached signal_min_cases.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ingredient_id, reaction_key]
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "rank_in_ingredient between 1 and {{ var('signals')['top']['n_per_ingredient'] }}"
+    columns:
+      - name: ingredient_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_ingredient')
+                field: ingredient_key
+      - name: reaction_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_reaction')
+                field: reaction_key
+
+  - name: mart_dq_metrics
+    description: >
+      Data-quality metrics per (period_basis, period_key, metric_group, metric): raw rows per
+      file quarter, deduplication and deletions, RxNorm coverage (from mart_dq_rxnorm_coverage),
+      missing values in key fields and the role_cod mix per file quarter.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [period_basis, period_key, metric_group, metric]
+    columns:
+      - name: period_basis
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [file_quarter, init_quarter, all]
+      - name: metric_group
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [raw_rows, deduplication, rxnorm_coverage, missing_values, role_mix]
+      - name: value
+        data_tests: [not_null]
+      - name: unit
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [rows, cases, lines, pct]

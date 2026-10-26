@@ -13,6 +13,9 @@ faers_dbt:
       config_options:
         memory_limit: "{{ env_var('DBT_MEMORY_LIMIT') }}"
         temp_directory: "{{ env_var('DUCKDB_TEMP_DIR') }}"
+        # No model relies on row order; DuckDB keeps less in memory without it (Phase 7: the
+        # signal marts ran out of memory at 2.5 GB with it on).
+        preserve_insertion_order: false
     ci:
       # Test lake and database in a throwaway folder (DBT_CI_DIR); never touches data/.
       type: duckdb
@@ -21,3 +24,4 @@ faers_dbt:
       config_options:
         memory_limit: "{{ env_var('DBT_MEMORY_LIMIT') }}"
         temp_directory: "{{ env_var('DBT_CI_DIR') }}/duckdb_tmp"
+        preserve_insertion_order: false
