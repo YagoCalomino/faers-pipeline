@@ -50,6 +50,12 @@ paths:
   # Failure markers written by the task failure callback (one JSON file per failed task try).
   failure_markers: "/opt/airflow/logs/failures"
 
+# Text FAERS writes in place of a missing value. Staging keeps it as published; data-quality
+# metrics (mart_dq_metrics) count it as missing. Seen 2026-10-26 in DEMO 2024Q3-2026Q2:
+# reporter_country is never blank, 17,791 rows hold "COUNTRY NOT SPECIFIED".
+missing_value_placeholders:
+  reporter_country: ["COUNTRY NOT SPECIFIED"]
+
 # After a quarter's Parquet files and manifest are written and consistent, delete the .txt files
 # extracted from its zip (~370 MB per quarter; the zip stays and extraction can be repeated).
 cleanup_extracted: true

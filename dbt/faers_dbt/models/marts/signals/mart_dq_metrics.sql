@@ -126,8 +126,12 @@ case_nulls as (
             100.0 * count(*) filter (f.event_date is null) / count(*)       as event_date_missing,
             100.0 * count(*) filter (f.sex = 'UNK') / count(*)              as sex_unknown,
             100.0 * count(*) filter (f.age_years is null) / count(*)        as age_missing,
-            100.0 * count(*) filter (nullif(trim(f.reporter_country), '') is null) / count(*)
-                                                                            as reporter_country_missing,
+            -- Blank, or a placeholder FAERS writes instead of a country (config/faers.yaml
+            -- missing_value_placeholders; staging keeps the text, upper-cased).
+            100.0 * count(*) filter (
+                nullif(trim(f.reporter_country), '') is null
+                or {{ is_placeholder('reporter_country', 'f.reporter_country') }}
+            ) / count(*)                                                    as reporter_country_missing,
             count(*)                                                        as cases
         from cohort as c inner join {{ ref('fct_case') }} as f using (case_id)
         group by c.period_basis, c.period_key

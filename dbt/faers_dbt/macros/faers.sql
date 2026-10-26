@@ -32,6 +32,22 @@
     {%- endfor -%}
 {%- endmacro %}
 
+{#- True when `column` holds a placeholder FAERS writes instead of a missing value (var
+    missing_value_placeholders, config/faers.yaml, upper-cased like staging); false for a field
+    without placeholders or a NULL column. -#}
+{% macro is_placeholder(field, column) -%}
+    {%- set values = var('missing_value_placeholders').get(field) or [] -%}
+    {%- if values -%}
+        coalesce({{ column }} in (
+        {%- for v in values -%}
+            '{{ v | upper | replace("'", "''") }}'{{ ", " if not loop.last }}
+        {%- endfor -%}
+        ), false)
+    {%- else -%}
+        false
+    {%- endif -%}
+{%- endmacro %}
+
 {#- 'YYYYQn' -> first day of the quarter. -#}
 {% macro quarter_start_date(label) -%}
     make_date(cast(left({{ label }}, 4) as integer),

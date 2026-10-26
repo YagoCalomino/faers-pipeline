@@ -4,7 +4,8 @@ dbt cannot read the project's YAML config by itself, so this module passes it in
 - environment for profiles.yml: DUCKDB_PATH, LAKE_PATH, DUCKDB_TEMP_DIR, DBT_THREADS,
   DBT_MEMORY_LIMIT (config/faers.yaml: paths.*, dbt.*);
 - --vars for the models: window_start_quarter / window_end_quarter (faers.yaml schedule),
-  signal_drug_roles / signal_min_cases (signals.yaml) and rxnorm_generic_terms (rxnorm.yaml).
+  signal_drug_roles / signal_min_cases / signals (signals.yaml), rxnorm_generic_terms (rxnorm.yaml)
+  and missing_value_placeholders (faers.yaml).
 Variables already set in the environment win (the ci target sets LAKE_PATH and DBT_CI_DIR).
 
 Atomic build: dbt writes <warehouse dir>/<atomic_build_dir>/<warehouse name> (DUCKDB_PATH points
@@ -55,6 +56,7 @@ def dbt_vars() -> dict:
         "signal_min_cases": signals["signal_min_cases"],
         "signals": {k: signals[k] for k in ("ci_z", "thresholds", "top")},
         "rxnorm_generic_terms": rxnorm["generic_terms"] or [],
+        "missing_value_placeholders": faers["missing_value_placeholders"],
     }
 
 

@@ -130,6 +130,11 @@ def test_dbt_points_at_the_new_file_and_gets_the_config(tmp_path):
     assert seen["DBT_MEMORY_LIMIT"] and seen["LAKE_PATH"]
 
 
+def test_dbt_vars_pass_missing_value_placeholders():
+    placeholders = warehouse.dbt_vars()["missing_value_placeholders"]
+    assert placeholders["reporter_country"] == ["COUNTRY NOT SPECIFIED"]
+
+
 def test_dbt_command_passes_vars_from_config(monkeypatch):
     monkeypatch.setenv("DBT_VENV", "/opt/dbt-venv")
     cmd = warehouse.dbt_command(["build"])
