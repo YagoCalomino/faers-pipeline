@@ -47,6 +47,26 @@ Keeping approximate matches off leaves some real drugs as fallback, for example 
 MAGNESIUM, AZTREONAM LYSINE and ASPIRIN DL-LYSINE, whose salt forms have no exact or normalized
 match in RxNorm.
 
+### Salt and counter-ion stripping is not applied
+
+A rule that removes trailing salt or counter-ion words from a name and repeats the exact search
+on the remainder was tested on the 50 fallback names with the most PS/SS lines (2026-10-26, 25
+real lookups) and not adopted. The word list came from the data: final words of names that
+matched, which RxNorm dropped from the ingredient name (for example BESYLATE in AMLODIPINE
+BESYLATE → amlodipine).
+
+- With a strict list (44 words seen in at least 5 matched names), 2 names resolve (PANTOPRAZOLE
+  SODIUM ANHYDROUS → pantoprazole, CITALOPRAM HYDROCHLORIDE → citalopram), about 2,100 PS/SS
+  lines.
+- With a loose list (312 words seen at least once), 7 names resolve, 9,464 PS/SS lines,
+  including PANTOPRAZOLE MAGNESIUM, AZTREONAM LYSINE and HYDROXYCHLOROQUINE DIPHOSPHATE, but
+  also wrong or over-specific matches: removing "NOS" (not otherwise specified) maps INSULIN NOS
+  to regular human insulin and IMMUNE GLOBULIN NOS to immunoglobulin G.
+
+The gain is small next to the 7.18 million PS/SS lines, and the loose list adds errors of the
+kind the precision-first policy exists to avoid. Names in the salt forms above stay as fallback
+ingredients; a signal can be split between such a fallback and the reference ingredient.
+
 ### Other effects of the mapping
 
 - **Combinations.** A `PROD_AI` with several ingredients separated by a backslash maps to one
