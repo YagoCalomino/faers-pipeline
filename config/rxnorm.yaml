@@ -14,19 +14,46 @@ api:
     backoff_initial_s: 2
     backoff_multiplier: 2
     retry_on_status: [429, 500, 502, 503, 504]
+  # Stop a lookup chunk after this many terms in a row end in error (API down): the task fails
+  # and Airflow retries it; terms already resolved in the chunk are kept.
+  max_consecutive_term_errors: 5
+  # Templates: {term} and {rxcui} are URL-encoded by the client. Checked on 2026-10-26 against
+  # the function pages linked above and with real calls (data/spikes/rxnorm_combinations.json).
   endpoints:
-    # findRxcuiByString; search=2: exact match first, then normalized match.
-    find_by_name: "/rxcui.json?name={name}&search=2"
-    # getApproximateMatch; maxEntries 1-100 (default 20). Scores compare only within one result.
-    approximate: "/approximateTerm.json?term={term}&maxEntries=5"
-    # getRelatedByType; IN = ingredient.
+    # findRxcuiByString. search=0: exact match only (case is ignored); search=1: normalized
+    # match (word order, punctuation, inflections and salt forms ignored). Two calls so the
+    # layer (exact / normalized) is known; search=2 would not say which one matched.
+    find_exact: "/rxcui.json?name={term}&search=0"
+    find_normalized: "/rxcui.json?name={term}&search=1"
+    # getApproximateMatch. maxEntries 1-100 (default 20); option=1 searches atoms of Active
+    # concepts only (0, the default, searches Current concepts). Scores are documented as
+    # comparable only "among a given set of results".
+    approximate: "/approximateTerm.json?term={term}&maxEntries=5&option=1"
+    # getRelatedByType, tty=IN. If the RxCUI is itself an IN it is "returned as the sole result".
     related_ingredients: "/rxcui/{rxcui}/related.json?tty=IN"
-    # getRxConceptProperties; name and tty of an RxCUI.
-    properties: "/rxcui/{rxcui}/properties.json"
-    # getRxNormVersion; e.g. {"version": "05-Oct-2026", "apiVersion": "3.1.356"}.
+    # getRxNormVersion: {"version": "05-Oct-2026", "apiVersion": "3.1.356"}.
     version: "/version.json"
 
+# Lookup scope and batching (rxnorm_enrich DAG).
+lookup:
+  # Names: cleaned prod_ai (upper, trim, inner whitespace collapsed; same as the dbt key) of the
+  # DRUG lines whose role is in signals.yaml signal_drug_roles, most frequent first.
+  # A backslash separates the ingredients of a combination in FAERS prod_ai (Phase 5 profile:
+  # 2,523 of 8,316 PS/SS names). Each part is looked up on its own; '/', ',', 'AND' and '+' are
+  # part of single substance names (vaccine strains, "ESTROGENS, CONJUGATED") and are not split.
+  combination_separator: "\\"
+  chunk_size: 250          # terms per mapped task
+  # Results are written to cache/_pending every N terms of a chunk (atomic files), so an
+  # interrupted task loses at most N lookups; a retry skips the terms already written.
+  flush_every_terms: 25
+  # Names per run, most frequent first; null = every name in scope. Kept small until the
+  # approximate-match threshold is calibrated (Phase 5, step 4).
+  max_names: 200
+  random_seed: 42          # used when a run selects names at random (calibration samples)
+
 cache:
+  # One file, term_lookup.parquet: one row per (lookup term, ingredient); status matched,
+  # not_found or error. Chunk results land in cache/_pending/ and are merged atomically.
   path: "/opt/airflow/data/lake/raw/rxnorm/cache"
   # No automatic expiry. Every entry is stamped with the RxNorm version (version endpoint) at
   # lookup time; refreshing is a manual decision (e.g. after a new RxNorm release).
@@ -47,6 +74,10 @@ approximate_rules:
   source: RXNORM                   # ignore candidates from other sources (MMSL, VANDF, ...)
   require_ingredient: true         # the candidate must resolve to at least one IN
   min_score: null                  # TODO(Phase 5): calibrate on a labelled sample
+
+# Name map derived from the cache: one row per (drug_text_clean, ingredient_rxcui).
+name_map:
+  path: "/opt/airflow/data/lake/raw/rxnorm/name_map"
 
 coverage:
   min_ps_ss_row_coverage: 0.85     # initial target from the plan; adjust after measuring

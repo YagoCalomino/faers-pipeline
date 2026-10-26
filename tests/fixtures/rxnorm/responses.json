@@ -1,0 +1,238 @@
+{
+ "recorded_at": "2026-10-26T14:39:18+00:00",
+ "base_url": "https://rxnav.nlm.nih.gov/REST",
+ "responses": {
+  "/version.json": {
+   "version": "05-Oct-2026",
+   "apiVersion": "3.1.356"
+  },
+  "/rxcui.json?name=DUPILUMAB&search=0": {
+   "idGroup": {
+    "rxnormId": [
+     "1876376"
+    ]
+   }
+  },
+  "/rxcui/1876376/related.json?tty=IN": {
+   "relatedGroup": {
+    "rxcui": null,
+    "conceptGroup": [
+     {
+      "tty": "IN",
+      "conceptProperties": [
+       {
+        "rxcui": "1876376",
+        "name": "dupilumab",
+        "synonym": "",
+        "tty": "IN",
+        "language": "ENG",
+        "suppress": "N",
+        "umlscui": ""
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "/rxcui.json?name=AMLODIPINE%20BESYLATE&search=0": {
+   "idGroup": {
+    "rxnormId": [
+     "104416"
+    ]
+   }
+  },
+  "/rxcui/104416/related.json?tty=IN": {
+   "relatedGroup": {
+    "rxcui": null,
+    "conceptGroup": [
+     {
+      "tty": "IN",
+      "conceptProperties": [
+       {
+        "rxcui": "17767",
+        "name": "amlodipine",
+        "synonym": "",
+        "tty": "IN",
+        "language": "ENG",
+        "suppress": "N",
+        "umlscui": ""
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "/rxcui.json?name=REACTINE&search=0": {
+   "idGroup": {}
+  },
+  "/rxcui.json?name=REACTINE&search=1": {
+   "idGroup": {}
+  },
+  "/approximateTerm.json?term=REACTINE&maxEntries=5&option=1": {
+   "approximateGroup": {
+    "inputTerm": null,
+    "candidate": [
+     {
+      "rxcui": "215543",
+      "rxaui": "1175305",
+      "score": "7.68247127532959",
+      "rank": "1",
+      "source": "MMSL"
+     },
+     {
+      "rxcui": "215543",
+      "rxaui": "3500923",
+      "score": "7.68247127532959",
+      "rank": "1",
+      "name": "Bactine",
+      "source": "RXNORM"
+     },
+     {
+      "rxcui": "1167293",
+      "rxaui": "3830493",
+      "score": "7.611573883366824",
+      "rank": "3",
+      "name": "Bactine Topical Product",
+      "source": "RXNORM"
+     },
+     {
+      "rxcui": "1011759",
+      "rxaui": "12314520",
+      "score": "7.564446592291595",
+      "rank": "4",
+      "name": "benzalkonium / lidocaine Topical Solution [Bactine]",
+      "source": "RXNORM"
+     },
+     {
+      "rxcui": "1545687",
+      "rxaui": "12315626",
+      "score": "7.564446592291595",
+      "rank": "4",
+      "name": "benzalkonium / lidocaine Topical Spray [Bactine]",
+      "source": "RXNORM"
+     }
+    ]
+   }
+  },
+  "/rxcui/215543/related.json?tty=IN": {
+   "relatedGroup": {
+    "rxcui": null,
+    "conceptGroup": [
+     {
+      "tty": "IN",
+      "conceptProperties": [
+       {
+        "rxcui": "1378",
+        "name": "benzalkonium",
+        "synonym": "",
+        "tty": "IN",
+        "language": "ENG",
+        "suppress": "N",
+        "umlscui": ""
+       },
+       {
+        "rxcui": "6387",
+        "name": "lidocaine",
+        "synonym": "",
+        "tty": "IN",
+        "language": "ENG",
+        "suppress": "N",
+        "umlscui": ""
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "/rxcui/1167293/related.json?tty=IN": {
+   "relatedGroup": {
+    "rxcui": null,
+    "conceptGroup": [
+     {
+      "tty": "IN",
+      "conceptProperties": [
+       {
+        "rxcui": "1378",
+        "name": "benzalkonium",
+        "synonym": "",
+        "tty": "IN",
+        "language": "ENG",
+        "suppress": "N",
+        "umlscui": ""
+       },
+       {
+        "rxcui": "6387",
+        "name": "lidocaine",
+        "synonym": "",
+        "tty": "IN",
+        "language": "ENG",
+        "suppress": "N",
+        "umlscui": ""
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "/rxcui/1011759/related.json?tty=IN": {
+   "relatedGroup": {
+    "rxcui": null,
+    "conceptGroup": [
+     {
+      "tty": "IN",
+      "conceptProperties": [
+       {
+        "rxcui": "1378",
+        "name": "benzalkonium",
+        "synonym": "",
+        "tty": "IN",
+        "language": "ENG",
+        "suppress": "N",
+        "umlscui": ""
+       },
+       {
+        "rxcui": "6387",
+        "name": "lidocaine",
+        "synonym": "",
+        "tty": "IN",
+        "language": "ENG",
+        "suppress": "N",
+        "umlscui": ""
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "/rxcui/1545687/related.json?tty=IN": {
+   "relatedGroup": {
+    "rxcui": null,
+    "conceptGroup": [
+     {
+      "tty": "IN",
+      "conceptProperties": [
+       {
+        "rxcui": "1378",
+        "name": "benzalkonium",
+        "synonym": "",
+        "tty": "IN",
+        "language": "ENG",
+        "suppress": "N",
+        "umlscui": ""
+       },
+       {
+        "rxcui": "6387",
+        "name": "lidocaine",
+        "synonym": "",
+        "tty": "IN",
+        "language": "ENG",
+        "suppress": "N",
+        "umlscui": ""
+       }
+      ]
+     }
+    ]
+   }
+  }
+ }
+}
