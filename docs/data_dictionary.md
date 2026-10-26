@@ -279,12 +279,28 @@ Grain: one row per (`period_key`, `ingredient_id`, `reaction_key`) with at least
 
 ### `mart_signals_top`
 
-Grain: one row per (`ingredient_id`, `reaction_key`): the top `top.n_per_ingredient` (20)
-reactions of each ingredient in `ALL`, ranked by `top.order_by` (`ror_lcl`) descending, then
-`a` descending. Computable pairs only; generic fallback ingredients excluded. 48,333 rows for
-3,137 ingredients. `trend` lists `period_key`, `a` and `prr` for each window quarter where the
-pair reached 3 cases (a missing quarter had fewer). Other columns as in `mart_signals`, plus
-`rank_in_ingredient` and `ranked_by`.
+Grain: one row per (`ingredient_id`, `reaction_key`) in `ALL`, generic fallback ingredients
+excluded. Per ingredient, the union of two lists (`config/signals.yaml`, `top`):
+
+- the top `by_ror_lcl` (20) computable pairs by `ror_lcl` descending, ties by `a` descending;
+- the top `by_a_evans` (10) pairs with `is_signal_evans` by `a` descending, ties by `ror_lcl`.
+
+The first list favours strength with a minimum of precision; the second keeps the frequent
+signals that a wide `ror_lcl` ranking pushes down (atorvastatin–Rhabdomyolysis: rank 48 by
+`ror_lcl`, rank 3 by `a`). 61,618 rows for 3,229 ingredients in the build of 2026-10-26
+(48,333 from the `ror_lcl` list, 26,797 from the `a` list, 13,512 in both). `trend` lists
+`period_key`, `a` and `prr` for each window quarter where the pair reached 3 cases (a missing
+quarter had fewer).
+
+| Column | Type | Description |
+|---|---|---|
+| `rank_ror_lcl` | bigint | Rank of the pair by `ror_lcl` among the ingredient's computable pairs (null if not computable). |
+| `rank_a_evans` | bigint | Rank by `a` among the ingredient's Evans pairs (null if not an Evans signal). |
+| `in_top_ror_lcl`, `in_top_a_evans` | boolean | The pair is in the first or the second list (at least one is true). |
+| `trend` | list of struct | (`period_key`, `a`, `prr`) per window quarter. |
+
+Other columns (`a`, `n_drug`, `n_reac`, PRR, ROR, χ², flags, `match_type`, `is_fallback`) as in
+`mart_signals`.
 
 ### `mart_dq_metrics`
 

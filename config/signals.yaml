@@ -24,8 +24,9 @@ thresholds:
     min_cases: 3
     min_ror_lcl: 1
 
-# mart_signals_top: top reactions per ingredient in the period ALL.
+# mart_signals_top: per ingredient in the period ALL, the union of two lists:
+#   - the top by_ror_lcl pairs by ror_lcl (lower bound of the ROR 95% CI) descending, ties by a;
+#   - the top by_a_evans pairs by a (distinct cases) descending among is_signal_evans pairs.
 top:
-  n_per_ingredient: 20
-  # Ranking column, descending: ror_lcl (lower bound of the ROR 95% CI) or prr.
-  order_by: ror_lcl
+  by_ror_lcl: 20
+  by_a_evans: 10

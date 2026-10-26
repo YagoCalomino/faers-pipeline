@@ -1,30 +1,44 @@
--- Top reactions per ingredient in the period ALL, for the site. Ranking: config/signals.yaml
--- top.order_by (ror_lcl or prr, descending), ties by a (descending) then reaction PT; only
--- computable pairs (a >= signal_min_cases already holds in mart_signals). Generic fallback
--- ingredients (HERBALS, VITAMINS, DEVICE, ...) are left out.
+-- Top reactions per ingredient in the period ALL, for the site: the union of two lists
+-- (config/signals.yaml top):
+--   - by ror_lcl: the top `by_ror_lcl` computable pairs by ror_lcl descending, ties by a
+--     descending then reaction PT;
+--   - by a among Evans signals: the top `by_a_evans` pairs with is_signal_evans by a descending,
+--     ties by ror_lcl descending then reaction PT.
+-- A pair in both lists appears once. Generic fallback ingredients (HERBALS, VITAMINS, DEVICE,
+-- ...) are left out. rank_ror_lcl is set for every computable pair, rank_a_evans for every
+-- Evans pair, so both ranks are comparable across the two lists.
 -- trend: one element per window quarter where the pair reached signal_min_cases (a quarter
 -- missing from the list had fewer cases).
 {%- set top = var('signals')['top'] %}
-{%- if top['order_by'] not in ('ror_lcl', 'prr') %}
-    {{ exceptions.raise_compiler_error("signals.top.order_by must be ror_lcl or prr, got " ~ top['order_by']) }}
-{%- endif %}
 
 with all_period as (
     select *
     from {{ ref('mart_signals') }}
     where period_key = 'ALL'
-      and is_computable
       and not is_generic_fallback
+      and (is_computable or is_signal_evans)
 ),
 
 ranked as (
     select
         *,
-        row_number() over (
-            partition by ingredient_id
-            order by {{ top['order_by'] }} desc, a desc, reaction_pt
-        )                                                   as rank_in_ingredient
+        case when is_computable then row_number() over (
+            partition by ingredient_id, is_computable
+            order by ror_lcl desc, a desc, reaction_pt
+        ) end                                               as rank_ror_lcl,
+        case when is_signal_evans then row_number() over (
+            partition by ingredient_id, is_signal_evans
+            order by a desc, ror_lcl desc nulls last, reaction_pt
+        ) end                                               as rank_a_evans
     from all_period
+),
+
+selected as (
+    select
+        *,
+        coalesce(rank_ror_lcl <= {{ top['by_ror_lcl'] }}, false)  as in_top_ror_lcl,
+        coalesce(rank_a_evans <= {{ top['by_a_evans'] }}, false)  as in_top_a_evans
+    from ranked
 ),
 
 trend as (
@@ -39,27 +53,30 @@ trend as (
 )
 
 select
-    r.ingredient_key,
-    r.ingredient_id,
-    r.ingredient_name,
-    r.reaction_key,
-    r.reaction_pt,
-    r.rank_in_ingredient,
-    '{{ top["order_by"] }}'                                 as ranked_by,
-    r.a,
-    r.n_drug,
-    r.prr,
-    r.prr_lcl,
-    r.prr_ucl,
-    r.ror,
-    r.ror_lcl,
-    r.ror_ucl,
-    r.chi2,
-    r.is_signal_evans,
-    r.is_signal_ror,
-    r.match_type,
-    r.is_fallback,
+    s.ingredient_key,
+    s.ingredient_id,
+    s.ingredient_name,
+    s.reaction_key,
+    s.reaction_pt,
+    s.rank_ror_lcl,
+    s.rank_a_evans,
+    s.in_top_ror_lcl,
+    s.in_top_a_evans,
+    s.a,
+    s.n_drug,
+    s.n_reac,
+    s.prr,
+    s.prr_lcl,
+    s.prr_ucl,
+    s.ror,
+    s.ror_lcl,
+    s.ror_ucl,
+    s.chi2,
+    s.is_signal_evans,
+    s.is_signal_ror,
+    s.match_type,
+    s.is_fallback,
     t.trend
-from ranked as r
+from selected as s
 left join trend as t using (ingredient_id, reaction_key)
-where r.rank_in_ingredient <= {{ top['n_per_ingredient'] }}
+where s.in_top_ror_lcl or s.in_top_a_evans
