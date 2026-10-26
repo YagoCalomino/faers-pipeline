@@ -26,3 +26,39 @@ seeds:
     columns:
       - name: role_code
         data_tests: [unique, not_null]
+
+  - name: seed_known_signals
+    description: >
+      Known drug-reaction pairs for validating the signal marts (Phase 7): positive pairs with an
+      established association and negative controls, chosen by the project owner. Names are the
+      exact dim_ingredient.ingredient_name (RxNorm) and dim_reaction.reaction_pt (MedDRA PT).
+      reference holds the literature or label source once the owner fills it in; until then
+      reference_status is pending_user_confirmation. Checked by mart_known_signals_eval.
+    config:
+      column_types:
+        ingredient_name: varchar
+        reaction_pt: varchar
+        expected: varchar
+        reference: varchar
+        reference_status: varchar
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ingredient_name, reaction_pt]
+    columns:
+      - name: ingredient_name
+        data_tests: [not_null]
+      - name: reaction_pt
+        data_tests: [not_null]
+      - name: expected
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [positive, negative]
+      - name: reference_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [pending_user_confirmation, confirmed]

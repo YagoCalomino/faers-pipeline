@@ -86,6 +86,15 @@ models:
       - dbt_utils.expression_is_true:
           arguments:
             expression: "(rank_a_evans is not null) = is_signal_evans"
+      # Concentration columns: computed from exactly the a cases of the pair.
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: >
+              n_pair_cases = a
+              and top_country_share between 0 and 1
+              and top_quarter_share > 0 and top_quarter_share <= 1
+              and median_reactions_per_case >= 1
+              and (top_country is null) = (top_country_share = 0)
     columns:
       - name: ingredient_key
         data_tests:
@@ -127,3 +136,20 @@ models:
           - accepted_values:
               arguments:
                 values: [rows, cases, lines, pct]
+
+  - name: mart_known_signals_eval
+    description: >
+      Report of the known pairs (seed_known_signals) in mart_signals, period ALL: counts, PRR,
+      ror_lcl, chi-squared, whether the pair meets its expectation (passed) and why not
+      (failure_reason). Positives need a >= 3, PRR >= 2 and ror_lcl > 1; negative controls must
+      not be Evans signals. Failures are reported (test assert_known_signals_detected, severity
+      warn), never corrected.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [ingredient_name, reaction_pt]
+    columns:
+      - name: passed
+        data_tests: [not_null]
+      - name: a
+        data_tests: [not_null]

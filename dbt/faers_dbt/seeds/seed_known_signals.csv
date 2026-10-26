@@ -1,0 +1,13 @@
+ingredient_name,reaction_pt,expected,reference,reference_status
+atorvastatin,Rhabdomyolysis,positive,,pending_user_confirmation
+metformin,Lactic acidosis,positive,,pending_user_confirmation
+ciprofloxacin,Tendon rupture,positive,,pending_user_confirmation
+ciprofloxacin,Tendonitis,positive,,pending_user_confirmation
+natalizumab,Progressive multifocal leukoencephalopathy,positive,,pending_user_confirmation
+clozapine,Agranulocytosis,positive,,pending_user_confirmation
+clozapine,Neutropenia,positive,,pending_user_confirmation
+warfarin,International normalised ratio increased,positive,,pending_user_confirmation
+amiodarone,Pulmonary toxicity,positive,,pending_user_confirmation
+metformin,Cough,negative,,pending_user_confirmation
+albuterol,Constipation,negative,,pending_user_confirmation
+atorvastatin,Pneumonia,negative,,pending_user_confirmation
