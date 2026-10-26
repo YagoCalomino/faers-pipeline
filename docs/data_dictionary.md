@@ -16,6 +16,7 @@ Lineage:
   `signals.mart_dq_rxnorm_coverage` (`int_faers__drug_resolved`, `fct_case`).
 - Signals: `int_signals__drug_cases`, `int_signals__reaction_cases`, `fct_case`,
   `dim_ingredient`, `dim_reaction` → `signals.mart_signals` → `signals.mart_signals_top`;
+  `seed_known_signals` ⨝ `mart_signals` → `signals.mart_known_signals_eval`;
   `signals.mart_dq_metrics` (staging, intermediate, core and `mart_dq_rxnorm_coverage`).
 
 General conventions:
@@ -297,10 +298,30 @@ quarter had fewer).
 | `rank_ror_lcl` | bigint | Rank of the pair by `ror_lcl` among the ingredient's computable pairs (null if not computable). |
 | `rank_a_evans` | bigint | Rank by `a` among the ingredient's Evans pairs (null if not an Evans signal). |
 | `in_top_ror_lcl`, `in_top_a_evans` | boolean | The pair is in the first or the second list (at least one is true). |
+| `top_country`, `top_country_share` | varchar / double | Most frequent reporter country of the pair's cases (blank and placeholder values left out; ties by code) and its share of the `a` cases (0 when no case has a country). |
+| `top_quarter`, `top_quarter_share` | varchar / double | Most frequent init quarter (`quarter_key`) of the pair's cases and its share of the `a` cases. |
+| `median_reactions_per_case` | double | Median number of distinct PTs in the pair's cases. |
+| `n_pair_cases` | bigint | Cases the concentration columns were computed from; equals `a` (tested). |
 | `trend` | list of struct | (`period_key`, `a`, `prr`) per window quarter. |
 
 Other columns (`a`, `n_drug`, `n_reac`, PRR, ROR, χ², flags, `match_type`, `is_fallback`) as in
 `mart_signals`.
+
+### `mart_known_signals_eval`
+
+Grain: one row per pair of `seed_known_signals` (12). Values from `mart_signals` in `ALL`.
+
+| Column | Type | Description |
+|---|---|---|
+| `expected` | varchar | `positive` or `negative` (seed). |
+| `ingredient_name`, `reaction_pt` | varchar | As in the seed. |
+| `ingredient_id`, `reaction_key` | varchar | Exact match (case-insensitive) in `dim_ingredient` (non-fallback) and `dim_reaction`; null when not found. |
+| `reference`, `reference_status` | varchar | From the seed. |
+| `a`, `n_drug`, `n_reac` | bigint | Cell a (also for pairs below 3 cases, counted directly); cases with the ingredient and with the PT (null below 3 cases). |
+| `prr`, `ror_lcl`, `chi2` | double | From `mart_signals` (null when the pair has fewer than 3 cases). |
+| `is_signal_evans`, `is_signal_ror` | boolean | From `mart_signals` (false when the pair is not stored). |
+| `a_fallback_same_name` | bigint | Cases of the same PT under fallback ingredients whose text contains the ingredient name (pairs with at least 3 cases): a hint of a split ingredient. |
+| `passed`, `failure_reason` | boolean / varchar | Whether the pair meets its expectation, and why not. |
 
 ### `mart_dq_metrics`
 
@@ -312,7 +333,7 @@ and `unit` (`rows`, `cases`, `lines`, `pct`). 297 rows.
 | `raw_rows` | `file_quarter`, `all` | Rows of DEMO, DRUG, REAC, OUTC and INDI per file. |
 | `deduplication` | `file_quarter`, `all` | DEMO rows, winning versions, deleted ids listed and found; in `ALL` also distinct caseids, superseded versions, cases after deduplication and percentages removed. |
 | `rxnorm_coverage` | `init_quarter`, `all` | From `mart_dq_rxnorm_coverage`: PS/SS lines, normalized lines and percentages by match type. |
-| `missing_values` | `init_quarter`, `all` | % of cases without event date, sex, age or reporter country (blank counts as missing); % of drug lines without `prod_ai`; % of reaction lines without PT. |
+| `missing_values` | `init_quarter`, `all` | % of cases without event date, sex, age or reporter country (blank, or a placeholder of `config/faers.yaml` `missing_value_placeholders` such as `COUNTRY NOT SPECIFIED`, counts as missing); % of drug lines without `prod_ai`; % of reaction lines without PT. |
 | `role_mix` | `file_quarter`, `all` | DRUG lines (every version) and percentage per ROLE_COD (PS, SS, C, I, DN). |
 
 `file_quarter` is the quarter of the FAERS file; `init_quarter` the case's `quarter_key`.
@@ -323,6 +344,7 @@ and `unit` (`rows`, `cases`, `lines`, `pct`). 297 rows.
 |---|---|---|
 | `seed_outcome_codes` | 7 OUTC codes and meaning text | FDA `ASC_NTS` (January 2025), in every quarterly zip |
 | `seed_role_codes` | 5 ROLE_COD codes and meaning text | FDA `ASC_NTS` (January 2025) |
+| `seed_known_signals` | 12 known pairs (9 positive, 3 negative controls) for `mart_known_signals_eval` | Chosen by the project owner; `reference` to be filled in (`reference_status = pending_user_confirmation`) |
 
 ## Limitations
 

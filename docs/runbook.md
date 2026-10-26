@@ -119,6 +119,15 @@ has about 8 GB, shared with the host's own programs: close heavy programs (brows
 triggering `faers_transform` or `make dbt-rebuild`. Lowering `memory_limit` is not the fix: the
 signal marts already ran out of memory at that limit before they were reworked.
 
+A later run the same day (185 nodes, with `mart_known_signals_eval`) peaked at 3,687 MiB in the
+container and about 3.1 GB in the dbt process. Before that, one attempt stalled in
+`mart_signals_top` with the host down to 0.7 GB free: DuckDB spilled about 20 GB to
+`dbt.temp_directory` in 15 minutes. The model was rewritten so its plan cannot take that path,
+and the attempt was stopped by hand. If a build stays on one model far longer than in the last
+successful run, pause `faers_transform`, stop the `dbt build` process (the atomic build keeps
+the previous warehouse), and delete the leftover `duckdb_temp_storage_*.tmp` files in
+`dbt.temp_directory` once no dbt or DuckDB process is running.
+
 ## Failures
 
 Every task of the three DAGs has a failure callback that, when the task fails for good (after

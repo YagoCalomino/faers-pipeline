@@ -153,7 +153,8 @@ two criteria (a ≥ 3, PRR ≥ 2) already make fragile; the ROR criterion does n
 - **Many signals.** With a ≥ 3, about 61% of the stored pairs in `ALL` meet the Evans criterion
   (414,726 of 674,947 in the build of 2026-10-26). The criteria screen; they do not confirm.
 - **Reporting artefacts.** Clusters of reports (litigation, publicity, one reporter submitting
-  many cases) produce strong disproportionality without a pharmacological cause.
+  many cases) produce strong disproportionality without a pharmacological cause. See
+  "Patterns seen in the top pairs" below.
 - **Confounding by indication and co-medication.** A drug is reported with the reactions of
   the disease it treats and of the drugs it is given with.
 - **Multiplicity.** Hundreds of thousands of pairs are tested per period; with a 95% interval,
@@ -163,3 +164,51 @@ two criteria (a ≥ 3, PRR ≥ 2) already make fragile; the ROR criterion does n
 - **Fallback ingredients.** Names without an RxNorm match are their own ingredient
   (`match_type = 'fallback'`); a signal can be split between a fallback text and the RxNorm
   ingredient. Generic fallbacks (`is_generic_fallback`) are excluded from `mart_signals_top`.
+
+### Patterns seen in the top pairs
+
+A review of the first 10 pairs of `mart_signals_top` (by `ror_lcl`) for atorvastatin,
+dupilumab and tirzepatide in the build of 2026-10-26 found three patterns. They are recorded
+as observations, not as conclusions about the drugs, and nothing in the marts corrects for them.
+
+- **Long reports repeated across reactions.** Four atorvastatin pairs (Vaginal flatulence,
+  Neurologic neglect syndrome, Carotid artery thrombosis, Heart sounds; 249 distinct cases
+  together) come 96–100% from one reporter country (CA), with a median of 30 to 53 reactions
+  and of 34 suspect ingredients per case; 118 of the 249 cases carry two of these PTs. The
+  cases are spread over many init quarters (no quarter above 22%). Long reports, each listing
+  dozens of reactions and drugs, raise many rare PTs at once.
+- **Confounding by indication.** Dupilumab's top pairs are mostly the condition it treats and
+  related terms (Dermatitis atopic, Eczema, Rebound atopic dermatitis, Neurodermatitis). The
+  country and quarter mix of these pairs matches the drug's own mix, so they are not clusters.
+- **Product errors reported by consumers, concentrated in time.** Tirzepatide's top pairs are
+  mostly product use and medication error terms (Intercepted product selection error, Extra
+  dose administered, Product tampering), reported mainly by consumers. Some are concentrated in
+  one or two quarters: 88% of "Intercepted product selection error" cases in 2026Q1–2026Q2, 92%
+  of "Drug titration issue" cases in 2026Q2.
+
+`mart_signals_top` carries columns that help spot these patterns, computed over the pair's
+cases: `top_country` and `top_country_share` (blank and placeholder countries left out),
+`top_quarter` and `top_quarter_share` (init quarter), and `median_reactions_per_case`. A high
+share is not a cluster by itself: most FAERS reports come from the US, and 33,542 of the
+61,618 rows have one country at 90% or more. The share is informative when it differs from the
+ingredient's own country mix, or together with a high `median_reactions_per_case`.
+
+### Validation against known pairs
+
+`seed_known_signals` lists pairs chosen by the project owner: 9 positive pairs with an
+established association and 3 negative controls. `signals.mart_known_signals_eval` compares
+them with `mart_signals` in `ALL`; the test `assert_known_signals_detected` (severity warn)
+lists any failure without blocking the build. A positive passes with a ≥ 3, PRR ≥ 2 and
+`ror_lcl` > 1; a negative control passes when it is not an Evans signal. Names must match a
+non-fallback ingredient and a PT exactly; nothing is remapped when they do not. The negative
+controls were chosen from case counts only (`data/spikes/negative_control_grid.csv`, no PRR or
+ROR shown), so the choice does not depend on the result.
+
+Build of 2026-10-26: 12 of 12 pass. The 9 positives have PRR from 11.9 (clozapine–
+Agranulocytosis) to 397.5 (warfarin–International normalised ratio increased). The negative
+controls have PRR 0.997 (atorvastatin–Pneumonia), 1.36 (metformin–Cough) and 1.42
+(albuterol–Constipation). Metformin–Cough and albuterol–Constipation still have `ror_lcl`
+above 1 (1.23 and 1.30) and so meet the ROR criterion, though not the Evans one: with large
+counts, a small excess is significant without being strong. The references of the pairs
+(`reference`) are still to be filled in by the owner (`reference_status =
+pending_user_confirmation`).
