@@ -10,8 +10,8 @@
     "include_deferred": false
   },
   "rxnorm_api": {
-    "slots": 4,
-    "description": "Concurrent calls to the NLM RxNav API (rate limit)",
+    "slots": 1,
+    "description": "RxNav lookups run one chunk at a time; the client throttle (config/rxnorm.yaml) sets the request rate",
     "include_deferred": false
   }
 }
