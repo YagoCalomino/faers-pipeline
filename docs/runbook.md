@@ -143,6 +143,15 @@ ls -lt logs/failures/*/*/                # markers per DAG and run, newest first
 cat logs/failures/<dag_id>/<run_id>/<task_id>.try<N>.json
 ```
 
+To inspect a build that failed its tests, run dbt into a scratch file (the setting from the
+environment wins over `paths.warehouse`); the warehouse is not touched:
+
+```bash
+docker compose --env-file .env -f infra/docker/docker-compose.yml run --rm --no-deps   -e DUCKDB_PATH=/opt/airflow/data/tmp/debug/faers.duckdb airflow-dev   python -I scripts/dbt_run.py build
+```
+
+Delete `data/tmp/debug/` afterwards.
+
 A failed task blocks the Assets downstream of it, so the next DAG of the chain does not run.
 
 | DAG / task | Likely cause | Action |
@@ -154,6 +163,7 @@ A failed task blocks the Assets downstream of it, so the next DAG of the chain d
 | `rxnorm_enrich.resolve_chunk` | RxNav unavailable (five terms in a row in error) | Retries run automatically; terms already resolved are kept. Re-trigger later. |
 | `faers_transform.wait_for_writers_idle` (timeout) | An ingestion or lookup run stayed active | Check the other DAGs' runs. |
 | `faers_transform.build_warehouse` | dbt model or test failure; the previous warehouse is kept | Run `make dbt-rebuild` to see the failing node; fix, then trigger `faers_transform`. |
+| `faers_transform.build_warehouse`, test `assert_known_positive_signals_detected` | A positive pair of `seed_known_signals` no longer has a ≥ 3, PRR ≥ 2 and `ror_lcl` > 1; the previous warehouse is kept | The failed build file is removed, so rebuild into a scratch file (see above) and query `signals.mart_known_signals_eval` there (`failure_reason`, `a_fallback_same_name`): check names, RxNorm mapping and ingredient splitting. Do not edit the seed to make it pass. |
 | `faers_transform.reconcile_warehouse` | Lake and warehouse counts differ | `make reconcile` prints the table; the warehouse Asset is not published. |
 
 ## Disk

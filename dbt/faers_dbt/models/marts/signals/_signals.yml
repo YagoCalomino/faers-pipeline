@@ -142,8 +142,9 @@ models:
       Report of the known pairs (seed_known_signals) in mart_signals, period ALL: counts, PRR,
       ror_lcl, chi-squared, whether the pair meets its expectation (passed) and why not
       (failure_reason). Positives need a >= 3, PRR >= 2 and ror_lcl > 1; negative controls must
-      not be Evans signals. Failures are reported (test assert_known_signals_detected, severity
-      warn), never corrected.
+      not be Evans signals. Failures are reported, never corrected: a failing positive fails the
+      build (assert_known_positive_signals_detected, severity error), a flagged negative control
+      only warns (assert_known_negative_controls_not_flagged, severity warn).
     data_tests:
       - dbt_utils.unique_combination_of_columns:
           arguments:

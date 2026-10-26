@@ -197,12 +197,24 @@ ingredient's own country mix, or together with a high `median_reactions_per_case
 
 `seed_known_signals` lists pairs chosen by the project owner: 9 positive pairs with an
 established association and 3 negative controls. `signals.mart_known_signals_eval` compares
-them with `mart_signals` in `ALL`; the test `assert_known_signals_detected` (severity warn)
-lists any failure without blocking the build. A positive passes with a ≥ 3, PRR ≥ 2 and
-`ror_lcl` > 1; a negative control passes when it is not an Evans signal. Names must match a
-non-fallback ingredient and a PT exactly; nothing is remapped when they do not. The negative
-controls were chosen from case counts only (`data/spikes/negative_control_grid.csv`, no PRR or
-ROR shown), so the choice does not depend on the result.
+them with `mart_signals` in `ALL`. A positive passes with a ≥ 3, PRR ≥ 2 and `ror_lcl` > 1; a
+negative control passes when it is not an Evans signal. Names must match a non-fallback
+ingredient and a PT exactly; nothing is remapped when they do not.
+
+The two kinds of pair are tested with different severities:
+
+- **Positives: error.** `assert_known_positive_signals_detected` fails the build when a positive
+  pair fails. A full build then keeps the previous warehouse (the atomic swap does not happen),
+  because a lost positive usually points to a regression in drug-name mapping, ingredient
+  splitting or deduplication.
+- **Negative controls: warn.** `assert_known_negative_controls_not_flagged` reports a negative
+  control that becomes an Evans signal, and the build still completes. New quarters can move a
+  pair with a small excess over the threshold, so a flagged control is a finding to review, not
+  a reason to hold the data back.
+
+The negative controls were chosen for clinical implausibility. An earlier grid of frequent
+symptomatic PTs was dropped because most of its terms appear in the labels of almost every
+drug. With three controls, this is a sanity check, not a validation of specificity.
 
 Build of 2026-10-26: 12 of 12 pass. The 9 positives have PRR from 11.9 (clozapine–
 Agranulocytosis) to 397.5 (warfarin–International normalised ratio increased). The negative
