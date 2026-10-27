@@ -4,7 +4,7 @@
 |---|---|
 | [runbook.md](runbook.md) | How to operate the pipeline: start, unpause, backfill, re-run a quarter, rebuild the RxNorm cache or the warehouse, export and publish the site, what to do when a task fails. |
 | [data_dictionary.md](data_dictionary.md) | Tables and columns of the marts: dimensions, facts and the signals schema, plus the reference seeds. Staging and intermediate models are described in their dbt `.yml` files. |
-| [limitations.md](limitations.md) | What the numbers can and cannot say: drug-name mapping, the disproportionality method and its limits, reporting patterns, validation against known pairs, operational limits. The site's "Method & limitations" page is built from this file. |
+| [limitations.md](limitations.md) | What the numbers can and cannot say: drug-name mapping, the disproportionality method and its limits, reporting patterns, validation against known pairs, operational limits, MedDRA terms. The site's "Method & limitations" page is built from this file. |
 | [adr/](adr/) | Architecture decision records (below). |
 | [img/](img/) | Screenshots of the site: the README images, and every page on desktop and mobile in `img/site/`. |
 
@@ -15,6 +15,7 @@
 | [0001](adr/0001-time-anchor.md) | A case belongs to the quarter of its first receipt by FDA (`init_fda_dt`). | accepted |
 | [0002](adr/0002-dbt-version.md) | dbt Core with dbt-duckdb and the classic parser; the new parser is checked for compatibility only. | accepted |
 | [0003](adr/0003-site-tooling.md) | A static site of the project's own (Vite, plain JavaScript) reading per-ingredient JSON, published from an orphan `gh-pages` branch. | accepted |
+| [0004](adr/0004-meddra-terms.md) | Keep MedDRA preferred terms from FAERS on the site and in the downloads with a trademark notice, pending a check of the MedDRA licence; if a licence is needed for the term list, remove the Parquet downloads. | proposed |
 
 Each ADR has a status, a date, the context with the measurements behind it, the decision and
 its consequences.

@@ -19,6 +19,7 @@ const PORT = 8310;
 const BASE = `http://127.0.0.1:${PORT}${PREFIX}`;
 const RXNORM = YAML.parse(readFileSync(resolve(SITE, '../config/rxnorm.yaml'), 'utf8'));
 const ATTRIBUTION = RXNORM.attribution_text.split(/\s+/).join(' ');
+const MEDDRA = YAML.parse(readFileSync(resolve(SITE, '../config/site.yaml'), 'utf8')).site.meddra_notice;
 const META = JSON.parse(readFileSync(resolve(DIST, 'data/meta.json'), 'utf8'));
 const SEARCH = JSON.parse(readFileSync(resolve(DIST, 'data/json/search.json'), 'utf8'));
 const FIRST = SEARCH.rows[0][SEARCH.columns.indexOf('slug')];
@@ -74,6 +75,8 @@ test('every page renders its heading, banner, notice and footer, with no externa
     if (META.last_quarter_is_provisional) assert.match(banner, /latest quarter is provisional/, name);
     assert.match(await page.locator('.notice').innerText(), /do not show that the drug causes the reaction/);
     assert.equal(await page.locator('footer .attribution').innerText(), ATTRIBUTION, name);
+    assert.equal(await page.locator('footer .meddra').innerText(), MEDDRA, name);
+    if (name === 'downloads') assert.equal(await page.locator('main .meddra').innerText(), MEDDRA);
     assert.match(await page.locator('footer').innerText(), new RegExp(`Data exported ${META.export_date}`));
     assert.match(await page.locator('footer').innerText(), new RegExp(META.rxnorm_versions[0] ?? 'not recorded'));
     assert.deepEqual(problems, [], name);

@@ -207,7 +207,8 @@ Required statement of the RxNav terms of service:
 > National Institutes of Health, Department of Health and Human Services; NLM is not
 > responsible for the product and does not endorse or recommend this or any other product.
 
-Reaction terms are MedDRA preferred terms as they appear in the FDA files.
+Reaction terms are MedDRA® Preferred Terms as reported in FDA FAERS. MedDRA® is a registered
+trademark of ICH. This project does not distribute MedDRA.
 
 ## License
 

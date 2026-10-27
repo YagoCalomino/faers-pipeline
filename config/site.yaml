@@ -47,6 +47,8 @@ site:
   pages_branch: "gh-pages"
   # Source of the data, shown in the footer; the link is config/faers.yaml source.landing_page.
   fda_source_name: "FDA Adverse Event Reporting System (FAERS), now the FDA Adverse Event Monitoring System (AEMS)"
+  # Shown in the footer and on the Downloads page (and in the README). See docs/adr/0004.
+  meddra_notice: "Reaction terms are MedDRA® Preferred Terms as reported in FDA FAERS. MedDRA® is a registered trademark of ICH. This project does not distribute MedDRA."
   # External pages the site may link to (hyperlinks only; no external resource is loaded).
   allowed_link_prefixes:
     - "https://github.com/YagoCalomino/faers-pipeline"

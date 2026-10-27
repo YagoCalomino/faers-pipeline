@@ -255,3 +255,12 @@ pending_user_confirmation`).
 - **Combination products and fallback names.** A case with a combination product counts once
   for each ingredient, and names without an RxNorm match form their own ingredient (see "Other
   effects of the mapping" and "Measured coverage").
+
+## MedDRA terms
+
+Reaction terms are MedDRA® Preferred Terms as reported in FDA FAERS. MedDRA® is a registered
+trademark of ICH. This project does not distribute MedDRA: it adds no MedDRA codes, versions or
+hierarchy, only the term text found in the FDA files. Whether publishing these terms, on the
+pages and in the Parquet downloads, needs a MedDRA licence has not been confirmed; the decision
+and the plan (remove the Parquet downloads if a licence is required for the list of terms) are
+in ADR 0004 (`docs/adr/0004-meddra-terms.md`).

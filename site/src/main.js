@@ -615,6 +615,7 @@ function viewDownloads() {
     <p class="lede">The tables behind this site, as open data. Exported ${esc(meta.export_date)}
       from the build with data through ${esc(meta.last_quarter)}. The same rows are also in
       <code>data/json/</code>, one file per ingredient.</p>
+    <p class="meddra">${esc(config.site.meddra_notice)}</p>
     ${sections}
     <p class="help">Any Parquet reader opens these files, for example DuckDB:
       <code>select * from 'signals_top.parquet' where ingredient_name = 'atorvastatin'</code>.</p>`;
