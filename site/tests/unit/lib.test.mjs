@@ -13,7 +13,7 @@ import {
   trendSeries,
 } from '../../src/lib/logic.js';
 
-const RULE = { min_top_quarter_share: 0.8, min_median_reactions_per_case: 20 };
+const RULE = { min_top_quarter_share: 0.8, min_cases_for_quarter_rule: 10, min_median_reactions_per_case: 40 };
 
 test('number formats', () => {
   assert.equal(fmtCount(2858073), '2,858,073');
@@ -34,8 +34,10 @@ test('number formats', () => {
 });
 
 test('concentration alert: quarter share and long reports, never country', () => {
-  assert.deepEqual(concentrationReasons({ top_quarter_share: 0.79, median_reactions_per_case: 19.5, top_country_share: 1 }, RULE), []);
-  const r = concentrationReasons({ top_quarter: '2026Q1', top_quarter_share: 0.8, median_reactions_per_case: 30 }, RULE);
+  assert.deepEqual(concentrationReasons({ a: 50, top_quarter_share: 0.79, median_reactions_per_case: 39.5, top_country_share: 1 }, RULE), []);
+  // Few reports: one quarter holding all 7 is not an alert.
+  assert.deepEqual(concentrationReasons({ a: 7, top_quarter: '2024Q4', top_quarter_share: 1, median_reactions_per_case: 5 }, RULE), []);
+  const r = concentrationReasons({ a: 10, top_quarter: '2026Q1', top_quarter_share: 0.8, median_reactions_per_case: 40 }, RULE);
   assert.deepEqual(r.map((x) => x.kind), ['quarter', 'long_reports']);
   assert.deepEqual(concentrationReasons({ top_quarter_share: null, median_reactions_per_case: null }, RULE), []);
 });

@@ -114,7 +114,9 @@ test('ingredient: sortable columns and concentration alerts follow the config ru
   assert.deepEqual(a, [...a].sort((x, y) => y - x));
   const cfg = YAML.parse(readFileSync(resolve(SITE, '../config/site.yaml'), 'utf8')).concentration_alert;
   const expected = FIRST_DOC.pairs.filter(
-    (p) => p.top_quarter_share >= cfg.min_top_quarter_share || p.median_reactions_per_case >= cfg.min_median_reactions_per_case,
+    (p) =>
+      (p.a >= cfg.min_cases_for_quarter_rule && p.top_quarter_share >= cfg.min_top_quarter_share) ||
+      p.median_reactions_per_case >= cfg.min_median_reactions_per_case,
   ).length;
   assert.equal(await page.locator('table.pairs .alert-badge').count(), Math.min(expected, 30));
   await ctx.close();

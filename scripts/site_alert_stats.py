@@ -22,7 +22,10 @@ from faers_pipeline.config import load_config  # noqa: E402
 
 
 def flags(pair: dict, rule: dict) -> tuple[bool, bool]:
-    q = (pair.get("top_quarter_share") or 0) >= rule["min_top_quarter_share"]
+    q = (
+        pair["a"] >= rule["min_cases_for_quarter_rule"]
+        and (pair.get("top_quarter_share") or 0) >= rule["min_top_quarter_share"]
+    )
     m = (pair.get("median_reactions_per_case") or 0) >= rule["min_median_reactions_per_case"]
     return q, m
 
@@ -58,7 +61,8 @@ def main(argv: list[str]) -> int:
             medians.append(p.get("median_reactions_per_case") or 0)
         per_ing.append((ing["n_cases_ps_ss"], ing["ingredient_name"], n, n_flag))
     print(
-        f"rule: top_quarter_share >= {rule['min_top_quarter_share']} "
+        f"rule: (a >= {rule['min_cases_for_quarter_rule']} and "
+        f"top_quarter_share >= {rule['min_top_quarter_share']}) "
         f"or median_reactions_per_case >= {rule['min_median_reactions_per_case']}"
     )
     print(

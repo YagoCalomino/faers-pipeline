@@ -112,8 +112,9 @@ async function viewHome() {
         bound of the reporting odds ratio and the 10 with the most reports among pairs that
         meet the Evans criterion. ${fmtCount(meta.n_ingredients)} ingredients and
         ${fmtCount(meta.n_pairs)} pairs are included.</p>
-      <p>A pair is marked <strong>concentrated</strong> when ${fmtShare(rule.min_top_quarter_share)}
-        or more of its reports come from one quarter, or its reports list a median of
+      <p>A pair is marked <strong>concentrated</strong> when it has at least
+        ${fmtCount(rule.min_cases_for_quarter_rule)} reports and ${fmtShare(rule.min_top_quarter_share)}
+        or more of them come from one quarter, or when its reports list a median of
         ${fmtCount(rule.min_median_reactions_per_case)} or more reactions each: patterns of
         reporting clusters rather than of the drug.</p>
     </section>`;
@@ -395,7 +396,8 @@ async function viewPair(slug, reactionKey) {
       </dl>
       <p class="help">Most FAERS reports come from the United States, so a high country share is
         not unusual by itself. The pair is marked concentrated only by the quarter share
-        (${fmtShare(config.alert.min_top_quarter_share)} or more) or the median number of
+        (${fmtShare(config.alert.min_top_quarter_share)} or more, with at least
+        ${fmtCount(config.alert.min_cases_for_quarter_rule)} reports) or the median number of
         reactions (${fmtCount(config.alert.min_median_reactions_per_case)} or more).</p>
     </section>
     <section aria-labelledby="trend-h">

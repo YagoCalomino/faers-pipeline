@@ -193,9 +193,12 @@ share is not a cluster by itself: most FAERS reports come from the US, and 33,54
 61,618 rows have one country at 90% or more. The share is informative when it differs from the
 ingredient's own country mix, or together with a high `median_reactions_per_case`.
 
-The public site marks a pair as concentrated when 80% or more of its reports share one init
-quarter, or when its reports list a median of 20 or more reactions each
-(`config/site.yaml` `concentration_alert`). The country share is shown but is not part of the
+The public site marks a pair as concentrated when it has at least 10 reports and 80% or more of
+them share one init quarter, or when its reports list a median of 40 or more reactions each
+(`config/site.yaml` `concentration_alert`). The minimum of 10 reports keeps pairs with 3 to 7
+reports, where one quarter easily holds all of them, out of the quarter rule. On the export of
+2026-10-27 the rule flags 19.1% of the 61,618 rows; a first version (80% without a minimum,
+median of 20) flagged 42.1%. The country share is shown but is not part of the
 alert, for the reason above. The alert is a prompt to look closer, not a correction: the pair's
 PRR and ROR are shown unchanged.
 

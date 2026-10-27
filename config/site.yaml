@@ -57,11 +57,17 @@ site:
   pairs_page_size: 30
 
 # Concentration alert on a pair (ALL period, over the pair's a cases; mart_signals_top). A
-# reporting artefact is suspected when either rule holds. top_country and its share are shown
-# in the pair detail but are not an alert: most FAERS reports come from the US.
+# reporting artefact is suspected when either rule holds:
+#   - quarter: at least min_cases_for_quarter_rule reports and min_top_quarter_share of them in
+#     one init quarter (with 3 to 7 reports one quarter easily holds 100%);
+#   - long reports: median reactions per report at least min_median_reactions_per_case.
+# top_country and its share are shown in the pair detail but are not an alert: most FAERS
+# reports come from the US. Calibrated 2026-10-27 on the export of 61,618 pairs: the first rule
+# (0.8 without a minimum, median >= 20) flagged 42.1% of the rows; this one 19.1%.
 concentration_alert:
   min_top_quarter_share: 0.8
-  min_median_reactions_per_case: 20
+  min_cases_for_quarter_rule: 10
+  min_median_reactions_per_case: 40
 
 # Descriptions of the open-data downloads (parquet/<table>.parquet). Every exported column must
 # have a description here (checked by validate_export).

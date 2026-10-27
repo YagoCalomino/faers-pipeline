@@ -4,7 +4,11 @@
 // hold; an empty list means no alert. top_country is never a reason: most reports are from the US.
 export function concentrationReasons(pair, rule) {
   const reasons = [];
-  if (pair.top_quarter_share != null && pair.top_quarter_share >= rule.min_top_quarter_share) {
+  if (
+    pair.top_quarter_share != null &&
+    pair.a >= rule.min_cases_for_quarter_rule &&
+    pair.top_quarter_share >= rule.min_top_quarter_share
+  ) {
     reasons.push({ kind: 'quarter', quarter: pair.top_quarter, share: pair.top_quarter_share });
   }
   if (

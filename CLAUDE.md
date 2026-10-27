@@ -31,6 +31,11 @@ Reference plan: `docs/PLANO_FAERS_PIPELINE.md`. Read it before changing anything
   the lake.
 - Raw layer keeps every column as text; typing happens in dbt staging.
 - Code identifiers and commit messages in English; user-facing docs may be in Portuguese.
+- Site settings (concentration alert, size limits, column descriptions) live in
+  `config/site.yaml`. The alert flags a pair with at least 10 reports and 80% of them in one init
+  quarter, or a median of 40 or more reactions per report. After changing the rule, run
+  `make site-ci`, `python -I scripts/site_alert_stats.py` (share of flagged rows) and
+  `make publish-site`.
 
 ## How to run
 
