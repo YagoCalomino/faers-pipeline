@@ -203,3 +203,39 @@ def test_every_task_has_the_failure_callback(bag):
             cbs = task.on_failure_callback
             cbs = cbs if isinstance(cbs, list) else [cbs]
             assert on_task_failure in cbs, f"{dag_id}.{task.task_id}"
+
+
+@pytest.fixture(scope="module")
+def publish_dag(bag):
+    dag = bag.dags.get("publish_site")
+    assert dag is not None
+    return dag
+
+
+def test_publish_site_shape(publish_dag):
+    assert set(publish_dag.task_ids) == {"export_candidate", "validate_candidate", "promote_export"}
+    assert publish_dag.catchup is False and publish_dag.max_active_runs == 1
+    assert publish_dag.get_task("validate_candidate").upstream_task_ids == {"export_candidate"}
+    assert publish_dag.get_task("promote_export").upstream_task_ids == {"validate_candidate"}
+    assert publish_dag.get_task("validate_candidate").retries == 0
+    assert publish_dag.params["limits_override"] == {}
+
+
+def test_publish_site_runs_on_the_warehouse_asset(publish_dag, transform_dag):
+    assert "faers_warehouse" in repr(publish_dag.timetable.asset_condition)
+    published = {o.name for o in transform_dag.get_task("publish_warehouse").outlets}
+    assert published == {"faers_warehouse"}
+
+
+def test_site_export_asset_only_after_validation(publish_dag):
+    task = publish_dag.get_task("promote_export")
+    assert {o.name for o in task.outlets} == {"site_export"}
+    assert task.trigger_rule == "all_success"
+    for task_id in ("export_candidate", "validate_candidate"):
+        assert not publish_dag.get_task(task_id).outlets
+
+
+def test_publish_site_reads_without_the_writer_pool(publish_dag):
+    # Read-only on the warehouse (see the DAG docstring); the pool would only delay dbt.
+    for task in publish_dag.tasks:
+        assert task.pool != "duckdb_writer", task.task_id
