@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Pharmacovigilance pipeline: FDA FAERS/AEMS -> Airflow -> DuckDB/dbt -> disproportionality signals"
 readme = "README.md"
 requires-python = ">=3.12"
+license = { text = "MIT" }
 # Runtime dependencies are pinned in infra/docker/requirements.txt
 # (installed with the official Airflow constraints).
 

@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "Static explorer of FAERS disproportionality (built from the site export).",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"

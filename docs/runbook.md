@@ -195,7 +195,7 @@ make site-dev       # live preview on data/site_export/
 
 ## Failures
 
-Every task of the three DAGs has a failure callback that, when the task fails for good (after
+Every task of the four DAGs has a failure callback that, when the task fails for good (after
 its retries):
 
 - logs one line `TASK_FAILURE {...}` (JSON) in the task log;

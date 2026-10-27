@@ -233,3 +233,25 @@ above 1 (1.23 and 1.30) and so meet the ROR criterion, though not the Evans one:
 counts, a small excess is significant without being strong. The references of the pairs
 (`reference`) are still to be filled in by the owner (`reference_status =
 pending_user_confirmation`).
+
+## Operational limits
+
+- **Failure callback on a hard kill.** Every task has a failure callback that writes a marker
+  file (`logs/failures/`). It was tested with tasks that raise an error, not with a process killed
+  by the operating system (out of memory, SIGKILL); whether Airflow runs the callback then was
+  not verified.
+- **Atomic file swaps on a Windows bind mount.** The warehouse build and the site export are
+  swapped in with `os.replace`. It worked in every run, but the atomicity of a rename on a
+  Windows folder mounted into Docker is not guaranteed by the documentation of either. Folder
+  renames there failed once with "Permission denied" (a host process probably still held a
+  file); the export now retries the rename a few times, and a failed swap keeps the previous
+  export.
+- **An ingestion started during a build is not blocked.** `faers_transform` waits while
+  `faers_ingest` or `rxnorm_enrich` runs, but not the other way round. This is accepted: the
+  reconciliation step after each build compares the lake with the warehouse and fails on any
+  divergence. Do not start a backfill while a build runs (runbook).
+- **Provisional latest quarter.** The cohort of the most recent quarter keeps growing as later
+  files arrive (see "Limits of the signals").
+- **Combination products and fallback names.** A case with a combination product counts once
+  for each ingredient, and names without an RxNorm match form their own ingredient (see "Other
+  effects of the mapping" and "Measured coverage").
