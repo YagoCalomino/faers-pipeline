@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { trendSvg } from '../../src/lib/chart.js';
-import { fmtCount, fmtInterval, fmtPct, fmtRatio, fmtShare, rawValue } from '../../src/lib/format.js';
+import { fmtCount, fmtInterval, fmtPct, fmtRatio, fmtShare, fmtShareMin, rawValue } from '../../src/lib/format.js';
 import {
   concentrationReasons,
   groupMetrics,
@@ -14,7 +14,13 @@ import {
 } from '../../src/lib/logic.js';
 import { wrapTables } from '../../src/lib/markdown.js';
 
-const RULE = { min_top_quarter_share: 0.8, min_cases_for_quarter_rule: 10, min_median_reactions_per_case: 40 };
+const RULE = {
+  min_top_quarter_share: 0.8,
+  min_cases_for_quarter_rule: 10,
+  min_median_reactions_per_case: 40,
+  min_top_country_share: 0.9,
+  min_cases_for_country_rule: 10,
+};
 
 test('number formats', () => {
   assert.equal(fmtCount(2858073), '2,858,073');
@@ -27,6 +33,9 @@ test('number formats', () => {
   assert.equal(fmtInterval(424.1, 937.2), '424 to 937');
   assert.equal(fmtInterval(null, 3), '—');
   assert.equal(fmtShare(0.333333), '33%');
+  assert.equal(fmtShareMin(0.004), '<1%');
+  assert.equal(fmtShareMin(0.083), '8%');
+  assert.equal(fmtShareMin(0), '0%');
   assert.equal(fmtPct(0.601664), '0.60%');
   assert.equal(fmtPct(2), '2.0%');
   assert.equal(fmtPct(39.4815), '39.5%');
@@ -34,13 +43,37 @@ test('number formats', () => {
   assert.equal(Number(rawValue(40.56316781234567)), 40.56316781234567);
 });
 
-test('concentration alert: quarter share and long reports, never country', () => {
-  assert.deepEqual(concentrationReasons({ a: 50, top_quarter_share: 0.79, median_reactions_per_case: 39.5, top_country_share: 1 }, RULE), []);
+test('concentration alert: quarter share and long reports; country share alone is not a reason', () => {
+  // All from the US, like the ingredient: no alert.
+  assert.deepEqual(
+    concentrationReasons({ a: 50, top_quarter_share: 0.79, median_reactions_per_case: 39.5, top_country: 'US', top_country_share: 1, ingredient_top_country: 'US' }, RULE),
+    [],
+  );
   // Few reports: one quarter holding all 7 is not an alert.
   assert.deepEqual(concentrationReasons({ a: 7, top_quarter: '2024Q4', top_quarter_share: 1, median_reactions_per_case: 5 }, RULE), []);
   const r = concentrationReasons({ a: 10, top_quarter: '2026Q1', top_quarter_share: 0.8, median_reactions_per_case: 40 }, RULE);
   assert.deepEqual(r.map((x) => x.kind), ['quarter', 'long_reports']);
   assert.deepEqual(concentrationReasons({ top_quarter_share: null, median_reactions_per_case: null }, RULE), []);
+});
+
+test('concentration alert: country rule against the ingredient (atorvastatin pairs of the export)', () => {
+  // atorvastatin: most frequent country GB (27.5% of its reports), 8.3% from CA, 2.3% from DE.
+  const ing = { ingredient_top_country: 'GB', ingredient_top_country_share: 0.275 };
+  const heart = { ...ing, a: 18, top_country: 'CA', top_country_share: 1, ingredient_country_share: 0.083, top_quarter_share: 0.222, median_reactions_per_case: 32 };
+  const r = concentrationReasons(heart, RULE);
+  assert.deepEqual(r, [{ kind: 'country', country: 'CA', share: 1, ingredientShare: 0.083, ingredientTopCountry: 'GB', ingredientTopShare: 0.275 }]);
+  const genital = { ...ing, a: 13, top_country: 'DE', top_country_share: 1, ingredient_country_share: 0.023, top_quarter_share: 0.769, median_reactions_per_case: 7 };
+  assert.deepEqual(concentrationReasons(genital, RULE).map((x) => x.kind), ['country']);
+  // Thresholds: share just below, too few reports, or the ingredient's own top country.
+  assert.deepEqual(concentrationReasons({ ...heart, top_country_share: 0.89 }, RULE), []);
+  assert.deepEqual(concentrationReasons({ ...heart, a: 9 }, RULE), []);
+  assert.deepEqual(concentrationReasons({ ...heart, top_country: 'GB' }, RULE), []);
+  // No known country on either side: no country reason.
+  assert.deepEqual(concentrationReasons({ ...heart, top_country: null, top_country_share: 0 }, RULE), []);
+  assert.deepEqual(concentrationReasons({ ...heart, ingredient_top_country: null }, RULE), []);
+  // With the long-reports rule too (Carotid artery thrombosis: 96% CA, median 53).
+  const carotid = { ...ing, a: 123, top_country: 'CA', top_country_share: 0.959, ingredient_country_share: 0.083, top_quarter_share: 0.13, median_reactions_per_case: 53 };
+  assert.deepEqual(concentrationReasons(carotid, RULE).map((x) => x.kind), ['long_reports', 'country']);
 });
 
 test('sortPairs: nulls last both ways, ties by PT', () => {

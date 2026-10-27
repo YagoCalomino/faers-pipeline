@@ -33,7 +33,8 @@ Reference plan: `docs/PLANO_FAERS_PIPELINE.md`. Read it before changing anything
 - Code identifiers and commit messages in English; user-facing docs may be in Portuguese.
 - Site settings (concentration alert, size limits, column descriptions) live in
   `config/site.yaml`. The alert flags a pair with at least 10 reports and 80% of them in one init
-  quarter, or a median of 40 or more reactions per report. After changing the rule, run
+  quarter, a median of 40 or more reactions per report, or at least 10 reports with 90% of them
+  from one country that is not the ingredient's most frequent country. After changing the rule, run
   `make site-ci`, `python -I scripts/site_alert_stats.py` (share of flagged rows) and
   `make publish-site`.
 

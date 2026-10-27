@@ -188,19 +188,63 @@ as observations, not as conclusions about the drugs, and nothing in the marts co
 
 `mart_signals_top` carries columns that help spot these patterns, computed over the pair's
 cases: `top_country` and `top_country_share` (blank and placeholder countries left out),
-`top_quarter` and `top_quarter_share` (init quarter), and `median_reactions_per_case`. A high
+`top_quarter` and `top_quarter_share` (init quarter), and `median_reactions_per_case`; and,
+over all the ingredient's cases, `ingredient_top_country`, `ingredient_top_country_share` and
+`ingredient_country_share` (the ingredient's share from the pair's `top_country`). A high
 share is not a cluster by itself: most FAERS reports come from the US, and 33,542 of the
 61,618 rows have one country at 90% or more. The share is informative when it differs from the
 ingredient's own country mix, or together with a high `median_reactions_per_case`.
 
-The public site marks a pair as concentrated when it has at least 10 reports and 80% or more of
-them share one init quarter, or when its reports list a median of 40 or more reactions each
-(`config/site.yaml` `concentration_alert`). The minimum of 10 reports keeps pairs with 3 to 7
-reports, where one quarter easily holds all of them, out of the quarter rule. On the export of
-2026-10-27 the rule flags 19.1% of the 61,618 rows; a first version (80% without a minimum,
-median of 20) flagged 42.1%. The country share is shown but is not part of the
-alert, for the reason above. The alert is a prompt to look closer, not a correction: the pair's
-PRR and ROR are shown unchanged.
+### Concentration alert
+
+The public site marks a pair as concentrated when any of three rules holds
+(`config/site.yaml` `concentration_alert`):
+
+- **Quarter:** at least 10 reports and 80% or more of them in one init quarter. The minimum of
+  10 keeps pairs with 3 to 7 reports, where one quarter easily holds all of them, out.
+- **Long reports:** a median of 40 or more reactions per report.
+- **Country:** at least 10 reports, 90% or more of them from one country, and that country is
+  not the ingredient's most frequent country (blank and placeholder countries left out of
+  both). Comparing with the ingredient keeps the many pairs that are 90% from the US, like
+  their drug, out of the alert.
+
+The badge gives the reason, for example "96% of reports from CA; ingredient: 8% CA".
+
+The quarter and long-report rules missed the atorvastatin clusters described above: Vaginal
+flatulence, Heart sounds, Neurologic neglect syndrome and Carotid artery thrombosis are 96–100%
+from CA and Genital infection viral 100% from DE, while atorvastatin's most frequent country is
+GB (27.5% of its reports; CA 8.3%, DE 2.3%); their quarter shares are 12–77% and only two have a
+median of 40 reactions or more. The country rule flags all five.
+
+Measured on the build of 2026-10-27 (61,618 rows):
+
+| Rule set | Rows flagged | Top 10 ingredients by reports (291 rows) |
+|---|---|---|
+| Quarter or long reports (before) | 19.1% | 30.9% |
+| Country rule alone | 6.7% (4,128) | 17.5% |
+| Quarter, long reports or country (current) | 23.3% | 35.4% |
+
+The country rule adds 2,580 rows to the alert (4.2 points). In the top 10 ingredients it adds
+13 rows (prednisone 5, acetaminophen 3, lenalidomide 3, semaglutide 1, methotrexate 1) and none
+for dupilumab, tirzepatide, adalimumab, rituximab or risankizumab. The 30% limit applies to the
+whole export; the top 10 were already above it before the country rule, because adalimumab,
+rituximab and methotrexate had 23, 20 and 19 of their 30 pairs flagged.
+
+An alternative was measured: the **lift** of the country, the pair's share from its top country
+divided by the ingredient's share from the same country (`top_country_share /
+ingredient_country_share`), with at least 10 reports. Lift of 3, 5 or 10 flags, together with
+the quarter and long-report rules, 29.4%, 25.3% and 22.2% of the rows; the five atorvastatin
+pairs have lifts of 11.6 to 43. Lift also flags pairs that are not concentrated in one
+country (palbociclib–Death: 36% of reports from MA, lift 8.8) unless a minimum share is added,
+which makes two thresholds plus a ratio. The country rule is simpler to state and to show, and
+was kept. Its blind spot: a pair concentrated in the ingredient's own most frequent country is
+never flagged by it, however small that country's share of the ingredient (239 rows have 90% or
+more of their reports there, at least three times the ingredient's share, and no other alert).
+Only 3 rows flagged by the country rule have a lift below 2.
+
+A first version of the alert (80% in one quarter without a minimum, median of 20) flagged 42.1%
+of the rows. The alert is a prompt to look closer, not a correction: the pair's PRR and ROR are
+shown unchanged.
 
 ### Validation against known pairs
 

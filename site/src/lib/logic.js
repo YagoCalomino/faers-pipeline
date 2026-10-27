@@ -1,7 +1,8 @@
 // Logic of the pages that does not touch the DOM (unit-tested with node --test).
 
 // Concentration alert of a pair (config/site.yaml concentration_alert). Returns the reasons that
-// hold; an empty list means no alert. top_country is never a reason: most reports are from the US.
+// hold; an empty list means no alert. A country share alone is never a reason (most reports are
+// from the US): the country rule needs the pair's top country to differ from the ingredient's.
 export function concentrationReasons(pair, rule) {
   const reasons = [];
   if (
@@ -16,6 +17,22 @@ export function concentrationReasons(pair, rule) {
     pair.median_reactions_per_case >= rule.min_median_reactions_per_case
   ) {
     reasons.push({ kind: 'long_reports', median: pair.median_reactions_per_case });
+  }
+  if (
+    pair.top_country != null &&
+    pair.ingredient_top_country != null &&
+    pair.a >= rule.min_cases_for_country_rule &&
+    pair.top_country_share >= rule.min_top_country_share &&
+    pair.top_country !== pair.ingredient_top_country
+  ) {
+    reasons.push({
+      kind: 'country',
+      country: pair.top_country,
+      share: pair.top_country_share,
+      ingredientShare: pair.ingredient_country_share,
+      ingredientTopCountry: pair.ingredient_top_country,
+      ingredientTopShare: pair.ingredient_top_country_share,
+    });
   }
   return reasons;
 }

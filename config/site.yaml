@@ -59,17 +59,23 @@ site:
   pairs_page_size: 30
 
 # Concentration alert on a pair (ALL period, over the pair's a cases; mart_signals_top). A
-# reporting artefact is suspected when either rule holds:
+# reporting artefact is suspected when any rule holds:
 #   - quarter: at least min_cases_for_quarter_rule reports and min_top_quarter_share of them in
 #     one init quarter (with 3 to 7 reports one quarter easily holds 100%);
-#   - long reports: median reactions per report at least min_median_reactions_per_case.
-# top_country and its share are shown in the pair detail but are not an alert: most FAERS
-# reports come from the US. Calibrated 2026-10-27 on the export of 61,618 pairs: the first rule
-# (0.8 without a minimum, median >= 20) flagged 42.1% of the rows; this one 19.1%.
+#   - long reports: median reactions per report at least min_median_reactions_per_case;
+#   - country: at least min_cases_for_country_rule reports, min_top_country_share of them from
+#     one country, and that country is not the ingredient's most frequent one (blank and
+#     placeholder countries left out of both). A share alone is not an alert: most FAERS reports
+#     come from the US, so the pair is compared with its own ingredient.
+# Calibrated 2026-10-27 on the export of 61,618 pairs: the first rule (0.8 without a minimum,
+# median >= 20) flagged 42.1% of the rows; quarter and long reports 19.1%; with the country
+# rule 23.3% (docs/limitations.md, "Concentration alert").
 concentration_alert:
   min_top_quarter_share: 0.8
   min_cases_for_quarter_rule: 10
   min_median_reactions_per_case: 40
+  min_top_country_share: 0.9
+  min_cases_for_country_rule: 10
 
 # Descriptions of the open-data downloads (parquet/<table>.parquet). Every exported column must
 # have a description here (checked by validate_export).
@@ -125,6 +131,9 @@ downloads:
       top_quarter_share: "Share of the pair's reports in top_quarter."
       median_reactions_per_case: "Median number of distinct reactions per report of the pair."
       n_pair_cases: "Reports of the pair counted for the concentration columns (equals a)."
+      ingredient_top_country: "Most frequent reporter country among all the ingredient's reports (blank and placeholder values left out)."
+      ingredient_top_country_share: "Share of the ingredient's reports (n_drug) from ingredient_top_country."
+      ingredient_country_share: "Share of the ingredient's reports (n_drug) from the pair's top_country; 0 when top_country is null."
       trend: "Per window quarter: period_key, a and prr, for quarters where a >= 3."
   dq_metrics:
     description: "Data-quality metrics of the pipeline (raw rows, deduplication, missing values, RxNorm coverage, drug role mix)."

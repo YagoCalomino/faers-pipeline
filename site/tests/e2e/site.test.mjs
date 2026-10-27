@@ -102,6 +102,23 @@ test('home: search by keyboard opens the ingredient', async () => {
   await ctx.close();
 });
 
+// The alert rule written out independently of src/lib/logic.js (config/site.yaml).
+const ALERT = YAML.parse(readFileSync(resolve(SITE, '../config/site.yaml'), 'utf8')).concentration_alert;
+function flagged(p) {
+  const out = [];
+  if (p.a >= ALERT.min_cases_for_quarter_rule && p.top_quarter_share >= ALERT.min_top_quarter_share) out.push('quarter');
+  if (p.median_reactions_per_case >= ALERT.min_median_reactions_per_case) out.push('long_reports');
+  if (
+    p.a >= ALERT.min_cases_for_country_rule &&
+    p.top_country_share >= ALERT.min_top_country_share &&
+    p.top_country != null &&
+    p.ingredient_top_country != null &&
+    p.top_country !== p.ingredient_top_country
+  )
+    out.push('country');
+  return out;
+}
+
 test('ingredient: sortable columns and concentration alerts follow the config rule', async () => {
   const { ctx, page } = await open(ROUTES.ingredient);
   const values = async (field) =>
@@ -115,14 +132,42 @@ test('ingredient: sortable columns and concentration alerts follow the config ru
   await page.getByRole('button', { name: /^Reports/ }).click();
   const a = (await values('a')).map(Number);
   assert.deepEqual(a, [...a].sort((x, y) => y - x));
-  const cfg = YAML.parse(readFileSync(resolve(SITE, '../config/site.yaml'), 'utf8')).concentration_alert;
-  const expected = FIRST_DOC.pairs.filter(
-    (p) =>
-      (p.a >= cfg.min_cases_for_quarter_rule && p.top_quarter_share >= cfg.min_top_quarter_share) ||
-      p.median_reactions_per_case >= cfg.min_median_reactions_per_case,
-  ).length;
+  const expected = FIRST_DOC.pairs.filter((p) => flagged(p).length).length;
   assert.equal(await page.locator('table.pairs .alert-badge').count(), Math.min(expected, 30));
   await ctx.close();
+});
+
+test('country alert: the badge and the pair page give the country and the ingredient share', async () => {
+  // The first pair of the export flagged by the country rule (the fixture holds atorvastatin's).
+  let found;
+  for (const row of SEARCH.rows) {
+    const slug = row[SEARCH.columns.indexOf('slug')];
+    const doc = JSON.parse(readFileSync(resolve(DIST, `data/json/signals/${slug}.json`), 'utf8'));
+    const p = doc.pairs.find((x) => flagged(x).includes('country'));
+    if (p) {
+      found = { slug, p };
+      break;
+    }
+  }
+  assert.ok(found, 'the export has a pair flagged by the country rule');
+  const { slug, p } = found;
+  const pct = (v) => `${Math.round(v * 100)}%`;
+  const ingPct = p.ingredient_country_share > 0 && p.ingredient_country_share < 0.005 ? '<1%' : pct(p.ingredient_country_share);
+  const text = `${pct(p.top_country_share)} of reports from ${p.top_country}; ingredient: ${ingPct} ${p.top_country}`;
+  const ing = await open(`#/ingredient/${slug}`);
+  const row = ing.page.locator('table.pairs tbody tr', { has: ing.page.locator(`a[href$="/${p.reaction_key}"]`) });
+  const badge = await row.locator('.alert-badge').innerText();
+  assert.ok(badge.includes(text), `badge "${badge}" lacks "${text}"`);
+  const axeIng = await new AxeBuilder({ page: ing.page }).withTags(AXE_TAGS).analyze();
+  assert.deepEqual(axeIng.violations.map((v) => v.id), [], 'axe on the ingredient page');
+  await ing.ctx.close();
+  const pair = await open(`#/ingredient/${slug}/${p.reaction_key}`);
+  const callout = await pair.page.locator('.callout.warn').innerText();
+  assert.match(callout, new RegExp(`${pct(p.top_country_share)} of these reports come from ${p.top_country}`));
+  assert.match(callout, new RegExp(`most frequent country is ${p.ingredient_top_country}`));
+  const axePair = await new AxeBuilder({ page: pair.page }).withTags(AXE_TAGS).analyze();
+  assert.deepEqual(axePair.violations.map((v) => v.id), [], 'axe on the pair page');
+  await pair.ctx.close();
 });
 
 test('pair: 2x2 cells add up and match the export', async () => {

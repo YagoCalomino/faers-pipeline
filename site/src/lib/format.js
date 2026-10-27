@@ -39,6 +39,11 @@ export function fmtShare(v) {
   return missing(v) ? DASH : SHARE.format(v);
 }
 
+// A share that is above 0 but rounds to 0% shows as "<1%".
+export function fmtShareMin(v) {
+  return !missing(v) && v > 0 && v < 0.005 ? '<1%' : fmtShare(v);
+}
+
 export function fmtPct(v) {
   if (missing(v)) return DASH;
   return `${Math.abs(v) >= 10 ? PCT_LARGE.format(v) : PCT_SMALL.format(v)}%`;
