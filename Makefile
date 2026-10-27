@@ -5,7 +5,7 @@ DEV     := $(COMPOSE) run --rm --no-deps airflow-dev
 
 .PHONY: help env build up down logs ps lint format test fernet import-errors \
 	dbt-deps dbt-build dbt-rebuild dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci reconcile \
-	export export-ci publish-site site-ci site-dev \
+	export export-ci publish-site site-ci site-dev measure-build run-times readme-numbers \
 	cleanup-extracted
 
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "dbt:     dbt-deps dbt-build dbt-rebuild dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci reconcile"
 	@echo "site:    export export-ci publish-site site-ci site-dev"
 	@echo "disk:    cleanup-extracted (dry run; EXECUTE=1 deletes)"
+	@echo "readme:  measure-build run-times readme-numbers"
 
 # Create .env from the template the first time.
 env: .env
@@ -141,3 +142,16 @@ site-ci: .env
 # Local preview with live reload on the current export (data/site_export/).
 site-dev:
 	cd site && npm run dev
+
+# --- README numbers (nothing typed by hand) -----------------------------------------------------
+# Full atomic build with wall time and memory peak -> data/metrics/build.json.
+measure-build: .env
+	$(DEV) python -I scripts/measure_build.py
+
+# Durations of successful DAG runs from the Airflow metadata DB (needs make up) -> runs.json.
+run-times: .env
+	$(COMPOSE) exec -T airflow-scheduler python - < scripts/collect_run_times.py
+
+# Prints the README numbers block and writes it between the markers of README.md.
+readme-numbers: .env
+	$(DEV) python -I scripts/readme_numbers.py --write README.md
