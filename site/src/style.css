@@ -413,6 +413,10 @@ svg.trend {
 svg.trend .bar {
   fill: var(--bar);
 }
+/* CSS overrides the SVG fill attribute, so the hatch of the provisional quarter is set here. */
+svg.trend .bar.provisional {
+  fill: url(#hatch);
+}
 svg.trend .bar-provisional-bg {
   fill: var(--bar-provisional);
 }

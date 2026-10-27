@@ -131,6 +131,9 @@ test('pair: 2x2 cells add up and match the export', async () => {
   assert.deepEqual([a, b, c, d, n], [p.a, p.b, p.c, p.d, p.n_total]);
   assert.equal(Number(await page.locator('table.measures td[data-field="prr"]').getAttribute('data-value')), p.prr);
   assert.equal(await page.locator('svg.trend').count(), 1);
+  // The provisional quarter's bar (if drawn) uses the hatch pattern, not the plain bar color.
+  const fills = await page.locator('svg.trend rect.bar.provisional').evaluateAll((rs) => rs.map((r) => getComputedStyle(r).fill));
+  for (const f of fills) assert.match(f, /url\(/);
   await ctx.close();
 });
 
