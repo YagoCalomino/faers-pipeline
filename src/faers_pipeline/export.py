@@ -7,9 +7,15 @@ Layout of the export folder:
                                     attribution text, export date
     manifest.json                   every other file with its size and sha256
     parquet/<table>.parquet         ingredients, signals_top, dq_metrics, known_signals
-    json/ingredients.json           the ingredient list (search box)
-    json/signals/<ingredient_key>.json  one ingredient and its pairs of mart_signals_top
+    json/ingredients.json           the ingredient list
+    json/search.json                compact ingredient list for the search box
+    json/signals/<slug>.json        one ingredient and its pairs of mart_signals_top, with the
+                                    2x2 cells (b, c, d, n_total) of mart_signals in ALL
     json/dq_metrics.json, json/known_signals.json
+
+slug: URL-safe ingredient name (lowercase ASCII letters, digits and '-'), unique; when two
+ingredients share a name, the one with an RxNorm match and the most cases keeps the plain slug
+and the others get the ingredient id appended.
 
 Writes are atomic for the folder as a whole: the export is built in a sibling folder
 (<out>.building) and swapped in only when complete; on failure the half-built folder is removed
@@ -39,10 +45,16 @@ from faers_pipeline.config import load_config
 
 log = logging.getLogger(__name__)
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 FORMATS = ("parquet", "json")
 # Columns of the ingredient that the per-ingredient JSON keeps once, not in every pair.
 _INGREDIENT_COLUMNS = ("ingredient_key", "ingredient_id", "ingredient_name")
+# Columns of json/search.json, one array per ingredient (keys written once, not per row).
+SEARCH_COLUMNS = ("ingredient_name", "slug", "n_cases_ps_ss", "n_pairs", "is_fallback")
+
+
+def _slug_sql(expr: str) -> str:
+    return f"trim(regexp_replace(lower({expr}), '[^a-z0-9]+', '-', 'g'), '-')"
 
 
 def queries(include_generic: bool) -> dict[str, str]:
@@ -50,18 +62,37 @@ def queries(include_generic: bool) -> dict[str, str]:
     keep = "true" if include_generic else "not i.is_generic_fallback"
     return {
         "ingredients": f"""
-            select i.ingredient_key, i.ingredient_id, i.ingredient_name,
-                   i.best_match_type as match_type, i.is_fallback, i.is_generic_fallback,
-                   i.n_cases_signal_roles as n_cases_ps_ss, count(*) as n_pairs
-            from signals.mart_signals_top as t
-            inner join core.dim_ingredient as i using (ingredient_id)
-            where {keep}
-            group by all
-            order by n_cases_ps_ss desc, i.ingredient_name, i.ingredient_id""",
+            with ing as (
+                select i.ingredient_key, i.ingredient_id, i.ingredient_name,
+                       i.best_match_type as match_type, i.is_fallback, i.is_generic_fallback,
+                       i.n_cases_signal_roles as n_cases_ps_ss, count(*) as n_pairs,
+                       coalesce(nullif({_slug_sql("i.ingredient_name")}, ''),
+                                {_slug_sql("i.ingredient_id")}) as base_slug
+                from signals.mart_signals_top as t
+                inner join core.dim_ingredient as i using (ingredient_id)
+                where {keep}
+                group by all
+            )
+            select ingredient_key, ingredient_id, ingredient_name,
+                   case when row_number() over (
+                            partition by base_slug
+                            order by is_fallback, n_cases_ps_ss desc, ingredient_id) = 1
+                        then base_slug
+                        else base_slug || '-' || {_slug_sql("ingredient_id")}
+                   end as slug,
+                   match_type, is_fallback, is_generic_fallback, n_cases_ps_ss, n_pairs
+            from ing
+            order by n_cases_ps_ss desc, ingredient_name, ingredient_id""",
+        # b, c, d and n_total come from mart_signals (ALL), the same row mart_signals_top was
+        # selected from; validate_export checks a + b + c + d = n_total for every pair.
         "signals_top": f"""
-            select t.*
+            select t.*, s.b, s.c, s.d, s.n_total
             from signals.mart_signals_top as t
             inner join core.dim_ingredient as i using (ingredient_id)
+            left join signals.mart_signals as s
+                on s.period_key = 'ALL'
+               and s.ingredient_id = t.ingredient_id
+               and s.reaction_key = t.reaction_key
             where {keep}
             order by t.ingredient_id, t.rank_ror_lcl nulls last, t.rank_a_evans nulls last,
                      t.reaction_key""",
@@ -80,7 +111,7 @@ def queries(include_generic: bool) -> dict[str, str]:
 
 def to_json_value(value, digits: int):
     """Python value from DuckDB -> JSON-safe value; doubles rounded to `digits` significant
-    digits, NaN and infinities as null."""
+    digits (17 keeps every double exactly), NaN and infinities as null."""
     if value is None or isinstance(value, bool | int | str):
         return value
     if isinstance(value, Decimal):
@@ -205,13 +236,32 @@ def metadata(
     }
 
 
-def _swap_in(staging: Path, out_dir: Path) -> None:
+# Renaming a folder on the Windows bind mount can fail for a moment with EACCES while something on
+# the host still holds a handle inside it (seen once on 2026-10-27, right after a validation read
+# all 3,239 files; the same rename had worked minutes before).
+RENAME_ATTEMPTS = 5
+RENAME_WAIT_S = 2.0
+
+
+def _replace(src: Path, dst: Path) -> None:
+    for attempt in range(1, RENAME_ATTEMPTS + 1):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if attempt == RENAME_ATTEMPTS:
+                raise
+            log.warning("rename %s -> %s denied, retry %d", src, dst, attempt)
+            time.sleep(RENAME_WAIT_S * attempt)
+
+
+def swap_in(staging: Path, out_dir: Path) -> None:
     old = out_dir.with_name(out_dir.name + ".old")
     if old.exists():
         shutil.rmtree(old)
     if out_dir.exists():
-        os.replace(out_dir, old)
-    os.replace(staging, out_dir)
+        _replace(out_dir, old)
+    _replace(staging, out_dir)
     if old.exists():
         shutil.rmtree(old)
 
@@ -244,13 +294,20 @@ def _write_all(
             (staging / "json" / "signals").mkdir(parents=True)
             ingredients = _rows(con, sql["ingredients"], digits)
             written.write_json(staging / "json" / "ingredients.json", ingredients)
+            written.write_json(
+                staging / "json" / "search.json",
+                {
+                    "columns": list(SEARCH_COLUMNS),
+                    "rows": [[ing[c] for c in SEARCH_COLUMNS] for ing in ingredients],
+                },
+            )
             by_key: dict[str, list[dict]] = {}
             for row in _rows(con, sql["signals_top"], digits):
                 pair = {k: v for k, v in row.items() if k not in _INGREDIENT_COLUMNS}
                 by_key.setdefault(row["ingredient_key"], []).append(pair)
             for ing in ingredients:
                 written.write_json(
-                    staging / "json" / "signals" / f"{ing['ingredient_key']}.json",
+                    staging / "json" / "signals" / f"{ing['slug']}.json",
                     {"ingredient": ing, "pairs": by_key.get(ing["ingredient_key"], [])},
                 )
             for name in ("dq_metrics", "known_signals"):
@@ -299,7 +356,7 @@ def export_site(
         files = written.manifest()
         manifest_bytes = json_bytes({"files": files})
         (staging / "manifest.json").write_bytes(manifest_bytes)
-        _swap_in(staging, out_dir)
+        swap_in(staging, out_dir)
     except BaseException:
         shutil.rmtree(staging, ignore_errors=True)  # the previous export stays as it was
         raise

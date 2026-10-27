@@ -19,7 +19,7 @@ DAY = date(2026, 10, 26)
 CFG = {
     "formats": ["parquet", "json"],
     "parquet_compression": "zstd",
-    "json_float_digits": 6,
+    "json_float_digits": 17,
     "include_generic_fallback": False,
 }
 RXNORM_CFG = {"attribution_text": "This product uses publicly available data\n  from the NLM."}
@@ -60,12 +60,12 @@ def test_export_layout_and_content(tmp_path):
     for table in ("ingredients", "signals_top", "dq_metrics", "known_signals"):
         assert (out / "parquet" / f"{table}.parquet").is_file()
     for ing in ingredients:
-        doc = _load(out / "json" / "signals" / f"{ing['ingredient_key']}.json")
+        doc = _load(out / "json" / "signals" / f"{ing['slug']}.json")
         assert doc["ingredient"] == ing
         assert len(doc["pairs"]) == ing["n_pairs"] == 3
         assert "ingredient_id" not in doc["pairs"][0]
     ator = next(i for i in ingredients if i["ingredient_name"] == "atorvastatin")
-    pairs = _load(out / "json" / "signals" / f"{ator['ingredient_key']}.json")["pairs"]
+    pairs = _load(out / "json" / "signals" / f"{ator['slug']}.json")["pairs"]
     assert [p["rank_ror_lcl"] for p in pairs] == [1, 2, 3]
     assert pairs[0]["reaction_pt"] == "Vaginal flatulence" and pairs[0]["a"] == 103
     assert isinstance(pairs[0]["trend"], list) and pairs[0]["trend"][0]["period_key"] == "2024Q3"
@@ -167,3 +167,101 @@ def test_to_json_value(value, expected):
 def test_to_json_value_rejects_unknown_type():
     with pytest.raises(TypeError):
         export.to_json_value(object(), 6)
+
+
+def test_slugs_and_search_index(tmp_path):
+    out, _ = _run(tmp_path, _warehouse(tmp_path))
+    ingredients = _load(out / "json" / "ingredients.json")
+    assert [i["slug"] for i in ingredients] == ["clozapine", "atorvastatin", "fatty-acids"]
+    search = _load(out / "json" / "search.json")
+    assert search["columns"] == list(export.SEARCH_COLUMNS)
+    assert search["rows"][1] == ["atorvastatin", "atorvastatin", ator_cases(ingredients), 3, False]
+    assert sorted(p.stem for p in (out / "json" / "signals").glob("*.json")) == sorted(
+        i["slug"] for i in ingredients
+    )
+
+
+def ator_cases(ingredients: list[dict]) -> int:
+    return next(i["n_cases_ps_ss"] for i in ingredients if i["slug"] == "atorvastatin")
+
+
+def test_slug_collision_keeps_rxnorm_name_plain(tmp_path):
+    wh = _warehouse(tmp_path)
+    con = duckdb.connect(str(wh))
+    # A fallback whose text slugifies like the RxNorm ingredient (real names, changed text only).
+    con.execute(
+        "update core.dim_ingredient set ingredient_name = 'ATORVASTATIN.' "
+        "where ingredient_id = 'FB:FATTY ACIDS'"
+    )
+    con.execute(
+        "update signals.mart_signals_top set ingredient_name = 'ATORVASTATIN.' "
+        "where ingredient_id = 'FB:FATTY ACIDS'"
+    )
+    con.close()
+    out, _ = _run(tmp_path, wh)
+    slugs = {i["ingredient_id"]: i["slug"] for i in _load(out / "json" / "ingredients.json")}
+    assert slugs["83367"] == "atorvastatin"
+    assert slugs["FB:FATTY ACIDS"] == "atorvastatin-fb-fatty-acids"
+
+
+def test_pairs_carry_the_2x2_cells_at_full_precision(tmp_path):
+    wh = _warehouse(tmp_path)
+    out, _ = _run(tmp_path, wh)
+    con = duckdb.connect(str(wh), read_only=True)
+    rows = con.execute("""
+        select ingredient_id, reaction_key, a, b, c, d, n_total, prr, ror_lcl, chi2
+        from signals.mart_signals where period_key = 'ALL'""").fetchall()
+    con.close()
+    expected = {(r[0], r[1]): r[2:] for r in rows}
+    n = 0
+    for ing in _load(out / "json" / "ingredients.json"):
+        for p in _load(out / "json" / "signals" / f"{ing['slug']}.json")["pairs"]:
+            got = (p["a"], p["b"], p["c"], p["d"], p["n_total"], p["prr"], p["ror_lcl"], p["chi2"])
+            assert got == expected[(ing["ingredient_id"], p["reaction_key"])]
+            assert p["a"] + p["b"] + p["c"] + p["d"] == p["n_total"]
+            n += 1
+    assert n == 9
+
+
+def test_counts_stored_as_doubles_are_not_rounded(tmp_path):
+    out, _ = _run(tmp_path, _warehouse(tmp_path))
+    dq = _load(out / "json" / "dq_metrics.json")
+    row = next(r for r in dq if r["metric"] == "cases_after_deduplication")
+    assert row["value"] == 2858073  # 6 significant digits gave 2858070
+
+
+def test_seventeen_digits_round_trip():
+    for v in (40.56316781234567, 1 / 3, 2858073.0, 1e-300, 123456789.123456789):
+        assert export.to_json_value(v, 17) == v
+
+
+def test_swap_retries_a_denied_rename(tmp_path, monkeypatch):
+    staging, out = tmp_path / "new", tmp_path / "site_export"
+    staging.mkdir()
+    out.mkdir()
+    (staging / "f").write_text("new", encoding="utf-8")
+    real, calls = export.os.replace, []
+
+    def flaky(src, dst):
+        calls.append(src)
+        if len(calls) == 1:
+            raise PermissionError(13, "Permission denied")
+        return real(src, dst)
+
+    monkeypatch.setattr(export.os, "replace", flaky)
+    monkeypatch.setattr(export, "RENAME_WAIT_S", 0)
+    export.swap_in(staging, out)
+    assert (out / "f").read_text(encoding="utf-8") == "new" and len(calls) == 3
+
+
+def test_swap_gives_up_after_the_attempts(tmp_path, monkeypatch):
+    staging = tmp_path / "new"
+    staging.mkdir()
+
+    def denied(src, dst):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(export.os, "replace", denied)
+    monkeypatch.setattr(export, "RENAME_WAIT_S", 0)
+    with pytest.raises(PermissionError):
+        export.swap_in(staging, tmp_path / "site_export")

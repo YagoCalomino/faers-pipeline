@@ -1,16 +1,152 @@
-# Site export (Phase 8a): faers_pipeline.export copies the site's data out of the warehouse
-# (make export; make export-ci for the fixture). The site reads only these files, never the
-# warehouse.
+# Static site (Phase 8). faers_pipeline.export copies the site's data out of the warehouse
+# (make export; DAG publish_site), faers_pipeline.site_check validates it, and site/ builds the
+# pages from it (make publish-site). The site reads only these files, never the warehouse.
 export:
   # Replaced as a whole on every run (built in a sibling folder, then swapped in).
   out_dir: "/opt/airflow/data/site_export"
-  # parquet: one file per table, for SQL in the browser (DuckDB-WASM, Evidence, Observable).
-  # json: one file per ingredient with its pairs, plus small lookup files, for plain fetch().
+  # publish_site writes here first and swaps into out_dir only after validation passes, so a
+  # failed validation keeps the previous export.
+  candidate_dir: "/opt/airflow/data/site_export.candidate"
+  # Written beside out_dir only when publish_site validated the export: it records the sha256
+  # of manifest.json, and make publish-site refuses an export whose manifest differs.
+  ready_marker: "/opt/airflow/data/site_export.ready.json"
+  # parquet: one file per table, published as open-data downloads.
+  # json: one file per ingredient with its pairs, plus small lookup files, read by the pages.
   formats: [parquet, json]
   parquet_compression: zstd
-  # Doubles in JSON are written with this many significant digits (Parquet keeps full doubles).
-  json_float_digits: 6
+  # Significant digits of doubles in JSON. 17 keeps every double exactly (round trip), so the
+  # pages show the same numbers as the warehouse; fewer digits also round counts stored as
+  # doubles (mart_dq_metrics.value).
+  json_float_digits: 17
   # Generic fallback ingredients (HERBALS, VITAMINS, DEVICE, ...; config/rxnorm.yaml
   # generic_terms) stay out of the site by default. mart_signals_top already leaves them out,
   # so true only matters if that model changes.
   include_generic_fallback: false
+
+# Checks of the export (publish_site validate_export) and of the built site (make publish-site).
+# GitHub Pages limits read 2026-10-26 on docs.github.com: published site at most 1 GB; git
+# blocks files over 100 MiB. The limits below are the project's own, well under those.
+limits:
+  export_max_total_bytes: 200000000
+  export_max_file_bytes: 20000000
+  export_max_files: 10000
+  dist_max_total_bytes: 300000000
+  dist_max_file_bytes: 25000000
+  dist_max_files: 10000
+
+site:
+  title: "FAERS disproportionality explorer"
+  # GitHub Pages project site: https://<user>.github.io/<repo>/. Links inside the site are
+  # relative, so the base path is used only to print the public URL and to check the build.
+  github_user: "YagoCalomino"
+  repo: "faers-pipeline"
+  base_path: "/faers-pipeline/"
+  public_url: "https://yagocalomino.github.io/faers-pipeline/"
+  repo_url: "https://github.com/YagoCalomino/faers-pipeline"
+  # Branch written by make publish-site (orphan, one commit). Pushing it is a manual step.
+  pages_branch: "gh-pages"
+  # Source of the data, shown in the footer; the link is config/faers.yaml source.landing_page.
+  fda_source_name: "FDA Adverse Event Reporting System (FAERS/AEMS)"
+  # External pages the site may link to (hyperlinks only; no external resource is loaded).
+  allowed_link_prefixes:
+    - "https://github.com/YagoCalomino/faers-pipeline"
+    - "https://www.fda.gov/"
+  # Pairs shown per ingredient page before "show all". An ingredient has at most 30 pairs (top 20
+  # by ROR lower bound and top 10 by cases, config/signals.yaml top), so 30 shows them all; the
+  # button appears only if that union grows.
+  pairs_page_size: 30
+
+# Concentration alert on a pair (ALL period, over the pair's a cases; mart_signals_top). A
+# reporting artefact is suspected when either rule holds. top_country and its share are shown
+# in the pair detail but are not an alert: most FAERS reports come from the US.
+concentration_alert:
+  min_top_quarter_share: 0.8
+  min_median_reactions_per_case: 20
+
+# Descriptions of the open-data downloads (parquet/<table>.parquet). Every exported column must
+# have a description here (checked by validate_export).
+downloads:
+  ingredients:
+    description: "One row per ingredient shown on the site (generic fallbacks left out)."
+    columns:
+      ingredient_key: "Surrogate key of the ingredient (dim_ingredient)."
+      ingredient_id: "RxNorm ingredient RxCUI, or FB:<text> for a name without an RxNorm match."
+      ingredient_name: "Ingredient name (RxNorm), or the cleaned FAERS text for a fallback."
+      slug: "URL-safe name used in the site's links (#/ingredient/<slug>)."
+      match_type: "Best RxNorm match observed for the ingredient: exact, normalized or fallback."
+      is_fallback: "True when the ingredient has no RxNorm match."
+      is_generic_fallback: "True for a class of products (HERBALS, VITAMINS, ...)."
+      n_cases_ps_ss: "Distinct cases with the ingredient as primary or secondary suspect."
+      n_pairs: "Number of pairs of the ingredient in signals_top."
+  signals_top:
+    description: >-
+      Top reactions per ingredient in the period ALL (every loaded case): the top 20 computable
+      pairs by ROR lower bound and the top 10 pairs meeting the Evans criterion by cases.
+      Counts are distinct reports (cases), never drug or reaction lines.
+    columns:
+      ingredient_key: "Surrogate key of the ingredient."
+      ingredient_id: "RxNorm ingredient RxCUI, or FB:<text> for a fallback."
+      ingredient_name: "Ingredient name."
+      reaction_key: "Surrogate key of the MedDRA preferred term."
+      reaction_pt: "MedDRA preferred term as reported."
+      rank_ror_lcl: "Rank of the pair by ROR lower bound within the ingredient (computable pairs)."
+      rank_a_evans: "Rank by cases among the ingredient's pairs meeting the Evans criterion."
+      in_top_ror_lcl: "True when the pair is in the top list by ROR lower bound."
+      in_top_a_evans: "True when the pair is in the top list by cases (Evans pairs)."
+      a: "Reports with the ingredient (PS/SS) and the reaction."
+      b: "Reports with the ingredient and without the reaction."
+      c: "Reports without the ingredient and with the reaction."
+      d: "Reports with neither."
+      n_total: "All reports of the period (a + b + c + d)."
+      n_drug: "Reports with the ingredient (a + b)."
+      n_reac: "Reports with the reaction (a + c)."
+      prr: "Proportional reporting ratio, [a/(a+b)] / [c/(c+d)]."
+      prr_lcl: "Lower bound of the PRR 95% confidence interval."
+      prr_ucl: "Upper bound of the PRR 95% confidence interval."
+      ror: "Reporting odds ratio, ad/(bc); null when b, c or d is 0."
+      ror_lcl: "Lower bound of the ROR 95% confidence interval."
+      ror_ucl: "Upper bound of the ROR 95% confidence interval."
+      chi2: "Pearson chi-squared, 1 degree of freedom, no continuity correction."
+      is_signal_evans: "a >= 3, PRR >= 2 and chi2 >= 4 (Evans et al. 2001)."
+      is_signal_ror: "a >= 3 and ROR lower bound > 1."
+      match_type: "Best RxNorm match of the ingredient."
+      is_fallback: "True when the ingredient has no RxNorm match."
+      top_country: "Most frequent reporter country among the pair's reports (blank and placeholder values left out)."
+      top_country_share: "Share of the pair's reports from top_country."
+      top_quarter: "Most frequent init quarter (first receipt by FDA) among the pair's reports."
+      top_quarter_share: "Share of the pair's reports in top_quarter."
+      median_reactions_per_case: "Median number of distinct reactions per report of the pair."
+      n_pair_cases: "Reports of the pair counted for the concentration columns (equals a)."
+      trend: "Per window quarter: period_key, a and prr, for quarters where a >= 3."
+  dq_metrics:
+    description: "Data-quality metrics of the pipeline (raw rows, deduplication, missing values, RxNorm coverage, drug role mix)."
+    columns:
+      period_basis: "all, file_quarter (quarter of the FAERS file) or init_quarter (first receipt by FDA)."
+      period_key: "Quarter (YYYYQn) or ALL."
+      metric_group: "raw_rows, deduplication, missing_values, rxnorm_coverage or role_mix."
+      metric: "Metric name."
+      value: "Metric value."
+      unit: "rows, cases, lines or pct."
+  known_signals:
+    description: >-
+      Pairs with an established association (positive) and negative controls, chosen by the
+      project owner, compared with the period ALL. A sanity check of the pipeline, not a
+      validation of the method.
+    columns:
+      expected: "positive or negative."
+      ingredient_name: "Ingredient as listed in the reference set."
+      reaction_pt: "MedDRA preferred term as listed in the reference set."
+      ingredient_id: "Matched RxNorm ingredient, null when the name does not match."
+      a: "Reports with the ingredient and the reaction (ALL)."
+      n_drug: "Reports with the ingredient."
+      n_reac: "Reports with the reaction."
+      prr: "Proportional reporting ratio."
+      ror_lcl: "Lower bound of the ROR 95% confidence interval."
+      chi2: "Pearson chi-squared."
+      is_signal_evans: "Meets the Evans criterion."
+      is_signal_ror: "Meets the ROR criterion."
+      a_fallback_same_name: "Reports of a fallback ingredient with the same name (split counts)."
+      passed: "Positive: a >= 3, PRR >= 2 and ROR lower bound > 1. Negative: not an Evans pair."
+      failure_reason: "Why the pair did not pass."
+      reference: "Source of the expected association (label or publication); empty until confirmed."
+      reference_status: "pending_user_confirmation until the reference is filled in."

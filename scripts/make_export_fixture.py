@@ -6,8 +6,9 @@ the generic fallback FB:HERBALS), their first pairs of mart_signals_top (for FB:
 mart_signals_top leaves out, its most frequent real pair of mart_signals in ALL; only its ranks
 and list flags are set here, to 1 and true, so the generic filter has a row to act on), the
 mart_signals rows of
-atorvastatin-Rhabdomyolysis (every period), 40 cases of fct_case, the missing-value metrics of
-mart_dq_metrics, all of mart_known_signals_eval and the RxNorm version of the name map.
+those pairs in ALL (the 2x2 cells b, c, d, n_total of the export) and of
+atorvastatin-Rhabdomyolysis in every period, 40 cases of fct_case, all of mart_dq_metrics, all
+of mart_known_signals_eval and the RxNorm version of the name map.
 
 Usage (inside the container, read-only on the warehouse):
     python -I scripts/make_export_fixture.py [--warehouse PATH]
@@ -27,11 +28,7 @@ OUT = REPO / "tests" / "fixtures" / "site_export"
 INGREDIENTS = ("83367", "2626", "FB:FATTY ACIDS", "FB:HERBALS")
 PAIRS_PER_INGREDIENT = 3
 
-TABLES = {
-    "core.dim_ingredient": f"""
-        select * from core.dim_ingredient where ingredient_id in {INGREDIENTS}
-        order by ingredient_id""",
-    "signals.mart_signals_top": f"""
+TOP_SQL = f"""
         select * from signals.mart_signals_top where ingredient_id in {INGREDIENTS}
         qualify row_number() over (partition by ingredient_id
                                    order by rank_ror_lcl nulls last, reaction_key)
@@ -44,19 +41,28 @@ TABLES = {
                s.match_type, s.is_fallback
         from signals.mart_signals as s
         where s.ingredient_id = 'FB:HERBALS' and s.period_key = 'ALL'
-        qualify row_number() over (order by s.a desc, s.reaction_key) = 1
-        order by ingredient_id, rank_ror_lcl, reaction_key""",
-    "signals.mart_signals": """
-        select * from signals.mart_signals
-        where ingredient_id = '83367' and reaction_pt = 'Rhabdomyolysis'
-        order by period_key""",
+        qualify row_number() over (order by s.a desc, s.reaction_key) = 1"""
+
+TABLES = {
+    "core.dim_ingredient": f"""
+        select * from core.dim_ingredient where ingredient_id in {INGREDIENTS}
+        order by ingredient_id""",
+    "signals.mart_signals_top": f"""
+        select * from ({TOP_SQL}) order by ingredient_id, rank_ror_lcl, reaction_key""",
+    "signals.mart_signals": f"""
+        select s.* from signals.mart_signals as s
+        where (s.period_key = 'ALL' and exists (
+                   select 1 from ({TOP_SQL}) as t
+                   where t.ingredient_id = s.ingredient_id and t.reaction_key = s.reaction_key))
+           or (s.ingredient_id = '83367' and s.reaction_pt = 'Rhabdomyolysis')
+        order by s.period_key, s.ingredient_id, s.reaction_key""",
     "core.fct_case": """
         select * from core.fct_case
         qualify row_number() over (partition by is_in_window order by case_id desc) <= 20
         order by case_id""",
     "signals.mart_dq_metrics": """
-        select * from signals.mart_dq_metrics where metric_group = 'missing_values'
-        order by period_basis, period_key, metric""",
+        select * from signals.mart_dq_metrics
+        order by period_basis, period_key, metric_group, metric""",
     "signals.mart_known_signals_eval": """
         select * from signals.mart_known_signals_eval order by expected, ingredient_name,
         reaction_pt""",
