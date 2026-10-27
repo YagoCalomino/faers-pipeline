@@ -1,0 +1,16 @@
+# Site export (Phase 8a): faers_pipeline.export copies the site's data out of the warehouse
+# (make export; make export-ci for the fixture). The site reads only these files, never the
+# warehouse.
+export:
+  # Replaced as a whole on every run (built in a sibling folder, then swapped in).
+  out_dir: "/opt/airflow/data/site_export"
+  # parquet: one file per table, for SQL in the browser (DuckDB-WASM, Evidence, Observable).
+  # json: one file per ingredient with its pairs, plus small lookup files, for plain fetch().
+  formats: [parquet, json]
+  parquet_compression: zstd
+  # Doubles in JSON are written with this many significant digits (Parquet keeps full doubles).
+  json_float_digits: 6
+  # Generic fallback ingredients (HERBALS, VITAMINS, DEVICE, ...; config/rxnorm.yaml
+  # generic_terms) stay out of the site by default. mart_signals_top already leaves them out,
+  # so true only matters if that model changes.
+  include_generic_fallback: false

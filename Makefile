@@ -5,11 +5,13 @@ DEV     := $(COMPOSE) run --rm --no-deps airflow-dev
 
 .PHONY: help env build up down logs ps lint format test fernet import-errors \
 	dbt-deps dbt-build dbt-rebuild dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci reconcile \
+	export export-ci \
 	cleanup-extracted
 
 help:
 	@echo "Targets: env build up down logs ps lint format test fernet import-errors"
 	@echo "dbt:     dbt-deps dbt-build dbt-rebuild dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci reconcile"
+	@echo "site:    export export-ci"
 	@echo "disk:    cleanup-extracted (dry run; EXECUTE=1 deletes)"
 
 # Create .env from the template the first time.
@@ -94,3 +96,16 @@ dbt-ci: .env
 # Extracted .txt files of ingested quarters (zips, lake, manifests untouched). Dry run by default.
 cleanup-extracted: .env
 	$(DEV) python -I scripts/cleanup_extracted.py $(if $(EXECUTE),--execute,)
+
+# --- site export (config/site.yaml) ---------------------------------------------------------
+# Warehouse -> data/site_export/ (read-only on the warehouse; the folder is replaced as a whole).
+export: .env
+	$(DEV) python -I scripts/export_site.py
+
+# Same export from the ci database built on the fixture lake (throwaway folder, nothing in data/).
+export-ci: .env
+	$(DEV) bash -c "python -I scripts/build_test_lake.py --out $(CI_DIR)/lake \
+		&& export LAKE_PATH=$(CI_DIR)/lake DBT_CI_DIR=$(CI_DIR) \
+		&& python -I scripts/dbt_run.py --ci deps \
+		&& python -I scripts/dbt_run.py --ci build \
+		&& python -I scripts/export_site.py --warehouse $(CI_DIR)/faers_ci.duckdb --out $(CI_DIR)/site_export"

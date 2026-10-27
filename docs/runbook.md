@@ -128,6 +128,27 @@ successful run, pause `faers_transform`, stop the `dbt build` process (the atomi
 the previous warehouse), and delete the leftover `duckdb_temp_storage_*.tmp` files in
 `dbt.temp_directory` once no dbt or DuckDB process is running.
 
+## Site export
+
+The site reads files exported from the warehouse, never the warehouse itself
+(`src/faers_pipeline/export.py`, settings in `config/site.yaml`).
+
+```bash
+make export      # warehouse -> data/site_export/ (read-only on the warehouse)
+make export-ci   # same export from the ci database built on the fixture lake (throwaway folder)
+```
+
+- Contents: `meta.json` (data window, provisional quarter, RxNorm version, counts, RxNav
+  attribution, export date), `manifest.json` (size and sha256 of every other file),
+  `parquet/` (ingredients, signals_top, dq_metrics, known_signals) and `json/` (ingredient list,
+  one file per ingredient with its pairs, data-quality metrics, known pairs).
+- The folder is replaced as a whole: the export is built in `data/site_export.building/` and
+  swapped in only when complete; a failed export removes that folder and keeps the previous one.
+- Two runs on the same warehouse give identical files (same sha256 in `manifest.json`), except
+  `meta.json`, whose export date is the UTC day.
+- Generic fallback ingredients stay out unless `export.include_generic_fallback` is true.
+- Run it after a successful build, not while dbt is writing the warehouse.
+
 ## Failures
 
 Every task of the three DAGs has a failure callback that, when the task fails for good (after

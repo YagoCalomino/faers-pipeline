@@ -45,6 +45,8 @@ make dbt-build      # dbt build on the real lake (settings from config/*.yaml vi
 make dbt-rebuild    # atomic full build (swapped in only if every model and test passes)
 make cleanup-extracted  # dry run; EXECUTE=1 deletes extracted .txt of ingested quarters
 make dbt-ci         # builds a test lake from tests/fixtures and runs dbt build --target ci
+make export         # site export: warehouse -> data/site_export/ (config/site.yaml)
+make export-ci      # site export from the ci database built on the fixture lake
 make down
 ```
 
