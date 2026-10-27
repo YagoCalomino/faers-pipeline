@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Disproportionality (PRR, ROR) of drug and reaction pairs in FDA adverse event reports (FAERS). Reports do not show causation or incidence." />
+    <title><!--TITLE--></title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap">
+        <p class="brand"><a href="#/"><!--TITLE--></a></p>
+        <nav aria-label="Main">
+          <ul>
+            <li><a href="#/">Search</a></li>
+            <li><a href="#/quality">Quality</a></li>
+            <li><a href="#/validation">Validation</a></li>
+            <li><a href="#/method">Method &amp; limitations</a></li>
+            <li><a href="#/downloads">Downloads</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="banner wrap" id="data-banner"><!--BANNER--></div>
+    </header>
+    <div class="wrap">
+      <p class="notice" role="note">
+        <strong>Read before use.</strong> These numbers measure disproportionality in
+        spontaneous reports: whether a reaction is reported more often with a drug than with
+        other drugs. They do not show that the drug causes the reaction, do not estimate how
+        often it happens, and are not medical advice.
+        <a href="#/method">Method &amp; limitations</a>
+      </p>
+    </div>
+    <main id="main" class="wrap" tabindex="-1">
+      <noscript>
+        <p>This explorer needs JavaScript to load its data. The same data is published with the
+        site as files that any Parquet or JSON reader opens: <code>data/parquet/</code> (one
+        table per file) and <code>data/json/</code> (one file per ingredient).</p>
+      </noscript>
+    </main>
+    <p class="sr-only" aria-live="polite" id="status"></p>
+    <footer class="site-footer">
+      <div class="wrap">
+<!--FOOTER-->
+      </div>
+    </footer>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

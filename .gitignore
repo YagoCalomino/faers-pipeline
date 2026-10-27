@@ -31,3 +31,10 @@ Thumbs.db
 
 # dbt anonymous usage id (written by dbt on first run)
 .user.yml
+
+# Site build and local tooling (site/)
+site/dist/
+site/dist-*/
+site/.npm-cache/
+site/.pw-browsers/
+site/test-output/

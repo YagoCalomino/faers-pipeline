@@ -5,13 +5,13 @@ DEV     := $(COMPOSE) run --rm --no-deps airflow-dev
 
 .PHONY: help env build up down logs ps lint format test fernet import-errors \
 	dbt-deps dbt-build dbt-rebuild dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci reconcile \
-	export export-ci \
+	export export-ci publish-site site-ci site-dev \
 	cleanup-extracted
 
 help:
 	@echo "Targets: env build up down logs ps lint format test fernet import-errors"
 	@echo "dbt:     dbt-deps dbt-build dbt-rebuild dbt-test dbt-docs dbt-parse-v2 test-lake dbt-ci reconcile"
-	@echo "site:    export export-ci"
+	@echo "site:    export export-ci publish-site site-ci site-dev"
 	@echo "disk:    cleanup-extracted (dry run; EXECUTE=1 deletes)"
 
 # Create .env from the template the first time.
@@ -109,3 +109,35 @@ export-ci: .env
 		&& python -I scripts/dbt_run.py --ci deps \
 		&& python -I scripts/dbt_run.py --ci build \
 		&& python -I scripts/export_site.py --warehouse $(CI_DIR)/faers_ci.duckdb --out $(CI_DIR)/site_export"
+
+# --- static site (site/, Node on the host; Airflow has no Node) -------------------------------
+# Dependencies, npm cache and Playwright's Chromium stay inside site/ (gitignored). npm ci uses
+# the cache, so after the first install the build needs no network.
+NPM_CI   := npm ci --prefer-offline --no-audit --no-fund
+
+# Validated export (same steps as the DAG publish_site), site build, checks of dist/, browser
+# tests, then the single commit of the local orphan branch gh-pages. Prints the push commands;
+# never pushes.
+publish-site: export npm_config_cache := $(CURDIR)/site/.npm-cache
+publish-site: export PLAYWRIGHT_BROWSERS_PATH := $(CURDIR)/site/.pw-browsers
+publish-site: export SITE_EXPORT := ../data/site_export
+publish-site: export SITE_OUT := dist
+publish-site: .env
+	$(DEV) python -I scripts/publish_export.py
+	cd site && $(NPM_CI) && npm run build && npm run check-dist \
+		&& npm run test:unit && npm run test:e2e \
+		&& node scripts/gh-pages.mjs --dist dist --marker ../data/site_export.ready.json
+
+# The whole site on the fixture subset: no lake, no warehouse, no dbt, no network.
+site-ci: export npm_config_cache := $(CURDIR)/site/.npm-cache
+site-ci: export PLAYWRIGHT_BROWSERS_PATH := $(CURDIR)/site/.pw-browsers
+site-ci: export SITE_EXPORT := ../data/tmp/site_ci/export
+site-ci: export SITE_OUT := dist-ci
+site-ci: .env
+	$(DEV) bash -c "python -I scripts/build_site_fixture.py --out /opt/airflow/data/tmp/site_ci"
+	cd site && $(NPM_CI) && npm run build && npm run check-dist \
+		&& npm run test:unit && npm run test:e2e
+
+# Local preview with live reload on the current export (data/site_export/).
+site-dev:
+	cd site && npm run dev
