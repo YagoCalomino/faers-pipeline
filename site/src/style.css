@@ -441,10 +441,6 @@ svg.trend text.value {
 .prose {
   max-width: 48rem;
 }
-.prose table {
-  display: block;
-  overflow-x: auto;
-}
 .prose li {
   margin-bottom: 0.3rem;
 }

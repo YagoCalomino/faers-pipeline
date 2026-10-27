@@ -13,6 +13,7 @@ import { dirname, join, resolve, normalize, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { marked } from 'marked';
 import YAML from 'yaml';
+import { wrapTables } from './src/lib/markdown.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..');
@@ -104,7 +105,9 @@ function siteData() {
         return `export const meta = ${JSON.stringify(inputs.meta)};\nexport const config = ${JSON.stringify(inputs.config)};`;
       }
       if (id === '\0limitations') {
-        const html = marked.parse(readFileSync(join(REPO, 'docs/limitations.md'), 'utf8'), { gfm: true });
+        // Tables go in focusable scroll regions (src/lib/markdown.js): a wide table must not be a
+        // scroll container the keyboard cannot reach (axe scrollable-region-focusable).
+        const html = wrapTables(marked.parse(readFileSync(join(REPO, 'docs/limitations.md'), 'utf8'), { gfm: true }));
         return `export const html = ${JSON.stringify(html)};`;
       }
       return null;

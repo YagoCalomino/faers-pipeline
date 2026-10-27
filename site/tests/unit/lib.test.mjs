@@ -12,6 +12,7 @@ import {
   sortPairs,
   trendSeries,
 } from '../../src/lib/logic.js';
+import { wrapTables } from '../../src/lib/markdown.js';
 
 const RULE = { min_top_quarter_share: 0.8, min_cases_for_quarter_rule: 10, min_median_reactions_per_case: 40 };
 
@@ -111,4 +112,22 @@ test('groupMetrics nests by basis, group, period', () => {
   ]);
   assert.equal(g.all.raw_rows.ALL.demo.value, 1);
   assert.equal(g.file_quarter.raw_rows['2026Q2'].demo.value, 2);
+});
+
+test('wrapTables: every table in a focusable region named after the heading before it', () => {
+  const html = [
+    '<table><tr><td>1</td></tr></table>',
+    '<h3 id="y">Continuity correction (<code>Yates</code>) &amp; "bands"</h3>',
+    '<table>\n<thead><tr><th>a</th></tr></thead></table>',
+    '<p>x</p><table><tr><td>2</td></tr></table>',
+  ].join('');
+  const out = wrapTables(html);
+  const regions = [...out.matchAll(/<div class="table-scroll" role="region" aria-label="([^"]*)" tabindex="0"><table[\s>]/g)];
+  assert.deepEqual(regions.map((m) => m[1]), [
+    'Table 1',
+    'Continuity correction (Yates) &amp; &quot;bands&quot;',
+    'Continuity correction (Yates) &amp; &quot;bands&quot;, table 2',
+  ]);
+  assert.equal((out.match(/<\/table><\/div>/g) || []).length, 3);
+  assert.equal(wrapTables('<p>no table</p>'), '<p>no table</p>');
 });

@@ -169,6 +169,58 @@ test('axe: no WCAG A/AA violations, light and dark', async () => {
   assert.deepEqual(all, []);
 });
 
+// Elements that scroll horizontally must be reachable by keyboard (axe scrollable-region-focusable).
+// A narrow viewport makes the wide tables overflow on any platform, so the check does not depend
+// on the fonts of the machine.
+const VIEWPORTS = { narrow: { width: 360, height: 800 }, wide: { width: 1440, height: 900 } };
+// Every element that scrolls horizontally, with whether it can take keyboard focus.
+function horizontalScrollers(page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('body *')]
+      .filter((e) => {
+        const ox = getComputedStyle(e).overflowX;
+        return (ox === 'auto' || ox === 'scroll') && e.scrollWidth > e.clientWidth;
+      })
+      .map((e) => ({ tag: e.tagName.toLowerCase(), cls: e.className, focusable: e.tabIndex >= 0 }))
+  );
+}
+
+test('method page: axe and focusable scroll regions at narrow and wide viewports', async () => {
+  const all = [];
+  let scrolledNarrow = 0;
+  for (const [vname, viewport] of Object.entries(VIEWPORTS)) {
+    for (const scheme of ['light', 'dark']) {
+      const { ctx, page } = await open(ROUTES.method, { viewport, colorScheme: scheme });
+      await page.locator('article.prose').waitFor();
+      const tables = await page.locator('article.prose table').count();
+      assert.ok(tables > 0, 'the method page has tables');
+      const wrapped = await page.locator('article.prose .table-scroll[role="region"][tabindex="0"][aria-label] > table').count();
+      if (wrapped !== tables) all.push(`${vname}:${scheme} ${tables - wrapped} of ${tables} tables outside a focusable region`);
+      const scrollers = await horizontalScrollers(page);
+      if (vname === 'narrow') scrolledNarrow = Math.max(scrolledNarrow, scrollers.length);
+      for (const s of scrollers.filter((x) => !x.focusable)) all.push(`${vname}:${scheme} not focusable: ${s.tag}.${s.cls}`);
+      const res = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
+      for (const v of res.violations) all.push(`${vname}:${scheme} ${v.id} (${v.impact}) x${v.nodes.length}: ${v.nodes[0]?.target}`);
+      await ctx.close();
+    }
+  }
+  assert.ok(scrolledNarrow > 0, 'at 360 px some table scrolls (the case under test happens)');
+  assert.deepEqual(all, []);
+});
+
+test('every page: elements that scroll horizontally are focusable, narrow and wide', async () => {
+  const bad = [];
+  for (const [vname, viewport] of Object.entries(VIEWPORTS)) {
+    for (const [name, route] of Object.entries(ROUTES)) {
+      const { ctx, page } = await open(route, { viewport });
+      await page.locator('details').evaluateAll((ds) => ds.forEach((d) => (d.open = true)));
+      for (const s of (await horizontalScrollers(page)).filter((x) => !x.focusable)) bad.push(`${vname}:${name} ${s.tag}.${s.cls}`);
+      await ctx.close();
+    }
+  }
+  assert.deepEqual(bad, []);
+});
+
 test('keyboard: the ingredient page is usable with Tab and Enter only', async () => {
   const { ctx, page } = await open(ROUTES.ingredient);
   await page.locator('body').focus();
