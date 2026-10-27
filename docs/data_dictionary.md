@@ -302,6 +302,8 @@ quarter had fewer).
 | `top_quarter`, `top_quarter_share` | varchar / double | Most frequent init quarter (`quarter_key`) of the pair's cases and its share of the `a` cases. |
 | `median_reactions_per_case` | double | Median number of distinct PTs in the pair's cases. |
 | `n_pair_cases` | bigint | Cases the concentration columns were computed from; equals `a` (tested). |
+| `ingredient_top_country`, `ingredient_top_country_share` | varchar / double | Most frequent reporter country over all the ingredient's cases (`n_drug`, blank and placeholder values left out; ties by code) and its share of `n_drug`. |
+| `ingredient_country_share` | double | Share of the ingredient's cases (`n_drug`) from the pair's `top_country`; 0 when `top_country` is null. Used by the site's country rule. |
 | `trend` | list of struct | (`period_key`, `a`, `prr`) per window quarter. |
 
 Other columns (`a`, `n_drug`, `n_reac`, PRR, ROR, χ², flags, `match_type`, `is_fallback`) as in

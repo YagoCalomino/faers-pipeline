@@ -14,6 +14,10 @@
 -- values such as COUNTRY NOT SPECIFIED left out) and init quarter (quarter_key), ties by the
 -- smaller value; their shares are over all a cases. median_reactions_per_case is the median
 -- number of distinct PTs of those cases.
+-- The same country, over all the ingredient's cases (its n_drug PS/SS cases), for comparison:
+-- ingredient_top_country and its share, and ingredient_country_share, the share of the
+-- ingredient's cases from the pair's top_country (0 when top_country is null). Shares are over
+-- n_drug, blank and placeholder countries included in the denominator as for the pair.
 {%- set top = var('signals')['top'] %}
 
 with all_period as (
@@ -94,16 +98,24 @@ pair_cases as (                     -- one row per (pair, case): the a cases of 
     where d.ing_n * (select kb from key_base) + r.reac_n in (select pair_key from pair_keys)
 ),
 
-case_attributes as (                -- once per case: country, init quarter, reactions
+case_country as (                   -- every case: init quarter and reporter country
     select
-        c.case_id,
+        f.case_id,
         f.quarter_key,
         case when nullif(trim(f.reporter_country), '') is not null
               and not {{ is_placeholder('reporter_country', 'f.reporter_country') }}
-             then f.reporter_country end                    as country,
+             then f.reporter_country end                    as country
+    from {{ ref('fct_case') }} as f
+),
+
+case_attributes as (                -- once per case of a top pair: country, quarter, reactions
+    select
+        c.case_id,
+        f.quarter_key,
+        f.country,
         n.n_reactions
     from (select distinct case_id from pair_cases) as c
-    inner join {{ ref('fct_case') }} as f using (case_id)
+    inner join case_country as f using (case_id)
     inner join (
         select case_id, count(*) as n_reactions
         from {{ ref('int_signals__reaction_cases') }}
@@ -157,6 +169,21 @@ concentration as (
     left join top_quarter as tq using (pair_key)
 ),
 
+ingredient_countries as (           -- cases of each ingredient per known country
+    select d.ingredient_id, cc.country, count(*) as n
+    from {{ ref('int_signals__drug_cases') }} as d
+    inner join ingredient_ids as i using (ingredient_id)
+    inner join case_country as cc using (case_id)
+    where cc.country is not null
+    group by d.ingredient_id, cc.country
+),
+
+ingredient_top_country as (
+    select ingredient_id, country as ingredient_top_country, n as ingredient_top_country_cases
+    from ingredient_countries
+    qualify row_number() over (partition by ingredient_id order by n desc, country) = 1
+),
+
 trend as (
     select
         ingredient_id,
@@ -198,8 +225,14 @@ select
     c.top_quarter_cases / s.a                               as top_quarter_share,
     c.median_reactions_per_case,
     c.n_pair_cases,
+    itc.ingredient_top_country,
+    coalesce(itc.ingredient_top_country_cases, 0) / s.n_drug  as ingredient_top_country_share,
+    coalesce(ic.n, 0) / s.n_drug                            as ingredient_country_share,
     t.trend
 from selected as s
 left join trend as t using (ingredient_id, reaction_key)
 left join concentration as c using (ingredient_id, reaction_key)
+left join ingredient_top_country as itc using (ingredient_id)
+left join ingredient_countries as ic
+    on ic.ingredient_id = s.ingredient_id and ic.country = c.top_country
 where s.in_top_ror_lcl or s.in_top_a_evans

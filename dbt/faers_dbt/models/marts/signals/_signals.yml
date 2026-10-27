@@ -95,6 +95,18 @@ models:
               and top_quarter_share > 0 and top_quarter_share <= 1
               and median_reactions_per_case >= 1
               and (top_country is null) = (top_country_share = 0)
+      # The ingredient's countries, over its n_drug cases: the pair's top country can hold no more of
+      # the ingredient than the ingredient's own top country, and every case of the pair is a case
+      # of the ingredient.
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: >
+              ingredient_top_country_share between 0 and 1
+              and ingredient_country_share between 0 and ingredient_top_country_share
+              and (ingredient_top_country is null) = (ingredient_top_country_share = 0)
+              and (top_country is null or ingredient_top_country is not null)
+              and ingredient_country_share * n_drug >= top_country_share * a - 1e-6
+              and (top_country is not null or ingredient_country_share = 0)
     columns:
       - name: ingredient_key
         data_tests:

@@ -1,13 +1,15 @@
--- Concentration columns of mart_signals_top recomputed for one pair from the line-level models
--- (int_faers__drug_resolved in the signal roles, fct_case_reaction, fct_case), without the
--- int_signals__* tables and with separate counting code. Not via bridge_drug_ingredient: drug
--- lines without prod_ai resolve through the drug name there are not in it.
+-- Concentration columns of mart_signals_top (pair and ingredient) recomputed for one pair from
+-- the line-level models (int_faers__drug_resolved in the signal roles, fct_case_reaction,
+-- fct_case), without the int_signals__* tables and with separate counting code. Not via
+-- bridge_drug_ingredient: drug lines without prod_ai resolve through the drug name there are not
+-- in it.
 -- The pair: the one with the most cases among those whose top country holds less than the whole
 -- pair (so the country tie-break and the share are exercised), ties by ids. Deterministic on any
 -- lake. Returns one row per mismatching column (empty = pass).
 with pair as (
     select ingredient_id, reaction_key, a, top_country, top_country_share, top_quarter,
-           top_quarter_share, median_reactions_per_case
+           top_quarter_share, median_reactions_per_case, ingredient_top_country,
+           ingredient_top_country_share, ingredient_country_share
     from {{ ref('mart_signals_top') }}
     order by (top_country_share < 1) desc, a desc, ingredient_id, reaction_key
     limit 1
@@ -19,6 +21,22 @@ drug_cases as (
     where role_code in ({{ signal_roles_sql() }})
       and ingredient_id = (select ingredient_id from pair)
 ),
+
+-- Every case of the ingredient with its country (the ingredient columns, over n_drug cases).
+ingredient_cases as (
+    select f.case_id,
+           case when nullif(trim(f.reporter_country), '') is not null
+                 and not {{ is_placeholder('reporter_country', 'f.reporter_country') }}
+                then f.reporter_country end             as country
+    from {{ ref('fct_case') }} as f
+    where f.case_id in (select case_id from drug_cases)
+),
+
+ingredient_countries as (
+    select country, count(*) as n from ingredient_cases where country is not null group by country
+),
+
+n_ingredient_cases as (select count(*) as n from ingredient_cases),
 
 reac_cases as (
     select distinct case_id
@@ -62,7 +80,14 @@ expected as (
         (select quarter_key from quarters order by n desc, quarter_key limit 1)
                                                                             as top_quarter,
         (select max(n) from quarters)::double / (select n from n_cases)     as top_quarter_share,
-        (select median(n) from reactions)                                   as median_reactions_per_case
+        (select median(n) from reactions)                                   as median_reactions_per_case,
+        (select country from ingredient_countries order by n desc, country limit 1)
+                                                                            as ingredient_top_country,
+        coalesce((select max(n) from ingredient_countries), 0)::double
+            / (select n from n_ingredient_cases)                            as ingredient_top_country_share,
+        coalesce((select n from ingredient_countries
+                  where country = (select country from countries order by n desc, country limit 1)), 0)::double
+            / (select n from n_ingredient_cases)                            as ingredient_country_share
 )
 
 select 'a' as col, p.a::varchar as mart, e.a::varchar as recomputed
@@ -84,5 +109,18 @@ select 'median_reactions_per_case', p.median_reactions_per_case::varchar,
        e.median_reactions_per_case::varchar
 from pair as p, expected as e
 where p.median_reactions_per_case is distinct from e.median_reactions_per_case
+union all
+select 'ingredient_top_country', p.ingredient_top_country, e.ingredient_top_country
+from pair as p, expected as e where p.ingredient_top_country is distinct from e.ingredient_top_country
+union all
+select 'ingredient_top_country_share', p.ingredient_top_country_share::varchar,
+       e.ingredient_top_country_share::varchar
+from pair as p, expected as e
+where abs(p.ingredient_top_country_share - e.ingredient_top_country_share) > 1e-9
+union all
+select 'ingredient_country_share', p.ingredient_country_share::varchar,
+       e.ingredient_country_share::varchar
+from pair as p, expected as e
+where abs(p.ingredient_country_share - e.ingredient_country_share) > 1e-9
 union all
 select 'no pair selected', null, null where not exists (select 1 from pair)
