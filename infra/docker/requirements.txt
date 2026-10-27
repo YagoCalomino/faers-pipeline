@@ -5,3 +5,6 @@ duckdb==1.5.6
 pyarrow==25.0.1
 requests==2.34.2
 PyYAML==6.0.3
+# DuckDB imports pytz to return TIMESTAMP WITH TIME ZONE values to Python. The Airflow image
+# gets it only through providers; a plain install with the constraints does not (CI, 2026-10-27).
+pytz==2026.3.post1

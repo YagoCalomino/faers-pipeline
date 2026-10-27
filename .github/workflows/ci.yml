@@ -1,0 +1,155 @@
+# Continuous integration: lint, tests (with the DAGs loaded by Airflow), dbt on the fixture lake,
+# the site export validated on the fixture, and the site build with its browser tests.
+# Nothing is published from here: the site goes out through the gh-pages branch (make
+# publish-site, pushed by hand).
+#
+# Actions are pinned to the commit of a release tag (a tag can be moved, a commit cannot); the
+# comment names the release. Checked on 2026-10-27 with `git ls-remote` and the GitHub releases
+# API: checkout v7.0.1 (2026-07-20), setup-python v7.0.0 (2026-07-20; v7.1.0 was 5 days old),
+# setup-node v7.1.0 (2026-10-08), cache v6.1.0 (2026-06-26). All run on node24.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  AIRFLOW_VERSION: "3.3.2"
+  # Official constraints of the Airflow release, as in infra/docker/Dockerfile.
+  AIRFLOW_CONSTRAINTS: https://raw.githubusercontent.com/apache/airflow/constraints-3.3.2/constraints-3.12.txt
+  # Same as the Airflow image: the pipeline's config/ and the package in src/.
+  FAERS_CONFIG_DIR: ${{ github.workspace }}/config
+  PYTHONPATH: ${{ github.workspace }}/src
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  lint:
+    name: ruff
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: infra/docker/requirements-dev.txt
+      - name: Install ruff (pinned in requirements-dev.txt)
+        run: pip install "$(grep '^ruff==' infra/docker/requirements-dev.txt)"
+      - run: ruff check .
+      - run: ruff format --check .
+      - name: Docs consistent with the repository (make targets, links, pinned versions)
+        run: python scripts/check_docs.py
+
+  tests:
+    name: pytest and DAG integrity (Airflow 3.3.2)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # As in the airflow-dev service: no example DAGs, a throwaway SQLite metadata DB.
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/dags
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////tmp/airflow-test.db
+      AIRFLOW_HOME: /tmp/airflow-home
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            infra/docker/requirements.txt
+            infra/docker/requirements-dev.txt
+      - name: Install Airflow with the official constraints (timed)
+        run: |
+          start=$(date +%s)
+          pip install "apache-airflow==${AIRFLOW_VERSION}" \
+            -r infra/docker/requirements.txt -r infra/docker/requirements-dev.txt \
+            --constraint "${AIRFLOW_CONSTRAINTS}"
+          echo "Airflow install: $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+      - run: pytest
+
+  dbt:
+    name: dbt build (target ci) and site export check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      DBT_VENV: ${{ github.workspace }}/.dbt-venv
+      # Throwaway folder outside the checkout (the runner context is not available here).
+      LAKE_PATH: /tmp/faers_ci/lake
+      DBT_CI_DIR: /tmp/faers_ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            infra/docker/requirements.txt
+            infra/docker/requirements-dbt.txt
+      # Pipeline code (test lake, export) with the same pins as the Airflow image; dbt in its own
+      # virtualenv, as in the image (/opt/dbt-venv).
+      - name: Install the pipeline and dbt
+        run: |
+          pip install -r infra/docker/requirements.txt
+          python -m venv "$DBT_VENV"
+          "$DBT_VENV/bin/pip" install -r infra/docker/requirements-dbt.txt
+      - name: Test lake from tests/fixtures/faers_sample
+        run: python -I scripts/build_test_lake.py --out "$LAKE_PATH"
+      - run: python -I scripts/dbt_run.py --ci deps
+      - run: python -I scripts/dbt_run.py --ci build
+      - name: Site export of the ci database, validated (same code as the DAG publish_site)
+        run: |
+          python -I scripts/publish_export.py --warehouse "$DBT_CI_DIR/faers_ci.duckdb" \
+            --out "$DBT_CI_DIR/site_export" --candidate "$DBT_CI_DIR/site_export.candidate" \
+            --marker "$DBT_CI_DIR/site_export.ready.json"
+
+  site:
+    name: site build and browser tests (fixture)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SITE_EXPORT: ../ci-site/export
+      SITE_OUT: dist-ci
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/site/.pw-browsers
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: infra/docker/requirements.txt
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # site/package.json engines: >=22.12.0 (@axe-core/playwright 4.14.0, vite 8.3.5).
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - name: Site export of the fixture subset (no lake, no dbt), validated
+        working-directory: .
+        run: |
+          pip install -r infra/docker/requirements.txt
+          python -I scripts/build_site_fixture.py --out ci-site
+      - run: npm ci --no-audit --no-fund
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: site/.pw-browsers
+          key: pw-${{ runner.os }}-${{ hashFiles('site/package-lock.json') }}
+      - name: Headless Chromium for Playwright, with its system libraries
+        run: npx playwright install --with-deps --only-shell chromium
+      - run: npm run build
+      - run: npm run check-dist
+      - run: npm run test:unit
+      - run: npm run test:e2e

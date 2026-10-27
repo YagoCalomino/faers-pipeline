@@ -1,3 +1,7 @@
+# Hooks for local commits (pip install pre-commit && pre-commit install). The ruff hook version
+# matches the ruff pin in infra/docker/requirements-dev.txt; keep them together.
+# Fixtures are real FAERS/RxNorm bytes: never rewrite their whitespace or line endings.
+exclude: ^tests/fixtures/
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.17.1
@@ -11,3 +15,6 @@ repos:
       - id: end-of-file-fixer
       - id: trailing-whitespace
       - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1000]
