@@ -47,6 +47,9 @@ make cleanup-extracted  # dry run; EXECUTE=1 deletes extracted .txt of ingested 
 make dbt-ci         # builds a test lake from tests/fixtures and runs dbt build --target ci
 make export         # site export: warehouse -> data/site_export/ (config/site.yaml)
 make export-ci      # site export from the ci database built on the fixture lake
+make publish-site   # validated export + site build/checks/tests + local orphan gh-pages commit (no push)
+make site-ci        # the site on the fixture subset (no lake, warehouse, dbt or network)
+make site-dev       # live preview of the site on data/site_export/
 make down
 ```
 

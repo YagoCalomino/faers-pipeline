@@ -193,6 +193,12 @@ share is not a cluster by itself: most FAERS reports come from the US, and 33,54
 61,618 rows have one country at 90% or more. The share is informative when it differs from the
 ingredient's own country mix, or together with a high `median_reactions_per_case`.
 
+The public site marks a pair as concentrated when 80% or more of its reports share one init
+quarter, or when its reports list a median of 20 or more reactions each
+(`config/site.yaml` `concentration_alert`). The country share is shown but is not part of the
+alert, for the reason above. The alert is a prompt to look closer, not a correction: the pair's
+PRR and ROR are shown unchanged.
+
 ### Validation against known pairs
 
 `seed_known_signals` lists pairs chosen by the project owner: 9 positive pairs with an

@@ -1,0 +1,45 @@
+# DRAFT, NOT TESTED. Kept outside .github/workflows/ on purpose so it never runs before Phase 9
+# reviews it. Builds and checks the site on the fixture subset (no lake, no warehouse, no dbt),
+# the same steps as `make site-ci` without Docker.
+#
+# To verify before moving it to .github/workflows/ (Phase 9):
+#   - the major versions of the actions below against their repositories (not checked here);
+#   - that `playwright install --only-shell chromium` works on the runner image;
+#   - the job time, and whether caching site/.npm-cache and site/.pw-browsers is worth it.
+name: site-build
+
+on:
+  pull_request:
+    paths: ["site/**", "src/faers_pipeline/export.py", "src/faers_pipeline/site_check.py",
+            "config/site.yaml", "docs/limitations.md", "tests/fixtures/site_export/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    env:
+      FAERS_CONFIG_DIR: ${{ github.workspace }}/config
+      SITE_EXPORT: ../data/tmp/site_ci/export
+      SITE_OUT: dist-ci
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/site/.pw-browsers
+    steps:
+      - uses: actions/checkout@v4          # VERIFY version
+      - uses: actions/setup-python@v5      # VERIFY version
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4        # VERIFY version
+        with:
+          node-version: "22"
+      # Same pins as infra/docker/requirements.txt.
+      - run: pip install duckdb==1.5.6 PyYAML==6.0.3
+      - run: python -I scripts/build_site_fixture.py --out data/tmp/site_ci
+      - working-directory: site
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --only-shell chromium
+          npm run build
+          npm run check-dist
+          npm run test:unit
+          npm run test:e2e

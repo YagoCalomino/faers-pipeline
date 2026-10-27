@@ -23,18 +23,19 @@ is building.
 
 ## Pause and unpause
 
-New DAGs start paused. Unpause the three DAGs for the asset chain to run on its own:
+New DAGs start paused. Unpause the four DAGs for the asset chain to run on its own:
 
 ```bash
 $AF dags unpause faers_ingest
 $AF dags unpause rxnorm_enrich
 $AF dags unpause faers_transform
+$AF dags unpause publish_site
 ```
 
 Unpausing `faers_ingest` does not create runs for quarters that already have one; with
 `catchup=True` it creates runs only for data intervals between `start_quarter` and
-`end_quarter` that have none. `rxnorm_enrich` and `faers_transform` only run on new Asset
-events.
+`end_quarter` that have none. `rxnorm_enrich`, `faers_transform` and `publish_site` only run
+on new Asset events.
 
 ## Re-run a quarter
 
@@ -148,6 +149,49 @@ make export-ci   # same export from the ci database built on the fixture lake (t
   `meta.json`, whose export date is the UTC day.
 - Generic fallback ingredients stay out unless `export.include_generic_fallback` is true.
 - Run it after a successful build, not while dbt is writing the warehouse.
+- The JSON keeps every double exactly (`export.json_float_digits: 17`), so the pages show the
+  warehouse's numbers; with fewer digits even counts stored as doubles were rounded.
+
+## Publish the site
+
+Chain: `faers_transform` emits `faers_warehouse` -> DAG `publish_site` exports into
+`data/site_export.candidate/`, validates it (`src/faers_pipeline/site_check.py`: manifest =
+files on disk, warehouse counts = exported counts in every form, a + b + c + d = n_total for
+every pair, size limits and column descriptions from `config/site.yaml`), then swaps it into
+`data/site_export/`, writes `data/site_export.ready.json` and emits the `site_export` Asset. A
+failed validation keeps the previous export and its marker, and emits nothing. The DAG reads
+the warehouse read-only and does not take the `duckdb_writer` pool (see its docstring).
+
+To see a validation failure without touching data (no Asset is emitted):
+
+```bash
+$AF dags trigger publish_site --conf '{"limits_override": {"export_max_file_bytes": 1000}}'
+```
+
+The site is built on the host (Node 22; the Airflow image has no Node):
+
+```bash
+make publish-site   # validated export, npm ci, vite build, dist checks, unit + browser tests,
+                    # then one orphan commit on the local branch gh-pages; prints the push commands
+make site-ci        # the same on the fixture subset: no lake, warehouse, dbt or network
+make site-dev       # live preview on data/site_export/
+```
+
+- Dependencies are pinned in `site/package.json` and `site/package-lock.json`; the npm cache
+  and Playwright's headless Chromium stay in `site/.npm-cache` and `site/.pw-browsers`
+  (gitignored). The first `npm ci` needs the network; later builds use the cache.
+- `site/scripts/check-dist.mjs` refuses a build with an external resource, a root-absolute or
+  broken relative link, a link outside `site.allowed_link_prefixes`, data that differs from the
+  export manifest, or sizes above `limits.dist_*`.
+- `site/scripts/gh-pages.mjs` commits with a temporary index (`write-tree`, `commit-tree`
+  without a parent, `update-ref`): the working tree, the index and the current branch are not
+  touched, and the previous `gh-pages` commit is replaced. It refuses a `dist/` whose
+  `data/manifest.json` is not the one recorded in the ready marker.
+- Publishing is manual: `git push --force origin gh-pages` (force, because the branch always has
+  a single commit), then, once, Settings > Pages > Deploy from a branch > `gh-pages`, `/ (root)`.
+- Checks of the published numbers: `scripts/verify_site_values.py` (export JSON = DuckDB) and
+  `site/tests/verify-values.mjs` (rendered page = DuckDB); timings and screenshots:
+  `site/scripts/measure.mjs`; alert share: `scripts/site_alert_stats.py`.
 
 ## Failures
 
