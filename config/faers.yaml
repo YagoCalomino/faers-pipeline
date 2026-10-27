@@ -6,7 +6,9 @@ source:
   # The FDA page now says AEMS; this download path still works.
   base_url: "https://fis.fda.gov/content/Exports"
   filename_pattern: "faers_ascii_{year}q{q}.zip"
-  landing_page: "https://www.fda.gov/drugs/fda-adverse-event-reporting-system-faers/fda-adverse-event-reporting-system-faers-latest-quarterly-data-files"
+  # Since 2026 the old FAERS page redirects (301) here: "FDA Adverse Event Monitoring System
+  # (AEMS) Latest Quarterly Data Files" (checked 2026-10-27).
+  landing_page: "https://www.fda.gov/drugs/fda-adverse-event-monitoring-system-aems/fda-adverse-event-monitoring-system-aems-latest-quarterly-data-files"
   request_timeout_s: 120
   user_agent: "faers-pipeline-portfolio"
 
