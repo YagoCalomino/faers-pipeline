@@ -37,8 +37,11 @@ logs:
 ps:
 	$(COMPOSE) ps
 
+# check_docs.py lists files with git; the bind-mounted checkout belongs to another user.
 lint: .env
-	$(DEV) bash -c "ruff check . && ruff format --check ."
+	$(DEV) bash -c "ruff check . && ruff format --check . \
+		&& GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0='*' \
+		python -I scripts/check_docs.py"
 
 format: .env
 	$(DEV) bash -c "ruff check --fix . && ruff format ."
@@ -152,6 +155,7 @@ measure-build: .env
 run-times: .env
 	$(COMPOSE) exec -T airflow-scheduler python - < scripts/collect_run_times.py
 
-# Prints the README numbers block and writes it between the markers of README.md.
+# Prints the numbers table; writes it between the markers of docs/numbers.md, and a short
+# summary between those of README.md.
 readme-numbers: .env
-	$(DEV) python -I scripts/readme_numbers.py --write README.md
+	$(DEV) python -I scripts/readme_numbers.py --write

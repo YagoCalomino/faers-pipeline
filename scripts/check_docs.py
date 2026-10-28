@@ -8,6 +8,8 @@ Checks, in every versioned *.md file outside node_modules:
              dbt-duckdb, ruff, pytest, Vite, marked, Playwright, axe-core, Node.js) equals its pin
              or is a prefix of it (3.3 for 3.3.2); the Airflow version in ci.yml equals the
              Dockerfile's
+    numbers  README.md and docs/numbers.md keep the markers that scripts/readme_numbers.py
+             writes between
 
 Usage: python scripts/check_docs.py      (exit 1 on any problem)
 """
@@ -25,6 +27,9 @@ LINK = re.compile(r"!?\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 # Commands only: inline code (`make x`) and command lines inside code blocks.
 MAKE_INLINE = re.compile(r"`make ([a-z][a-z0-9-]+)")
 MAKE_BLOCK = re.compile(r"(?:^|&&|;|\|\|)\s*make ([a-z][a-z0-9-]+)", re.M)
+# Files that scripts/readme_numbers.py --write fills (same markers as that script).
+NUMBERS_FILES = ("README.md", "docs/numbers.md")
+NUMBERS_START, NUMBERS_END = "<!-- readme-numbers:start -->", "<!-- readme-numbers:end -->"
 
 
 def versioned_markdown() -> list[Path]:
@@ -110,6 +115,10 @@ def main() -> int:
             want = pinned[tool.lower()]
             if not (want == version or want.startswith(version + ".")):
                 problems.append(f"{rel}: {tool} {version} but the pin is {want}")
+    for rel in NUMBERS_FILES:
+        text = (REPO / rel).read_text(encoding="utf-8")
+        if text.count(NUMBERS_START) != 1 or text.count(NUMBERS_END) != 1:
+            problems.append(f"{rel}: needs one pair of readme-numbers markers")
     ci = (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     ci_airflow = re.search(r'AIRFLOW_VERSION:\s*"([^"]+)"', ci).group(1)
     if ci_airflow != pinned["airflow"]:

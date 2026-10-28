@@ -4,10 +4,10 @@ This is a portfolio project maintained by one person; issues and suggestions are
 
 Before opening a pull request:
 
-1. Run the same checks as the CI: `make lint`, `make test`, `make dbt-ci` and `make site-ci`
-   (all run inside the Airflow image, except the site build, which needs Node.js on the host).
-   `python scripts/check_docs.py` checks the Markdown files against the Makefile, the links and
-   the pinned versions.
+1. Run the same checks as the CI: `make lint`, `make test`, `make dbt-ci` and `make site-ci`.
+   Lint, tests and dbt run inside the Airflow image, so the host needs no Python; the site build
+   needs Node.js on the host. `make lint` runs ruff and `scripts/check_docs.py`, which checks the
+   Markdown files against the Makefile, the links and the pinned versions.
 2. Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) in
    English.
 3. Optional: `pre-commit install` runs ruff and basic file checks on each commit

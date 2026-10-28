@@ -5,6 +5,7 @@
 | [runbook.md](runbook.md) | How to operate the pipeline: start, unpause, backfill, re-run a quarter, rebuild the RxNorm cache or the warehouse, export and publish the site, what to do when a task fails. |
 | [data_dictionary.md](data_dictionary.md) | Tables and columns of the marts: dimensions, facts and the signals schema, plus the reference seeds. Staging and intermediate models are described in their dbt `.yml` files. |
 | [limitations.md](limitations.md) | What the numbers can and cannot say: drug-name mapping, the disproportionality method and its limits, reporting patterns, validation against known pairs, operational limits, MedDRA terms. The site's "Method & limitations" page is built from this file. |
+| [numbers.md](numbers.md) | Counts, coverage, build and run times, disk and site sizes, generated from the warehouse and recorded measurements (`make readme-numbers`). |
 | [adr/](adr/) | Architecture decision records (below). |
 | [img/](img/) | Screenshots of the site used in the README. |
 
@@ -19,6 +20,20 @@
 
 Each ADR has a status, a date, the context with the measurements behind it, the decision and
 its consequences.
+
+## Repository layout
+
+```
+config/   pipeline settings (sources, schema contract, RxNorm, signals, site)
+dags/     Airflow DAGs: faers_ingest, rxnorm_enrich, faers_transform, publish_site
+src/      Python package faers_pipeline (download, parse, quality, RxNorm, build, export)
+dbt/      dbt project faers_dbt (staging, intermediate, core, signals; seeds; tests)
+site/     static explorer (Vite) with its build checks and browser tests
+scripts/  command-line tools: make entry points, fixture builders, checks and measurements
+infra/    Dockerfile, docker-compose and Airflow pools
+tests/    pytest suite and real fixtures
+docs/     runbook, data dictionary, limitations, numbers, ADRs, README screenshots
+```
 
 ## How to read the repository
 
