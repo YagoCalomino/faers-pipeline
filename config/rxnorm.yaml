@@ -72,7 +72,7 @@ match_layers:
 approximate_rules:
   source: RXNORM                   # ignore candidates from other sources (MMSL, VANDF, ...)
   require_ingredient: true         # the candidate must resolve to at least one IN
-  # Calibrated 2026-10-26 on a manually labelled sample (data/spikes/rxnorm_calibration_sample.csv):
+  # Calibrated 2026-10-26 on a manually labelled sample (docs/calibration/rxnorm_calibration_sample.csv):
   # 6 of 20 approximate matches correct; no score threshold separates right from wrong (wrong
   # matches at 8.0-12.9 and 20.7, right ones at 10.1-15.3). Approximate matching is off: null
   # never accepts, so these terms fall back to their own text.

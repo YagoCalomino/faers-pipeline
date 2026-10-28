@@ -1,0 +1,61 @@
+sample_group,prod_ai_term,rxcui,candidate_name,ingredient_rxcuis,ingredients,match_type,score,note,correct_yes_no,comment
+approximate,WHARTON JELLY DERIVED UMBILICAL CORD MESENCHYMAL STEM CELLS,2700761,allogenic bone-marrow-derived mesenchymal stem cells,2700761,allogenic bone-marrow-derived mesenchymal stem cells,approximate,20.6808,,no,stem cells of another origin (bone marrow)
+approximate,SODIUM PICOSULFATE MONOHYDRATE,33688,picosulfate sodium,1546458,picosulfurate,approximate,15.2551,,yes,picosulfurate is the IN of sodium picosulfate
+approximate,"CORN OIL, OXIDIZED",2854,corn oil,2854,corn oil,approximate,14.8523,,yes,same substance; small doubt (oxidized form)
+approximate,"TUBERCULIN, TINE TEST",10908,tuberculin,10908,tuberculin,approximate,13.3799,,yes,
+approximate,DEXAMETHASONE SODIUM SUCCINATE,1311370,sodium succinate,1311370,sodium succinate,approximate,12.9539,,no,returned only the counter-ion; the right answer is dexamethasone
+approximate,CHLORPROMAZINE PHENOLPHTHALINATE,2403,chlorpromazine,2403,chlorpromazine,approximate,12.5567,,yes,a chlorpromazine salt
+approximate,"GLUCOSE, LIQUID",1165822,glucose Oral Liquid Product,4850,glucose,approximate,12.3582,,yes,
+approximate,ASPIRIN CALCIUM,817958,aspirin / calcium carbonate,1191 + 1897,aspirin + calcium carbonate,approximate,11.9738,,no,calcium aspirin is a salt of aspirin; the map created aspirin + calcium carbonate (a false ingredient)
+approximate,BENIDIPINE HYDROCHLORIDE,283819,barnidipine hydrochloride,39879,mepirodipine,approximate,11.9492,,no,different substance
+approximate,TENELIGLIPTIN HYDROBROMIDE ANHYDROUS,1426869,hydrobromic acid,1426869,hydrobromic acid,approximate,11.5894,,no,returned only the counter-ion
+approximate,CORYNEBACTERIUM DIPHTHERIAE CRM197 PROTEIN,901505,Neisseria meningitidis serogroup A oligosaccharide diphtheria CRM197 protein conjugate vaccine,901505,Neisseria meningitidis serogroup A oligosaccharide diphtheria CRM197 protein conjugate vaccine,approximate,11.509,,no,the meningococcal vaccine has nothing to do with the term
+approximate,EMOXYPINE SUCCINATE,1307106,succinate,1307106,succinate,approximate,11.2568,,no,returned only the counter-ion
+approximate,EMPEGFILGRASTIM,1440046,lipegfilgrastim,1440046,lipegfilgrastim,approximate,10.9952,,no,another substance (lipegfilgrastim)
+approximate,ETIMUPEPIMUT ACETATE,164,acetate,164,acetate,approximate,10.463,,no,returned only the counter-ion
+approximate,PRULIFLOXACIN,995897,orbifloxacin,995897,orbifloxacin,approximate,10.2023,,no,orbifloxacin is a veterinary drug and another substance
+approximate,POLYMYXIN,8536,polymyxin B,8536,polymyxin B,approximate,10.1159,,yes,doubt: the term does not say B or E
+approximate,DULIGOTUZUMAB,1432293,dalotuzumab,1432293,dalotuzumab,approximate,10.1108,,no,another substance
+approximate,RADIATION THERAPY,1661172,Monistat Simple Therapy,38298,tioconazole,approximate,10.0516,,no,not a drug
+approximate,NIMOTUZUMAB,1942950,inotuzumab ozogamicin,1942950,inotuzumab ozogamicin,approximate,8.4456,,no,another substance
+approximate,TAMIBAROTENE,83947,tazarotene,83947,tazarotene,approximate,8.03,,no,another substance
+exact,ALISKIREN HEMIFUMARATE,732498,,325646,aliskiren,exact,,,yes,
+exact,CALCIUM CARBONATE,1897,,1897,calcium carbonate,exact,,,yes,
+exact,CASIRIVIMAB,2465242,,2465242,casirivimab,exact,,,yes,
+exact,FOSNETUPITANT,2044417,,1552337,netupitant,exact,,,yes,doubt: prodrug grouped under netupitant
+exact,IBRUTINIB,1442981,,1442981,ibrutinib,exact,,,yes,
+exact,PANCRELIPASE AMYLASE,743,,743,amylase,exact,,,yes,doubt: a component of pancrelipase; may split the product into amylase/lipase/protease
+exact,PIPEMIDIC ACID,8337,,113831,pipemidate,exact,,,yes,
+exact,PIROXICAM,8356,,8356,piroxicam,exact,,,yes,
+exact,PONATINIB HYDROCHLORIDE,1364953,,1364347,ponatinib,exact,,,yes,
+exact,PREDNAZOLINE,168651,,168651,prednazoline,exact,,,yes,
+normalized,ACEPROMETAZINE MALEATE,161203,,161203,aceprometazine,normalized,,,yes,
+normalized,AMLODIPINE MESYLATE,104416,,17767,amlodipine,normalized,,,yes,
+normalized,CLINDAMYCIN HYDROCHLORIDE MONOHYDRATE,21235,,2582,clindamycin,normalized,,,yes,
+normalized,DESVENLAFAXINE BENZOATE,683693,,734064,desvenlafaxine,normalized,,,yes,
+normalized,DIHYDRALAZINE HYDROCHLORIDE,235959,,3409,dihydralazine,normalized,,,yes,
+normalized,FD+C RED NO. 40,1310600,,1310600,Allura red AC dye,normalized,,,yes,same dye (Allura red AC); excipient
+normalized,LEVOFLOXACIN HYDROCHLORIDE,82122,,82122,levofloxacin,normalized,,,yes,
+normalized,TENOFOVIR DISOPROXIL MALEATE,1928942,,300195,tenofovir disoproxil,normalized,,,yes,tenofovir disoproxil is an IN separate from tenofovir alafenamide; right for signals
+normalized,URAPIDIL HYDROCHLORIDE,39230,,39230,urapidil,normalized,,,yes,
+normalized,VERICIGUAT HYDROCHLORIDE,2475830,,2475830,vericiguat,normalized,,,yes,
+not_found,TRETOQUINOL HYDROCHLORIDE MONOHYDRATE,221160,sibutramine hydrochloride monohydrate,,,approximate,12.0426,ambiguous: 6 rxcuis with different ingredients,yes,not_found is right (the candidate was sibutramine)
+not_found,N-DESETHYLISOTONITAZENE,2047170,N-ethylurea,,,approximate,10.6946,ambiguous: 27 rxcuis with different ingredients,yes,not_found is right (synthetic opioid not in RxNorm)
+not_found,PEGVORHYALURONIDASE ALFA,105694,epoetin alfa,,,approximate,10.4952,ambiguous: 11 rxcuis with different ingredients,yes,not_found is right (the candidate was epoetin)
+not_found,PROTEIN,8834,protein C,,,approximate,9.7668,ambiguous: 3 rxcuis with different ingredients,yes,generic term
+not_found,LOMERIZINE HYDROCHLORIDE,103755,meperidine hydrochloride,,,approximate,8.3323,ambiguous: 10 rxcuis with different ingredients,yes,not_found is right (wrong candidate)
+not_found,NALFURAFINE HYDROCHLORIDE,103755,meperidine hydrochloride,,,approximate,8.3323,ambiguous: 10 rxcuis with different ingredients,yes,not_found is right (wrong candidate)
+not_found,5-FLUORO-APINACA,901317,Spinacia oleracea allergenic extract,,,approximate,5.7411,ambiguous: 2 rxcuis with different ingredients,yes,not_found is right (wrong candidate)
+not_found,ARABICA COFFEE BEAN,2695791,,,,exact,,ambiguous: 2 rxcuis with different ingredients,no,doubt: a real substance; the ambiguity between 2 rxcuis may be synonymy
+not_found,ASN-007,,,,,,,no_rxnorm_candidate,yes,investigational code
+not_found,CARPERITIDE,,,,,,,no_candidate,yes,not in RxNorm (used outside the US)
+not_found,DESMETHYLSERTRALINE,,,,,,,no_candidate,yes,metabolite
+not_found,HERBALS,,,,,,,no_rxnorm_candidate,yes,generic term
+not_found,IMIDAFENACIN,,,,,,,no_candidate,yes,not in RxNorm (used outside the US)
+not_found,INVESTIGATIONAL BIOSIMILARS,,,,,,,no_candidate,yes,generic term
+not_found,ISEPAMICIN,,,,,,,no_candidate,yes,not in RxNorm (used outside the US)
+not_found,KARAYA GUM,6111,,,,exact,,ambiguous: 2 rxcuis with different ingredients,no,doubt: a real substance; the ambiguity may be synonymy
+not_found,OTERACIL,,,,,,,no_candidate,yes,
+not_found,PAMIPARIB,,,,,,,no_candidate,yes,investigational
+not_found,RO-0622,,,,,,,no_rxnorm_candidate,yes,investigational code
+not_found,SPEARMINT,1372258,,,,exact,,ambiguous: 2 rxcuis with different ingredients,no,doubt: a real substance; the ambiguity may be synonymy

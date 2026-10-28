@@ -1,5 +1,6 @@
 -- The statistics macros (macros/signals.sql) against values computed independently in plain
--- Python with the same formulas and z = 1.96 (config/signals.yaml ci_z):
+-- Python (tests/unit/test_signal_known_values.py recomputes them and checks these literals)
+-- with the same formulas and z = 1.96 (config/signals.yaml ci_z):
 --   PRR = (a/(a+b)) / (c/(c+d)); SE ln PRR = sqrt(1/a - 1/(a+b) + 1/c - 1/(c+d))
 --   ROR = ad/(bc);               SE ln ROR = sqrt(1/a + 1/b + 1/c + 1/d)
 --   chi2 = N (ad - bc)^2 / ((a+b)(c+d)(a+c)(b+d)), no continuity correction

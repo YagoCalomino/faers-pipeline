@@ -10,8 +10,9 @@ splits counts.
 ### Approximate matching is off
 
 RxNav's approximate search (`getApproximateMatch`) was calibrated on a manually labelled sample
-(`data/spikes/rxnorm_calibration_sample.csv`, 2026-10-26). Of 20 approximate matches from RxNorm
-sources that resolve to an ingredient, 6 were correct. The score does not separate right from
+of 60 terms, versioned with its marks in `docs/calibration/rxnorm_calibration_sample.csv`
+(2026-10-26). Of 20 approximate matches from RxNorm sources that resolve to an ingredient, 6
+were correct. The score does not separate right from
 wrong matches: wrong matches scored 8.0 to 12.9 and 20.7, right ones 10.1 to 15.3. Typical
 errors were a different substance with a similar name (prulifloxacin → orbifloxacin,
 empegfilgrastim → lipegfilgrastim, nimotuzumab → inotuzumab ozogamicin) and the counter-ion of
