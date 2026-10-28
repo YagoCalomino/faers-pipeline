@@ -38,3 +38,6 @@ site/dist-*/
 site/.npm-cache/
 site/.pw-browsers/
 site/test-output/
+
+# Local assistant notes (kept on disk, not versioned)
+CLAUDE.md

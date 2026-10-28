@@ -6,7 +6,7 @@
 | [data_dictionary.md](data_dictionary.md) | Tables and columns of the marts: dimensions, facts and the signals schema, plus the reference seeds. Staging and intermediate models are described in their dbt `.yml` files. |
 | [limitations.md](limitations.md) | What the numbers can and cannot say: drug-name mapping, the disproportionality method and its limits, reporting patterns, validation against known pairs, operational limits, MedDRA terms. The site's "Method & limitations" page is built from this file. |
 | [adr/](adr/) | Architecture decision records (below). |
-| [img/](img/) | Screenshots of the site: the README images, and every page on desktop and mobile in `img/site/`. |
+| [img/](img/) | Screenshots of the site used in the README. |
 
 ## Architecture decision records
 

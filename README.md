@@ -215,6 +215,9 @@ trademark of ICH. This project does not distribute MedDRA.
 
 Code: [MIT](LICENSE). The license covers the code of this repository, not the FDA or NLM data.
 
+Built with AI-assisted coding tools; design decisions, calibration and validation are documented
+in [docs/](docs/).
+
 | Ingredient page | Pair detail on a phone |
 |---|---|
 | ![Ingredient page with concentration alerts](docs/img/readme-ingredient.jpg) | ![Pair detail and quarterly trend on a phone](docs/img/readme-pair-mobile.jpg) |
