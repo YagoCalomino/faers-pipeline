@@ -5,8 +5,8 @@ Run inside the container, after the quarters are ingested:
         airflow-dev python -I scripts/profile_lake.py
 
 Reads data/lake/raw/faers/<type>/quarter=*/<type>.parquet with DuckDB (in-memory connection,
-limits from parse.duckdb in config/faers.yaml) and writes one JSON file to data/spikes/.
-The lake is never written.
+limits from parse.duckdb in config/faers.yaml) and writes one JSON file (default
+data/profile_lake.json, not versioned). The lake is never written.
 
 Sections (keys of the JSON):
   a_demo_totals         rows, distinct caseid, distinct primaryid
@@ -392,7 +392,7 @@ SECTIONS = [
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(REPO / "data" / "spikes" / "profile_lake.json"))
+    ap.add_argument("--out", default=str(REPO / "data" / "profile_lake.json"))
     args = ap.parse_args()
 
     lake = host_path(CFG["paths"]["lake"])

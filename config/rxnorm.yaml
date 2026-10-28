@@ -18,7 +18,10 @@ api:
   # and Airflow retries it; terms already resolved in the chunk are kept.
   max_consecutive_term_errors: 5
   # Templates: {term} and {rxcui} are URL-encoded by the client. Checked on 2026-10-26 against
-  # the function pages linked above and with real calls (data/spikes/rxnorm_combinations.json).
+  # the function pages linked above and with 198 real calls (all HTTP 200) on 20 backslash
+  # combinations (the 14 most frequent PS/SS names and 6 random ones) and 3 single names that
+  # contain '/', ',' or 'AND': every part of the 20 combinations resolved on its own, the whole
+  # combination name only 7 times, so lookup.combination_separator splits before the lookup.
   endpoints:
     # findRxcuiByString. search=0: exact match only (case is ignored); search=1: normalized
     # match (word order, punctuation, inflections and salt forms ignored). Two calls so the
