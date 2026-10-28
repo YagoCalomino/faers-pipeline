@@ -68,17 +68,17 @@ function scrollTable(label, html) {
 
 // Short text of each reason, for the badge in the pairs table.
 function reasonShort(r) {
-  if (r.kind === 'quarter') return `${fmtShare(r.share)} of reports in ${esc(r.quarter)}`;
-  if (r.kind === 'country') return `${fmtShare(r.share)} of reports from ${esc(r.country)}; ingredient: ${fmtShareMin(r.ingredientShare)} ${esc(r.country)}`;
+  if (r.kind === 'quarter') return `${fmtShare(r.share)} of cases in ${esc(r.quarter)}`;
+  if (r.kind === 'country') return `${fmtShare(r.share)} of cases from ${esc(r.country)}; ingredient: ${fmtShareMin(r.ingredientShare)} ${esc(r.country)}`;
   return `median ${fmtCount(r.median)} reactions per report`;
 }
 
 // Sentence of each reason, for the callout of the pair page.
 function reasonLong(r) {
-  if (r.kind === 'quarter') return `${fmtShare(r.share)} of these reports were first received in ${esc(r.quarter)}.`;
+  if (r.kind === 'quarter') return `${fmtShare(r.share)} of these cases were first received in ${esc(r.quarter)}.`;
   if (r.kind === 'country')
-    return `${fmtShare(r.share)} of these reports come from ${esc(r.country)}, against ${fmtShareMin(r.ingredientShare)} of all reports of the ingredient (its most frequent country is ${esc(r.ingredientTopCountry)}, ${fmtShare(r.ingredientTopShare)}).`;
-  return `These reports list a median of ${fmtCount(r.median)} reactions each.`;
+    return `${fmtShare(r.share)} of these cases come from ${esc(r.country)}, against ${fmtShareMin(r.ingredientShare)} of all cases of the ingredient (its most frequent country is ${esc(r.ingredientTopCountry)}, ${fmtShare(r.ingredientTopShare)}).`;
+  return `The reports of these cases list a median of ${fmtCount(r.median)} reactions each.`;
 }
 
 function alertBadge(reasons) {
@@ -110,22 +110,22 @@ async function viewHome() {
         keys to move through the suggestions and Enter to open one.</p>
     </div>
     <section aria-labelledby="top-h">
-      <h2 id="top-h">Ingredients with the most reports</h2>
+      <h2 id="top-h">Ingredients with the most cases</h2>
       <ol class="top-list" id="top-list"><li class="loading">Loading…</li></ol>
     </section>
     <section aria-labelledby="about-h">
       <h2 id="about-h">What this is</h2>
       <p>An open data pipeline (Airflow, DuckDB, dbt) downloads the FDA quarterly files,
         removes superseded case versions and deleted cases, maps drug names to RxNorm
-        ingredients and counts reports for every ingredient and reaction (MedDRA preferred
+        ingredients and counts cases for every ingredient and reaction (MedDRA preferred
         term). Each ingredient page lists up to 30 reactions: the 20 with the highest lower
-        bound of the reporting odds ratio and the 10 with the most reports among pairs that
+        bound of the reporting odds ratio and the 10 with the most cases among pairs that
         meet the Evans criterion. ${fmtCount(meta.n_ingredients)} ingredients and
         ${fmtCount(meta.n_pairs)} pairs are included.</p>
       <p>A pair is marked <strong>concentrated</strong> when it has at least
-        ${fmtCount(rule.min_cases_for_quarter_rule)} reports and ${fmtShare(rule.min_top_quarter_share)}
+        ${fmtCount(rule.min_cases_for_quarter_rule)} cases and ${fmtShare(rule.min_top_quarter_share)}
         or more of them come from one quarter; when it has at least
-        ${fmtCount(rule.min_cases_for_country_rule)} reports and ${fmtShare(rule.min_top_country_share)}
+        ${fmtCount(rule.min_cases_for_country_rule)} cases and ${fmtShare(rule.min_top_country_share)}
         or more of them come from one country that is not the ingredient's most frequent country;
         or when its reports list a median of
         ${fmtCount(rule.min_median_reactions_per_case)} or more reactions each: patterns of
@@ -136,7 +136,7 @@ async function viewHome() {
     .slice(0, 12)
     .map(
       (r) =>
-        `<li><a href="${ingredientHref(r.slug)}">${esc(r.name)}</a> <span class="muted">${fmtCount(r.cases)} reports</span></li>`,
+        `<li><a href="${ingredientHref(r.slug)}">${esc(r.name)}</a> <span class="muted">${fmtCount(r.cases)} cases</span></li>`,
     )
     .join('');
   setupCombobox(rows);
@@ -177,7 +177,7 @@ function setupCombobox(rows) {
     list.innerHTML = items
       .map(
         (r, i) =>
-          `<li id="q-opt-${i}" role="option" aria-selected="false" data-i="${i}">${esc(r.name)} <span class="muted">${fmtCount(r.cases)} reports${r.fallback ? ', name without RxNorm match' : ''}</span></li>`,
+          `<li id="q-opt-${i}" role="option" aria-selected="false" data-i="${i}">${esc(r.name)} <span class="muted">${fmtCount(r.cases)} cases${r.fallback ? ', name without RxNorm match' : ''}</span></li>`,
       )
       .join('');
     list.hidden = false;
@@ -225,7 +225,7 @@ function notFound(what) {
 
 function ingredientNote(ing) {
   if (ing.is_fallback) {
-    return 'This name has no match in RxNorm, so it is shown as reported. Reports of the same drug under its RxNorm name are counted separately.';
+    return 'This name has no match in RxNorm, so it is shown as reported. Cases of the same drug under its RxNorm name are counted separately.';
   }
   return `RxNorm ingredient ${esc(ing.ingredient_id)} (${esc(ing.match_type)} match).`;
 }
@@ -240,9 +240,9 @@ async function viewIngredient(slug) {
   main.innerHTML = `
     <p class="crumbs"><a href="#/">Search</a> <span aria-hidden="true">/</span> ${esc(ing.ingredient_name)}</p>
     <h1 tabindex="-1">${esc(ing.ingredient_name)}</h1>
-    <p class="lede">${fmtCount(ing.n_cases_ps_ss)} reports name ${esc(ing.ingredient_name)} as primary
+    <p class="lede">${fmtCount(ing.n_cases_ps_ss)} cases name ${esc(ing.ingredient_name)} as primary
       or secondary suspect. ${ingredientNote(ing)}</p>
-    <p>Reactions with the highest disproportionality across all loaded reports. Open a reaction
+    <p>Reactions with the highest disproportionality across all loaded cases. Open a reaction
       for its 2×2 table, intervals and quarterly trend.</p>
     <div id="pairs"></div>`;
   renderPairsTable(doc);
@@ -293,7 +293,7 @@ function renderPairsTable(doc) {
         <caption class="sr-only">Reactions reported with ${esc(doc.ingredient.ingredient_name)}</caption>
         <thead><tr>
           <th scope="col">Reaction (MedDRA PT)</th>
-          ${th('a', 'Reports')}
+          ${th('a', 'Cases')}
           ${th('prr', 'PRR')}
           <th scope="col" class="num">PRR 95% CI</th>
           <th scope="col" class="num">ROR</th>
@@ -306,7 +306,7 @@ function renderPairsTable(doc) {
     )}
     ${more}
     <p class="help">Sorting by ROR 95% CI uses its lower bound. Criteria: Evans (at least 3
-      reports, PRR ≥ 2, χ² ≥ 4); ROR (at least 3 reports, lower bound above 1). Meeting a
+      cases, PRR ≥ 2, χ² ≥ 4); ROR (at least 3 cases, lower bound above 1). Meeting a
       criterion flags a pair for review; it does not confirm an effect of the drug.</p>`;
   for (const b of document.querySelectorAll('button.sort')) {
     b.addEventListener('click', () => {
@@ -343,7 +343,7 @@ async function viewPair(slug, reactionKey) {
         Clusters of reports (litigation, publicity, one reporter sending many long reports) can
         produce strong disproportionality without a pharmacological cause.</p></div>`
     : '';
-  const chartTitle = `Reports of ${p.reaction_pt} with ${ing.ingredient_name} per quarter`;
+  const chartTitle = `Cases of ${p.reaction_pt} with ${ing.ingredient_name} per quarter`;
   const chartDesc = series
     .map((s) => `${s.quarter}: ${s.a == null ? 'fewer than 3' : s.a}`)
     .join('; ');
@@ -353,11 +353,11 @@ async function viewPair(slug, reactionKey) {
     <h1 tabindex="-1">${esc(p.reaction_pt)} <span class="h1-sub">with ${esc(ing.ingredient_name)}</span></h1>
     ${alertHtml}
     <section aria-labelledby="t22-h">
-      <h2 id="t22-h">Reports, all loaded quarters</h2>
+      <h2 id="t22-h">Cases, all loaded quarters</h2>
       ${scrollTable(
         '2 by 2 table',
         `<table class="two-by-two">
-          <caption>Distinct reports (cases) with and without ${esc(ing.ingredient_name)} (as primary or secondary suspect) and ${esc(p.reaction_pt)}.</caption>
+          <caption>Distinct cases with and without ${esc(ing.ingredient_name)} (as primary or secondary suspect) and ${esc(p.reaction_pt)}.</caption>
           <thead><tr><td></td><th scope="col" class="num">With the reaction</th><th scope="col" class="num">Without</th><th scope="col" class="num">Total</th></tr></thead>
           <tbody>
             <tr><th scope="row">With the ingredient</th>${cell(p.a, 'a')}${cell(p.b, 'b')}${cell(p.n_drug, 'n_drug')}</tr>
@@ -395,31 +395,31 @@ async function viewPair(slug, reactionKey) {
       </details>
     </section>
     <section aria-labelledby="conc-h">
-      <h2 id="conc-h">Where the reports come from</h2>
+      <h2 id="conc-h">Where the cases come from</h2>
       <dl class="facts">
-        <div><dt>Most frequent reporter country</dt><dd>${p.top_country ? `${esc(p.top_country)}, ${fmtShare(p.top_country_share)} of reports` : DASH}</dd></div>
-        <div><dt>Same country, all reports of the ingredient</dt><dd>${p.top_country ? `${fmtShareMin(p.ingredient_country_share)} ${esc(p.top_country)}` : DASH}</dd></div>
-        <div><dt>Ingredient's most frequent country</dt><dd>${p.ingredient_top_country ? `${esc(p.ingredient_top_country)}, ${fmtShare(p.ingredient_top_country_share)} of its reports` : DASH}</dd></div>
-        <div><dt>Most frequent first-receipt quarter</dt><dd>${p.top_quarter ? `${esc(p.top_quarter)}, ${fmtShare(p.top_quarter_share)} of reports` : DASH}</dd></div>
+        <div><dt>Most frequent reporter country</dt><dd>${p.top_country ? `${esc(p.top_country)}, ${fmtShare(p.top_country_share)} of cases` : DASH}</dd></div>
+        <div><dt>Same country, all cases of the ingredient</dt><dd>${p.top_country ? `${fmtShareMin(p.ingredient_country_share)} ${esc(p.top_country)}` : DASH}</dd></div>
+        <div><dt>Ingredient's most frequent country</dt><dd>${p.ingredient_top_country ? `${esc(p.ingredient_top_country)}, ${fmtShare(p.ingredient_top_country_share)} of its cases` : DASH}</dd></div>
+        <div><dt>Most frequent first-receipt quarter</dt><dd>${p.top_quarter ? `${esc(p.top_quarter)}, ${fmtShare(p.top_quarter_share)} of cases` : DASH}</dd></div>
         <div><dt>Median reactions per report</dt><dd>${p.median_reactions_per_case == null ? DASH : fmtCount(p.median_reactions_per_case)}</dd></div>
       </dl>
       <p class="help">Most FAERS reports come from the United States, so a high country share is
         not unusual by itself. The pair is marked concentrated by the quarter share
         (${fmtShare(config.alert.min_top_quarter_share)} or more, with at least
-        ${fmtCount(config.alert.min_cases_for_quarter_rule)} reports), by the country share
+        ${fmtCount(config.alert.min_cases_for_quarter_rule)} cases), by the country share
         (${fmtShare(config.alert.min_top_country_share)} or more from one country, with at least
-        ${fmtCount(config.alert.min_cases_for_country_rule)} reports, when that country is not the
+        ${fmtCount(config.alert.min_cases_for_country_rule)} cases, when that country is not the
         ingredient's most frequent one) or by the median number of reactions
         (${fmtCount(config.alert.min_median_reactions_per_case)} or more).</p>
     </section>
     <section aria-labelledby="trend-h">
-      <h2 id="trend-h">Reports per quarter</h2>
-      <p class="help">Quarter in which the FDA first received each report.${meta.last_quarter_is_provisional ? ` ${esc(meta.provisional_quarter)}* is provisional: its count grows as later files arrive.` : ''} Quarters with fewer than 3 reports show “&lt;3”. Reports received before ${esc(meta.first_quarter)} count in the totals above but not here.</p>
+      <h2 id="trend-h">Cases per quarter</h2>
+      <p class="help">Quarter in which the FDA first received each case.${meta.last_quarter_is_provisional ? ` ${esc(meta.provisional_quarter)}* is provisional: its count grows as later files arrive.` : ''} Quarters with fewer than 3 cases show “&lt;3”. Cases first received before ${esc(meta.first_quarter)} count in the totals above but not here.</p>
       <figure class="chart">${trendSvg(series, { provisionalQuarter: meta.provisional_quarter, titleId: 'trend-title', descId: 'trend-desc', title: chartTitle, desc: chartDesc })}</figure>
       ${scrollTable(
-        'Reports per quarter',
+        'Cases per quarter',
         `<table class="trend-table">
-          <thead><tr><th scope="col">Quarter</th><th scope="col" class="num">Reports</th><th scope="col" class="num">PRR</th></tr></thead>
+          <thead><tr><th scope="col">Quarter</th><th scope="col" class="num">Cases</th><th scope="col" class="num">PRR</th></tr></thead>
           <tbody>${series
             .map(
               (s) =>
@@ -588,7 +588,7 @@ async function viewMethod() {
   setTitle('Method & limitations');
   main.innerHTML = '<h1 tabindex="-1">Method &amp; limitations</h1><p class="loading">Loading…</p>';
   const { html } = await import('virtual:limitations');
-  main.innerHTML = `<p class="crumbs">From <code>docs/limitations.md</code> in the repository.</p><article class="prose">${html}</article>`;
+  main.innerHTML = `<p class="crumbs">Method and limitations of the results, from <code>docs/limitations.md</code>; the operational limits of the pipeline are in that file in the repository.</p><article class="prose">${html}</article>`;
   const h1 = main.querySelector('h1');
   if (h1) h1.tabIndex = -1;
   announce('Method and limitations loaded');

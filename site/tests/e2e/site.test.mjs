@@ -19,7 +19,8 @@ const PORT = 8310;
 const BASE = `http://127.0.0.1:${PORT}${PREFIX}`;
 const RXNORM = YAML.parse(readFileSync(resolve(SITE, '../config/rxnorm.yaml'), 'utf8'));
 const ATTRIBUTION = RXNORM.attribution_text.split(/\s+/).join(' ');
-const MEDDRA = YAML.parse(readFileSync(resolve(SITE, '../config/site.yaml'), 'utf8')).site.meddra_notice;
+const SITE_CFG = YAML.parse(readFileSync(resolve(SITE, '../config/site.yaml'), 'utf8'));
+const MEDDRA = SITE_CFG.site.meddra_notice;
 const META = JSON.parse(readFileSync(resolve(DIST, 'data/meta.json'), 'utf8'));
 const SEARCH = JSON.parse(readFileSync(resolve(DIST, 'data/json/search.json'), 'utf8'));
 const FIRST = SEARCH.rows[0][SEARCH.columns.indexOf('slug')];
@@ -129,7 +130,7 @@ test('ingredient: sortable columns and concentration alerts follow the config ru
   assert.deepEqual(prr, [...prr].sort((a, b) => b - a));
   await page.getByRole('button', { name: /^PRR/ }).click();
   assert.equal(await page.locator('th:has(button[data-sort="prr"])').getAttribute('aria-sort'), 'ascending');
-  await page.getByRole('button', { name: /^Reports/ }).click();
+  await page.getByRole('button', { name: /^Cases/ }).click();
   const a = (await values('a')).map(Number);
   assert.deepEqual(a, [...a].sort((x, y) => y - x));
   const expected = FIRST_DOC.pairs.filter((p) => flagged(p).length).length;
@@ -153,7 +154,7 @@ test('country alert: the badge and the pair page give the country and the ingred
   const { slug, p } = found;
   const pct = (v) => `${Math.round(v * 100)}%`;
   const ingPct = p.ingredient_country_share > 0 && p.ingredient_country_share < 0.005 ? '<1%' : pct(p.ingredient_country_share);
-  const text = `${pct(p.top_country_share)} of reports from ${p.top_country}; ingredient: ${ingPct} ${p.top_country}`;
+  const text = `${pct(p.top_country_share)} of cases from ${p.top_country}; ingredient: ${ingPct} ${p.top_country}`;
   const ing = await open(`#/ingredient/${slug}`);
   const row = ing.page.locator('table.pairs tbody tr', { has: ing.page.locator(`a[href$="/${p.reaction_key}"]`) });
   const badge = await row.locator('.alert-badge').innerText();
@@ -163,7 +164,7 @@ test('country alert: the badge and the pair page give the country and the ingred
   await ing.ctx.close();
   const pair = await open(`#/ingredient/${slug}/${p.reaction_key}`);
   const callout = await pair.page.locator('.callout.warn').innerText();
-  assert.match(callout, new RegExp(`${pct(p.top_country_share)} of these reports come from ${p.top_country}`));
+  assert.match(callout, new RegExp(`${pct(p.top_country_share)} of these cases come from ${p.top_country}`));
   assert.match(callout, new RegExp(`most frequent country is ${p.ingredient_top_country}`));
   const axePair = await new AxeBuilder({ page: pair.page }).withTags(AXE_TAGS).analyze();
   assert.deepEqual(axePair.violations.map((v) => v.id), [], 'axe on the pair page');
@@ -229,6 +230,17 @@ function horizontalScrollers(page) {
       .map((e) => ({ tag: e.tagName.toLowerCase(), cls: e.className, focusable: e.tabIndex >= 0 }))
   );
 }
+
+test('method page: only the configured sections of limitations.md, with the case definition', async () => {
+  const { ctx, page } = await open(ROUTES.method);
+  await page.locator('article.prose').waitFor();
+  const h2 = await page.locator('article.prose h2').allInnerTexts();
+  assert.deepEqual(h2.map((t) => t.trim()), SITE_CFG.method_page.sections);
+  const text = await page.locator('article.prose').innerText();
+  assert.ok(!text.includes('Operational limits'), 'operational limits stay in the repository');
+  assert.match(text, /a case is one FAERS case ID/);
+  await ctx.close();
+});
 
 test('method page: axe and focusable scroll regions at narrow and wide viewports', async () => {
   const all = [];

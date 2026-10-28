@@ -1,5 +1,9 @@
 # Known limitations
 
+A *report* is one version of a FAERS case as submitted to the FDA; a *case* is one FAERS case ID,
+counted once through its latest report after deduplication, and every count of the ingredient
+and pair pages (including a, b, c and d) is a count of cases.
+
 ## RxNorm normalization of drug names
 
 FAERS drug names (cleaned `PROD_AI`) are mapped to RxNorm ingredients (IN) with the NLM RxNav

@@ -12,7 +12,7 @@ import {
   sortPairs,
   trendSeries,
 } from '../../src/lib/logic.js';
-import { wrapTables } from '../../src/lib/markdown.js';
+import { selectSections, wrapTables } from '../../src/lib/markdown.js';
 
 const RULE = {
   min_top_quarter_share: 0.8,
@@ -163,4 +163,16 @@ test('wrapTables: every table in a focusable region named after the heading befo
   ]);
   assert.equal((out.match(/<\/table><\/div>/g) || []).length, 3);
   assert.equal(wrapTables('<p>no table</p>'), '<p>no table</p>');
+});
+
+test('selectSections: keeps the preamble and the listed level-2 sections, in file order', () => {
+  const NL = String.fromCharCode(10);
+  const md = [
+    '# Title', 'intro', '## A', 'a text', '### A.1', 'a1', '```', '## not a heading', '```',
+    '## Operational limits', 'local paths', '## B', 'b text',
+  ].join(NL);
+  const out = selectSections(md, ['B', 'A']);
+  assert.equal(out, ['# Title', 'intro', '## A', 'a text', '### A.1', 'a1', '```', '## not a heading', '```', '## B', 'b text'].join(NL));
+  assert.ok(!out.includes('local paths'));
+  assert.throws(() => selectSections(md, ['A', 'Missing']), /Missing/);
 });

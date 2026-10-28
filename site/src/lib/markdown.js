@@ -1,4 +1,29 @@
-// Post-processing of HTML rendered from Markdown (marked), used at build time by vite.config.js.
+// Pre- and post-processing of the Markdown rendered by marked, used at build time by
+// vite.config.js.
+
+// Keeps the text before the first level-2 heading and the "## <title>" sections listed in
+// `titles` (config/site.yaml method_page.sections), in file order. Headings inside fenced code
+// blocks do not count. Throws when a listed title is missing, so a renamed heading fails the
+// build instead of silently dropping a section.
+export function selectSections(markdown, titles) {
+  const wanted = new Set(titles);
+  const found = new Set();
+  const out = [];
+  let keep = true;
+  let fence = false;
+  for (const line of markdown.split('\n')) {
+    if (/^(```|~~~)/.test(line)) fence = !fence;
+    const m = fence ? null : /^## (.+?)\s*$/.exec(line);
+    if (m) {
+      keep = wanted.has(m[1]);
+      if (keep) found.add(m[1]);
+    }
+    if (keep) out.push(line);
+  }
+  const missing = titles.filter((t) => !found.has(t));
+  if (missing.length) throw new Error(`sections not found in the Markdown: ${missing.join(', ')}`);
+  return out.join('\n');
+}
 
 const HEADING = /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/g;
 const TABLE = /<table[\s>][\s\S]*?<\/table>/g;

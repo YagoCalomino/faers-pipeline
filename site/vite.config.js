@@ -4,7 +4,8 @@
 //   SITE_EXPORT (default ../data/site_export)  meta.json, manifest.json, json/, parquet/
 //   ../config/site.yaml                         site settings, concentration alert, downloads
 //   ../config/faers.yaml                        FDA landing page (footer link)
-//   ../docs/limitations.md                      rendered into the Method & limitations page
+//   ../docs/limitations.md                      sections rendered into the Method & limitations page
+//                                               (config/site.yaml method_page.sections)
 // Output: SITE_OUT (default dist): index.html, assets/, and data/ (a copy of the export).
 // base './': every URL in the build is relative, so it works under any sub-path
 // (GitHub Pages project sites live under /<repo>/).
@@ -13,7 +14,7 @@ import { dirname, join, resolve, normalize, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { marked } from 'marked';
 import YAML from 'yaml';
-import { wrapTables } from './src/lib/markdown.js';
+import { selectSections, wrapTables } from './src/lib/markdown.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..');
@@ -107,7 +108,9 @@ function siteData() {
       if (id === '\0limitations') {
         // Tables go in focusable scroll regions (src/lib/markdown.js): a wide table must not be a
         // scroll container the keyboard cannot reach (axe scrollable-region-focusable).
-        const html = wrapTables(marked.parse(readFileSync(join(REPO, 'docs/limitations.md'), 'utf8'), { gfm: true }));
+        // Only the sections listed in config/site.yaml method_page; the rest stays in the repository.
+        const md = selectSections(readFileSync(join(REPO, 'docs/limitations.md'), 'utf8'), readYaml('config/site.yaml').method_page.sections);
+        const html = wrapTables(marked.parse(md, { gfm: true }));
         return `export const html = ${JSON.stringify(html)};`;
       }
       return null;
