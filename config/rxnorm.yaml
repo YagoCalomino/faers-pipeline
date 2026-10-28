@@ -1,11 +1,11 @@
-# RxNorm enrichment (Phase 5). Values confirmed in Phase 0 (2026-10-23) on the official NLM pages:
+# RxNorm enrichment. Values confirmed on 2026-10-23 on the official NLM pages:
 #   Terms of service: https://lhncbc.nlm.nih.gov/RxNav/TermsofService.html
 #   RxNorm API list:  https://lhncbc.nlm.nih.gov/RxNav/APIs/RxNormAPIs.html
 #   (one page per function: https://lhncbc.nlm.nih.gov/RxNav/APIs/api-RxNorm.<function>.html)
 api:
   base_url: "https://rxnav.nlm.nih.gov/REST"
   # Documented limit: "no more than 20 requests per second per IP address" (100 with a UTS
-  # API key, not used here). Phase 0: ~150 ms per call, all HTTP 200 at 2 req/s.
+  # API key, not used here). Measured 2026-10-23: ~150 ms per call, all HTTP 200 at 2 req/s.
   rate_limit_rps: 5
   request_timeout_s: 30
   user_agent: "faers-pipeline-portfolio"
@@ -38,7 +38,7 @@ api:
 lookup:
   # Names: cleaned prod_ai (upper, trim, inner whitespace collapsed; same as the dbt key) of the
   # DRUG lines whose role is in signals.yaml signal_drug_roles, most frequent first.
-  # A backslash separates the ingredients of a combination in FAERS prod_ai (Phase 5 profile:
+  # A backslash separates the ingredients of a combination in FAERS prod_ai (2026-10-26 profile:
   # 2,523 of 8,316 PS/SS names). Each part is looked up on its own; '/', ',', 'AND' and '+' are
   # part of single substance names (vaccine strains, "ESTROGENS, CONJUGATED") and are not split.
   combination_separator: "\\"
@@ -94,7 +94,7 @@ generic_terms:
   - DEVICE
 
 coverage:
-  min_ps_ss_row_coverage: 0.85     # initial target from the plan; adjust after measuring
+  min_ps_ss_row_coverage: 0.85     # quality gate; measured 99.05% on 2026-10-26 (8 quarters)
 
 # Required statement, copied from https://lhncbc.nlm.nih.gov/RxNav/TermsofService.html
 # ("We request that any application that makes use of NLM data include the following

@@ -1,4 +1,4 @@
-"""Validation and promotion of the site export (Phase 8b; DAG publish_site, make publish-site).
+"""Validation and promotion of the site export (DAG publish_site, make publish-site).
 
 publish_site exports into a candidate folder (config/site.yaml export.candidate_dir), validates
 it here and only then swaps it into export.out_dir and writes the ready marker. A failed check

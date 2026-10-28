@@ -38,7 +38,7 @@ After the change, `dbt build` passes on both targets with dbt-core 1.12.6: 36 no
 ## Decision
 
 Use dbt Core 1.12 with dbt-duckdb 1.11 for the MVP. Keep the project parse-clean under the v2
-parser: run `make dbt-parse-v2` at the end of each phase and fix any new finding there, so a
+parser: run `make dbt-parse-v2` after each change to the dbt project and fix any new finding there, so a
 later move to v2 is a version change rather than a rewrite.
 
 ## Consequences

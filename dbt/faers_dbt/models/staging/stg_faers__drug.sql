@@ -5,7 +5,7 @@ select
     upper(trim(role_cod))                           as role_code,
     drugname                                        as drug_name_raw,
     prod_ai                                         as active_ingredient_raw,
-    -- Lookup text for RxNorm (Phase 5): prod_ai, else drugname.
+    -- Lookup text for RxNorm: prod_ai, else drugname.
     coalesce({{ clean_text('prod_ai') }}, {{ clean_text('drugname') }}) as drug_text_clean,
     case
         when {{ clean_text('prod_ai') }} is not null then 'prod_ai'

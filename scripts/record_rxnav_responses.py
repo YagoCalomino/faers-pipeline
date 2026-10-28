@@ -23,7 +23,7 @@ from faers_pipeline.rxnorm import RxNavClient  # noqa: E402
 
 OUT = REPO / "tests" / "fixtures" / "rxnorm" / "responses.json"
 # Real FAERS prod_ai terms: an IN (exact), a salt (PIN, exact), a salt with no exact string
-# (normalized), and the approximate-match failure seen in the Phase 0 spike (REACTINE).
+# (normalized), and the approximate-match failure seen in a 2026-10-23 test (REACTINE).
 CALLS = [
     ("version", {}),
     ("find_exact", {"term": "DUPILUMAB"}),

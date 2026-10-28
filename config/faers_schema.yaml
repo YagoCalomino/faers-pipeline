@@ -1,5 +1,5 @@
 # Required columns per file type (lowercase). Missing column = failure. Extra column = warning.
-# Post-2014Q3 layout, checked against the 2024Q3 and 2026Q2 zips in Phase 0.
+# Post-2014Q3 layout, checked against the 2024Q3 and 2026Q2 zips on 2026-10-23.
 demo: [primaryid, caseid, caseversion, i_f_code, event_dt, fda_dt, age, age_cod, age_grp, sex, reporter_country]
 drug: [primaryid, caseid, drug_seq, role_cod, drugname, prod_ai]
 reac: [primaryid, caseid, pt]

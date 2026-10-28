@@ -86,8 +86,8 @@ def test_sensor_not_done_when_zip_is_missing(faers_dag):
 
 def test_every_dag_has_tags_and_retries(bag):
     for dag_id, dag in bag.dags.items():
-        assert dag.tags, f"{dag_id} sem tags"
-        assert dag.default_args.get("retries", 0) >= 1, f"{dag_id} sem retries"
+        assert dag.tags, f"{dag_id} has no tags"
+        assert dag.default_args.get("retries", 0) >= 1, f"{dag_id} has no retries"
 
 
 @pytest.fixture(scope="module")

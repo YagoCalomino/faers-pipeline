@@ -1,9 +1,10 @@
 // Time to the first useful information of each page, bytes transferred, and screenshots, with
-// Playwright's headless Chromium. Same profiles as the Phase 8a spike:
+// Playwright's headless Chromium. Same profiles as the measurements in ADR 0003:
 //   desktop  1366x900, no throttling, median of RUNS
 //   mobile   Pixel 7 emulation, 150 ms latency, 1.6 Mbps down, 750 kbps up, CPU 4x slower, 1 run
 // Every run uses a new browser context (empty cache). The site is served under /faers-pipeline/
-// by scripts/serve.mjs, without and with gzip (whether GitHub Pages compresses is not confirmed).
+// by scripts/serve.mjs, without and with gzip (GitHub Pages
+// serves gzip: Content-Encoding: gzip on the published JSON, checked 2026-10-28).
 // Usage: node scripts/measure.mjs <dist> <screens dir|-> [runs=3] [gzip|plain|both]
 import { mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';

@@ -306,5 +306,5 @@ Reaction terms are MedDRA® Preferred Terms as reported in FDA FAERS. MedDRA® i
 trademark of ICH. This project does not distribute MedDRA: it adds no MedDRA codes, versions or
 hierarchy, only the term text found in the FDA files. Whether publishing these terms, on the
 pages and in the Parquet downloads, needs a MedDRA licence has not been confirmed; the decision
-and the plan (remove the Parquet downloads if a licence is required for the list of terms) are
+and the next step (remove the Parquet downloads if a licence is required for the list of terms) are
 in ADR 0004 (`docs/adr/0004-meddra-terms.md`).

@@ -1,4 +1,4 @@
-"""Export of the site's data from the warehouse (Phase 8a).
+"""Export of the site's data from the warehouse.
 
 The site never reads the warehouse: it reads the files written here (config/site.yaml export).
 

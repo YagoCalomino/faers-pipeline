@@ -1,4 +1,4 @@
-# Static site (Phase 8). faers_pipeline.export copies the site's data out of the warehouse
+# Static site. faers_pipeline.export copies the site's data out of the warehouse
 # (make export; DAG publish_site), faers_pipeline.site_check validates it, and site/ builds the
 # pages from it (make publish-site). The site reads only these files, never the warehouse.
 export:
@@ -146,8 +146,8 @@ downloads:
       unit: "rows, cases, lines or pct."
   known_signals:
     description: >-
-      Pairs with an established association (positive) and negative controls, chosen by the
-      project owner, compared with the period ALL. A sanity check of the pipeline, not a
+      Pairs with an established association (positive) and negative controls, chosen for
+      this project, compared with the period ALL. A sanity check of the pipeline, not a
       validation of the method.
     columns:
       expected: "positive or negative."

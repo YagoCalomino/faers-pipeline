@@ -2,7 +2,7 @@
 
 - Status: accepted
 - Date: 2026-10-24
-- Scope: `int_faers__case_latest` and, from Phase 4, `fct_case.quarter_key` and the signal periods
+- Scope: `int_faers__case_latest`, `fct_case.quarter_key` and the signal periods
 
 ## Context
 

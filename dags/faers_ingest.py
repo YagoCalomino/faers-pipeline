@@ -53,7 +53,7 @@ def _peak_rss_mb() -> float:
 
 @dag(
     dag_id="faers_ingest",
-    description="FAERS/AEMS trimestral: download, parse e Parquet particionado por trimestre",
+    description="Quarterly FAERS/AEMS files: download, parse and Parquet partitioned by quarter",
     schedule=CronDataIntervalTimetable(CFG["schedule"]["cron"], timezone="UTC"),
     start_date=pendulum.instance(START),
     end_date=pendulum.instance(END),
@@ -74,7 +74,7 @@ def faers_ingest():
         ctx = get_current_context()
         start = ctx["data_interval_start"]
         if start is None:
-            raise ValueError("Run sem data interval; dispare com uma data lógica de trimestre.")
+            raise ValueError("Run without a data interval; trigger it with a quarter's date.")
         return quarter_label(start)
 
     @task.sensor(

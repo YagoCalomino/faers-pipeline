@@ -29,7 +29,7 @@ seeds:
 
   - name: seed_known_signals
     description: >
-      Known drug-reaction pairs for validating the signal marts (Phase 7): positive pairs with an
+      Known drug-reaction pairs for validating the signal marts: positive pairs with an
       established association and negative controls, chosen by the project owner. Names are the
       exact dim_ingredient.ingredient_name (RxNorm) and dim_reaction.reaction_pt (MedDRA PT).
       reference holds the literature or label source once the owner fills it in; until then

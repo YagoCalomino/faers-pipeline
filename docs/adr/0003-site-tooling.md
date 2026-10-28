@@ -5,7 +5,7 @@
 
 ## Context
 
-The public explorer (Phase 8) is a static site on GitHub Pages that reads the files written by
+The public explorer is a static site on GitHub Pages that reads the files written by
 `make export` (`src/faers_pipeline/export.py`): Parquet tables and per-ingredient JSON slices.
 It needs ingredient search, a table of pairs sortable by PRR, ROR lower bound and case count
 with the concentration alert, a quarterly trend chart, a data-quality page, and a banner with
@@ -31,6 +31,9 @@ Published site at most 1 GB; deployments time out after 10 minutes; soft bandwid
 custom GitHub Actions workflow. Git blocks files over 100 MiB. `actions/upload-pages-artifact`
 requires a single gzip tar under 10 GB without links. The documentation states no limit on the
 number of files or on a single file's size, and does not say whether Pages compresses responses.
+Checked on the published site on 2026-10-28 instead: `curl -sI -H "Accept-Encoding: gzip"` on
+`data/json/search.json` returned `Content-Encoding: gzip` and `Vary: Accept-Encoding`, with
+49,276 bytes on the wire (48 KiB) against 162,004 bytes uncompressed (158 KiB).
 
 ### Spike results
 
@@ -38,7 +41,7 @@ Builds on Windows 11 (Node 22.20). Times to the first useful information (the se
 the ingredient's pairs table, the quality table) measured with Playwright's headless Chromium
 1248, fresh cache: desktop 1366×900 without throttling (median of 3), mobile Pixel 7 emulation
 with 150 ms latency, 1.6 Mbps download and 4× CPU slowdown (1 run). Served by a local static
-server without and with gzip (gzip is an assumption for Pages, not confirmed).
+server without and with gzip (GitHub Pages serves gzip; see above).
 
 | | Own page, DuckDB-WASM 1.32.0 + Vite 8.3.5 | Same page, JSON slices only | Observable Framework 1.13.4 | Evidence 40.1.8 (npm) |
 |---|---|---|---|---|
@@ -74,7 +77,7 @@ Observations:
 
 ## Decision
 
-Accepted by the project owner after the Phase 8a report.
+Accepted on 2026-10-26, after the measurements above.
 
 - **Tool.** A page of the project's own: Vite as the build tool and plain JavaScript, no UI
   framework. Hash routing (`#/ingredient/<slug>`), so links can be shared and no server-side
@@ -87,7 +90,7 @@ Accepted by the project owner after the Phase 8a report.
   the `site_export` Asset: the Airflow image has neither Node nor push credentials. The site is
   built and committed on the host (`make publish-site`) into a local orphan `gh-pages` branch
   with one commit and no history. Pushing that branch and turning on GitHub Pages are manual
-  steps of the owner.
+  steps.
 - **Language and paths.** The site is in English. Base path and `repo_url` live in
   `config/site.yaml`; every link inside the site is relative.
 - **Concentration alert.** The rule (share of a pair's cases in one init quarter, median
@@ -115,5 +118,5 @@ Accepted by the project owner after the Phase 8a report.
   navigation are checked by the project's own tests.
 - Each new view needs data the export already shapes, so new views may mean changes to
   `export.py`.
-- Risks: whether GitHub Pages compresses responses was not confirmed (without gzip the slowest
-  page took 5.3 s on the simulated phone); mobile times come from one run per page.
+- GitHub Pages serves the JSON gzip-compressed (confirmed on 2026-10-28), so the gzip rows of
+  the table are the ones that apply. Risk: mobile times come from one run per page.

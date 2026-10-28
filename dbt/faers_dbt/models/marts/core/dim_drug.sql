@@ -1,5 +1,5 @@
 -- One row per cleaned prod_ai of the winning versions, plus the unknown member (drug lines
--- without prod_ai). Phase 5 adds the RxNorm ingredient on top without changing this grain.
+-- without prod_ai). The RxNorm ingredient is resolved on top of it without changing this grain.
 with lines as (
     select
         {{ drug_natural_key('active_ingredient_raw') }} as prod_ai_clean,

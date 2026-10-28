@@ -41,7 +41,7 @@ SITE_EXPORT_ASSET = Asset("site_export")
 
 @dag(
     dag_id="publish_site",
-    description="Exporta os dados do site, valida a exportação e emite o Asset site_export",
+    description="Exports the site data, validates the export and emits the site_export Asset",
     schedule=[WAREHOUSE_ASSET],
     start_date=pendulum.datetime(2026, 1, 1, tz="UTC"),
     catchup=False,

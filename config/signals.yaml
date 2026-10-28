@@ -1,4 +1,4 @@
-# Disproportionality signals (Phase 7). Passed to dbt as vars by faers_pipeline.warehouse
+# Disproportionality signals. Passed to dbt as vars by faers_pipeline.warehouse
 # (signal_drug_roles, signal_min_cases and the whole file as `signals`). Sources of the
 # formulas and criteria: docs/limitations.md ("Signals").
 

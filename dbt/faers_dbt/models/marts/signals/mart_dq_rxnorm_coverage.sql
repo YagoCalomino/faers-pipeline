@@ -2,7 +2,7 @@
 -- period: each in-window quarter (quarter_key = init quarter, ADR 0001) and ALL (every loaded
 -- case). Grain: (period_key, match_type, fallback_reason). A line counts once, with the
 -- weakest layer among the parts of its name (a combination with one unresolved part is
--- fallback / partial_combination). First part of the planned mart_dq_metrics.
+-- fallback / partial_combination). Feeds the rxnorm_coverage group of mart_dq_metrics.
 with lines as (
     select
         caseid,

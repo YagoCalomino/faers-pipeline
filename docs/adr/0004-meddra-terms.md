@@ -59,7 +59,7 @@ Plan:
 
 ## Consequences
 
-- Until the plan is done, the downloads that contain `reaction_pt` stay published with the
+- Until this check is done, the downloads that contain `reaction_pt` stay published with the
   notice; the risk is accepted for now and tracked in `docs/limitations.md`.
 - Removing the downloads would not change the pipeline or the marts: only the export formats in
   `config/site.yaml` and the Downloads page.

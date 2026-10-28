@@ -1,6 +1,6 @@
 // Static file server for local checks: serves <root> under <prefix>, as GitHub Pages serves a
-// project site under /<repo>/. Optional gzip for text responses (whether GitHub Pages compresses
-// was not confirmed; measure both). No dependencies.
+// project site under /<repo>/. Optional gzip for text responses, as GitHub Pages
+// serves them (Content-Encoding: gzip, checked 2026-10-28). No dependencies.
 // Usage: node scripts/serve.mjs <root> <port> <prefix> [gzip]
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';

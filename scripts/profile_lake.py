@@ -1,4 +1,4 @@
-"""Read-only cross-quarter profile of the FAERS raw lake (Phase 2).
+"""Read-only cross-quarter profile of the FAERS raw lake.
 
 Run inside the container, after the quarters are ingested:
     docker compose --env-file .env -f infra/docker/docker-compose.yml run --rm --no-deps \
@@ -42,7 +42,7 @@ from faers_pipeline.parse import duckdb_session  # noqa: E402
 CFG = load_config("faers.yaml")
 CONTAINER_DATA = Path("/opt/airflow/data")
 TYPES = ["demo", "drug", "reac", "deleted"]
-# Same normalization the plan uses for the RxNorm lookup key (upper, trim, collapse spaces).
+# Same normalization as the RxNorm lookup key (upper, trim, collapse spaces).
 NORM = "nullif(regexp_replace(upper(trim({c})), '\\s+', ' ', 'g'), '')"
 
 
@@ -373,7 +373,7 @@ def h_drug_names(con) -> dict:
     )
     union["note"] = (
         "Names normalized with upper/trim/collapse spaces; lookup_key = prod_ai, else drugname "
-        "(the RxNorm key of the plan, section 5.2)."
+        "(the RxNorm lookup key)."
     )
     return {"per_quarter": per_q, "union_8_quarters": union}
 

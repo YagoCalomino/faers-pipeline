@@ -33,7 +33,7 @@ SEP = LOOKUP["combination_separator"]
 
 @dag(
     dag_id="rxnorm_enrich",
-    description="RxNorm: nomes de medicamento do FAERS -> ingredientes (cache Parquet)",
+    description="RxNorm: FAERS drug names -> ingredients (Parquet cache)",
     schedule=[RAW_ASSET],
     start_date=pendulum.datetime(2026, 1, 1, tz="UTC"),
     catchup=False,

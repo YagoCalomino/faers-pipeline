@@ -18,7 +18,7 @@ def test_contract_ignores_internal_columns(schema_cfg):
 
 
 def test_contract_reports_extra_columns(schema_cfg):
-    # drug_rec_act is a real REAC column (plan section 5.1) not required by the contract.
+    # drug_rec_act is a real REAC column (FAERS file description) not required by the contract.
     cols = [*schema_cfg["reac"], "drug_rec_act"]
     assert check_contract("reac", cols, schema_cfg)["extra_columns"] == ["drug_rec_act"]
 

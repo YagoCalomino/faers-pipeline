@@ -25,7 +25,7 @@ def quarter_label(dt: datetime) -> str:
 def parse_quarter(label: str) -> tuple[int, int]:
     m = re.fullmatch(r"(\d{4})Q([1-4])", label)
     if not m:
-        raise ValueError(f"Trimestre inválido: {label!r}")
+        raise ValueError(f"Invalid quarter: {label!r}")
     return int(m.group(1)), int(m.group(2))
 
 

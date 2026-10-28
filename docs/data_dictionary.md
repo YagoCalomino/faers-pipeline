@@ -237,7 +237,7 @@ Grain: one row per (case, outcome code) of the winning version. 2,068,441 rows
 ### `mart_dq_rxnorm_coverage`
 
 Grain: one row per (`period_key`, `match_type`, `fallback_reason`). Source:
-`int_faers__drug_resolved`, `fct_case`. First part of the planned `mart_dq_metrics`.
+`int_faers__drug_resolved`, `fct_case`. Feeds the `rxnorm_coverage` group of `mart_dq_metrics`.
 
 | Column | Type | Description |
 |---|---|---|

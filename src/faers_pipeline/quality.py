@@ -30,7 +30,7 @@ def check_contract(file_type: str, columns: list[str], schema_cfg: dict) -> dict
     missing = sorted(expected - actual)
     extra = sorted(actual - expected)
     if missing:
-        raise ValueError(f"[{file_type}] colunas obrigatórias ausentes: {missing}")
+        raise ValueError(f"[{file_type}] missing required columns: {missing}")
     return {"file_type": file_type, "extra_columns": extra}
 
 
@@ -55,14 +55,14 @@ def check_rows(results: list[dict]) -> None:
     """Gate: every type has rows, and Parquet rows = non-empty data lines of the .txt."""
     empty = [r["file_type"] for r in results if r["rows"] == 0]
     if empty:
-        raise ValueError(f"Arquivos sem linhas: {empty}")
+        raise ValueError(f"Files without rows: {empty}")
     diff = {
         r["file_type"]: (r["rows"], r["expected_rows"])
         for r in results
         if r["rows"] != r["expected_rows"]
     }
     if diff:
-        raise ValueError(f"Linhas no Parquet != linhas do .txt (parquet, txt): {diff}")
+        raise ValueError(f"Parquet rows != .txt rows (parquet, txt): {diff}")
 
 
 def count_deleted_in_demo(demo_path: str | Path, deleted_path: str | Path) -> int:

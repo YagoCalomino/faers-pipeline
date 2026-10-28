@@ -202,7 +202,7 @@ def read_member(zip_path: Path, member_name: str) -> tuple[str, bytes]:
         for member in zf.namelist():
             if member.lower() == want:
                 return member, zf.read(member)
-    raise FileNotFoundError(f"Membro {member_name!r} ausente em {zip_path.name}")
+    raise FileNotFoundError(f"Member {member_name!r} not found in {zip_path.name}")
 
 
 def parse_deleted(raw: bytes, source_file: str, out_path: Path, parse_cfg: dict) -> dict:

@@ -34,7 +34,7 @@ WAIT = CFG["transform"]["wait_for_ingest"]
 
 @dag(
     dag_id="faers_transform",
-    description="dbt build do warehouse DuckDB com troca atômica e reconciliação",
+    description="dbt build of the DuckDB warehouse with atomic swap and reconciliation",
     schedule=[RXNORM_ASSET],
     start_date=pendulum.datetime(2026, 1, 1, tz="UTC"),
     catchup=False,
