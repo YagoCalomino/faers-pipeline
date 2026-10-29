@@ -24,7 +24,10 @@ a salt instead of the drug (dexamethasone sodium succinate → sodium succinate,
 hydrobromide → hydrobromic acid). `approximate_rules.min_score` is therefore `null`: names
 without an exact or normalized match stay as fallback ingredients (`FB:<text>`).
 
-In the calibration sample, exact and normalized matches were correct in 20 of 20 rows.
+In the calibration sample, exact and normalized matches were correct in 20 of 20 rows. Of the
+20 terms left as `not_found`, 17 were marked right and 3 wrong (ARABICA COFFEE BEAN, KARAYA
+GUM, SPEARMINT: real substances whose two candidate RxCUIs may be synonyms; the marks record
+this as a doubt).
 
 ### Ambiguous exact matches are not resolved
 
@@ -132,8 +135,9 @@ Sources:
   doi:10.1002/pds.668. Reporting odds ratio and the use of the lower 1.96·SE bound.
 - The standard errors on the log scale are the usual large-sample formulas for a risk ratio
   and an odds ratio; the PRR form above matches published tables of disproportionality
-  formulas. They were checked against an independent computation in plain Python (dbt test
-  `assert_signal_statistics_known_values` and a recalculation of two real pairs).
+  formulas. They were checked against an independent computation in plain Python (the
+  literals of the dbt test `assert_signal_statistics_known_values` are recomputed by
+  `tests/unit/test_signal_known_values.py`) and a recalculation of two real pairs.
 
 ### Continuity correction (Yates)
 

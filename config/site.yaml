@@ -77,8 +77,6 @@ concentration_alert:
   min_top_country_share: 0.9
   min_cases_for_country_rule: 10
 
-# Descriptions of the open-data downloads (parquet/<table>.parquet). Every exported column must
-# have a description here (checked by validate_export).
 # Method & limitations page (#/method): the level-2 sections ("## ...") of docs/limitations.md
 # rendered on the site, by exact heading. The text before the first section is always kept.
 # Other sections, such as "Operational limits" (local paths, the Windows bind mount, failure
@@ -89,6 +87,8 @@ method_page:
     - "Signals (PRR, ROR)"
     - "MedDRA terms"
 
+# Descriptions of the open-data downloads (parquet/<table>.parquet). Every exported column must
+# have a description here (checked by validate_export).
 downloads:
   ingredients:
     description: "One row per ingredient shown on the site (generic fallbacks left out)."

@@ -55,7 +55,7 @@ server without and with gzip (GitHub Pages serves gzip; see above).
 | Mobile width | no page overflow; table scrolls | same | no page overflow; table columns truncated to "…" | no page overflow; table shows 2 columns, PRR/ROR hidden |
 | Fixture (CI) build | 12 s, works | same | 61 s, works | fails on an empty source query (unreadable empty Parquet); works with a placeholder row, 1 min 37 s |
 | Fit with the export | reads `parquet/` directly | reads `json/` directly | reads `parquet/` via `FileAttachment` (literal names only; per-ingredient JSON would need parameterized routes) | copies `parquet/` into its own sources, re-extracted on every build |
-| Code written for the spike | 216 lines (UI by hand, both modes) | same | 148 lines (Inputs, Plot) | 138 lines (components) |
+| Code written for the spike (not versioned) | 216 lines (UI by hand, both modes) | same | 148 lines (Inputs, Plot) | 138 lines (components) |
 
 Observations:
 

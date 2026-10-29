@@ -252,6 +252,20 @@ When the zip is published, clear `wait_for_release` of that run (with its downst
 Clearing starts a new try and deletes the reschedule records of the old one, so the 30 days
 count again from the first new check.
 
+## Test fixtures and profiling
+
+Run inside the container, only when the selection rules change. Each script reads real data
+(the lake, the FDA zips, the RxNorm cache, the warehouse or RxNav) and documents its rules in
+its docstring.
+
+| Script | Output |
+|---|---|
+| `scripts/make_fixture.py` | `tests/fixtures/faers_sample/`: real lines of four FAERS quarters (`SOURCE.md` lists the cases). |
+| `scripts/make_rxnorm_fixture.py` | `tests/fixtures/rxnorm_sample/term_lookup.jsonl`: the RxNorm cache rows for the fixture's terms, so `make dbt-ci` needs no network. |
+| `scripts/record_rxnav_responses.py` | `tests/fixtures/rxnorm/responses.json`: recorded RxNav answers for the unit tests. |
+| `scripts/make_export_fixture.py` | `tests/fixtures/site_export/`: a small real subset of the warehouse marts for the export and site tests. |
+| `scripts/profile_lake.py` | A read-only profile of the raw lake across quarters (versions, deletions, time anchor, empty fields, roles, drug names), written to `data/profile_lake.json` (not versioned). |
+
 ## Disk
 
 - Extracted `.txt` files (about 370 MB per quarter) are deleted by `faers_ingest.cleanup_extracted`

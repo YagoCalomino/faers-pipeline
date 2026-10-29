@@ -213,7 +213,7 @@ def markdown(n: dict) -> str:
             + (f"{peak / 2**30:.2f} GiB (container), " if peak else "")
             + f"{b['build']['dbt_peak_rss_mb'] / 1024:.2f} GiB (dbt process); "
             f"DuckDB memory_limit {b['dbt_memory_limit']} |",
-            f"| Warehouse file | {mb(b['warehouse_bytes'])} |",
+            f"| Warehouse file right after the measured build | {mb(b['warehouse_bytes'])} |",
         ]
     if "export" in n:
         lines.append(f"| Site export | {n['export'][0]:,} files, {mb(n['export'][1])} |")
@@ -243,7 +243,8 @@ def markdown(n: dict) -> str:
         ]
     disk = n["disk"]
     lines.append(
-        f"| Disk: zips / Parquet lake / warehouse | {mb(disk['zips'])} / {mb(disk['lake'])} / "
+        f"| Disk when this table was generated: zips / Parquet lake / warehouse file | "
+        f"{mb(disk['zips'])} / {mb(disk['lake'])} / "
         f"{mb(disk['warehouse'])} |"
     )
     return "\n".join(

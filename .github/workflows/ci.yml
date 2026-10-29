@@ -4,9 +4,7 @@
 # publish-site, pushed by hand).
 #
 # Actions are pinned to the commit of a release tag (a tag can be moved, a commit cannot); the
-# comment names the release. Checked on 2026-10-27 with `git ls-remote` and the GitHub releases
-# API: checkout v7.0.1 (2026-07-20), setup-python v7.0.0 (2026-07-20; v7.1.0 was 5 days old),
-# setup-node v7.1.0 (2026-10-08), cache v6.1.0 (2026-06-26). All run on node24.
+# comment after each SHA names the release.
 name: ci
 
 on:
