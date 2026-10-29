@@ -318,7 +318,7 @@ Grain: one row per pair of `seed_known_signals` (12). Values from `mart_signals`
 | `expected` | varchar | `positive` or `negative` (seed). |
 | `ingredient_name`, `reaction_pt` | varchar | As in the seed. |
 | `ingredient_id`, `reaction_key` | varchar | Exact match (case-insensitive) in `dim_ingredient` (non-fallback) and `dim_reaction`; null when not found. |
-| `reference`, `reference_status` | varchar | From the seed. |
+| `reference`, `reference_status` | varchar | From the seed: the FDA label and sections behind the expected result, and where the pair stands in the label (`label_boxed_warning`, `label_warning`, `label_monitoring`, `label_not_listed`). |
 | `a`, `n_drug`, `n_reac` | bigint | Cell a (also for pairs below 3 cases, counted directly); cases with the ingredient and with the PT (null below 3 cases). |
 | `prr`, `ror_lcl`, `chi2` | double | From `mart_signals` (null when the pair has fewer than 3 cases). |
 | `is_signal_evans`, `is_signal_ror` | boolean | From `mart_signals` (false when the pair is not stored). |
@@ -346,7 +346,7 @@ and `unit` (`rows`, `cases`, `lines`, `pct`). 297 rows.
 |---|---|---|
 | `seed_outcome_codes` | 7 OUTC codes and meaning text | FDA `ASC_NTS` (January 2025), in every quarterly zip |
 | `seed_role_codes` | 5 ROLE_COD codes and meaning text | FDA `ASC_NTS` (January 2025) |
-| `seed_known_signals` | 12 known pairs (9 positive, 3 negative controls) for `mart_known_signals_eval` | Chosen by the project owner; `reference` to be filled in (`reference_status = pending_user_confirmation`) |
+| `seed_known_signals` | 12 known pairs (9 positive, 3 negative controls) for `mart_known_signals_eval` | Positives with an established association and negative controls chosen for clinical implausibility; `reference` cites the FDA label and sections (consulted on 2026-10-29), `reference_status` is `label_boxed_warning`, `label_warning`, `label_monitoring` or `label_not_listed` |
 
 ## Limitations
 

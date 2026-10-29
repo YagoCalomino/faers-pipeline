@@ -1,13 +1,13 @@
 ingredient_name,reaction_pt,expected,reference,reference_status
-atorvastatin,Rhabdomyolysis,positive,,pending_user_confirmation
-metformin,Lactic acidosis,positive,,pending_user_confirmation
-ciprofloxacin,Tendon rupture,positive,,pending_user_confirmation
-ciprofloxacin,Tendonitis,positive,,pending_user_confirmation
-natalizumab,Progressive multifocal leukoencephalopathy,positive,,pending_user_confirmation
-clozapine,Agranulocytosis,positive,,pending_user_confirmation
-clozapine,Neutropenia,positive,,pending_user_confirmation
-warfarin,International normalised ratio increased,positive,,pending_user_confirmation
-amiodarone,Pulmonary toxicity,positive,,pending_user_confirmation
-metformin,Cough,negative,,pending_user_confirmation
-albuterol,Constipation,negative,,pending_user_confirmation
-atorvastatin,Pneumonia,negative,,pending_user_confirmation
+atorvastatin,Rhabdomyolysis,positive,"Lipitor FDA label, sec. 5.1 Myopathy and Rhabdomyolysis",label_warning
+metformin,Lactic acidosis,positive,"Glucophage FDA label, boxed warning LACTIC ACIDOSIS and sec. 5.1",label_boxed_warning
+ciprofloxacin,Tendon rupture,positive,"Cipro FDA label, boxed warning (tendinitis, tendon rupture) and sec. 5.2 Tendinitis and Tendon Rupture",label_boxed_warning
+ciprofloxacin,Tendonitis,positive,"Cipro FDA label, boxed warning (tendinitis, tendon rupture) and sec. 5.2 Tendinitis and Tendon Rupture",label_boxed_warning
+natalizumab,Progressive multifocal leukoencephalopathy,positive,"Tysabri FDA label, boxed warning PML and sec. 5.1",label_boxed_warning
+clozapine,Agranulocytosis,positive,"Clozaril FDA label, boxed warning SEVERE NEUTROPENIA and sec. 5.1; the term agranulocytosis appears in sec. 6.2 (postmarketing)",label_boxed_warning
+clozapine,Neutropenia,positive,"Clozaril FDA label, boxed warning SEVERE NEUTROPENIA and sec. 5.1",label_boxed_warning
+warfarin,International normalised ratio increased,positive,"Coumadin FDA label, secs. 2.4, 5.1 and 7; INR is monitored and raised by interactions, not listed in sec. 6 as an adverse reaction",label_monitoring
+amiodarone,Pulmonary toxicity,positive,"Pacerone FDA label, boxed warning PULMONARY, HEPATIC and CARDIAC TOXICITY and sec. 5.2 Pulmonary Toxicity",label_boxed_warning
+metformin,Cough,negative,"Glucophage FDA label, sec. 6: not listed",label_not_listed
+albuterol,Constipation,negative,"ProAir HFA FDA label, sec. 6: not listed",label_not_listed
+atorvastatin,Pneumonia,negative,"Lipitor FDA label, sec. 6: not listed (postmarketing lists interstitial lung disease only)",label_not_listed

@@ -186,11 +186,21 @@ test('pair: 2x2 cells add up and match the export', async () => {
   await ctx.close();
 });
 
-test('validation: empty references show "reference pending"', async () => {
+test('validation: every pair shows its label reference, with the three caveats', async () => {
   const { ctx, page } = await open(ROUTES.validation);
   const rows = JSON.parse(readFileSync(resolve(DIST, 'data/json/known_signals.json'), 'utf8'));
-  const pending = rows.filter((r) => !r.reference).length;
-  assert.equal(await page.getByText('reference pending', { exact: true }).count(), pending);
+  assert.equal(rows.length, 12);
+  const cells = await page.locator('table.known tbody tr td:last-child').allInnerTexts();
+  assert.equal(cells.length, rows.length);
+  for (const r of rows) {
+    assert.ok(r.reference, `${r.ingredient_name} / ${r.reaction_pt} has no reference`);
+    assert.ok(cells.some((c) => c.includes(r.reference)), r.reference);
+  }
+  const text = await page.locator('main').innerText();
+  assert.doesNotMatch(text, /pending|owner/i);
+  assert.match(text, /not that the drug is proven not to cause it/);
+  assert.match(text, /For warfarin, an increased INR is a monitoring result/);
+  assert.match(text, /consulted on 2026-10-29/);
   await ctx.close();
 });
 

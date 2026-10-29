@@ -30,10 +30,14 @@ seeds:
   - name: seed_known_signals
     description: >
       Known drug-reaction pairs for validating the signal marts: positive pairs with an
-      established association and negative controls, chosen by the project owner. Names are the
-      exact dim_ingredient.ingredient_name (RxNorm) and dim_reaction.reaction_pt (MedDRA PT).
-      reference holds the literature or label source once the owner fills it in; until then
-      reference_status is pending_user_confirmation. Checked by mart_known_signals_eval.
+      established association and negative controls chosen for clinical implausibility. Names
+      are the exact dim_ingredient.ingredient_name (RxNorm) and dim_reaction.reaction_pt (MedDRA
+      PT). reference names the FDA label and its sections (labels consulted on 2026-10-29);
+      reference_status says where the pair stands in the label: label_boxed_warning,
+      label_warning (Warnings and Precautions), label_monitoring (a laboratory value the label
+      tells to monitor, not a listed adverse reaction) or label_not_listed (not in the label's
+      adverse reactions, which is not proof that no association exists). Checked by
+      mart_known_signals_eval.
     config:
       column_types:
         ingredient_name: varchar
@@ -45,6 +49,9 @@ seeds:
       - dbt_utils.unique_combination_of_columns:
           arguments:
             combination_of_columns: [ingredient_name, reaction_pt]
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "length(trim(reference)) > 0"
     columns:
       - name: ingredient_name
         data_tests: [not_null]
@@ -56,9 +63,11 @@ seeds:
           - accepted_values:
               arguments:
                 values: [positive, negative]
+      - name: reference
+        data_tests: [not_null]
       - name: reference_status
         data_tests:
           - not_null
           - accepted_values:
               arguments:
-                values: [pending_user_confirmation, confirmed]
+                values: [label_boxed_warning, label_warning, label_monitoring, label_not_listed]

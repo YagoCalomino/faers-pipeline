@@ -253,8 +253,8 @@ shown unchanged.
 
 ### Validation against known pairs
 
-`seed_known_signals` lists pairs chosen by the project owner: 9 positive pairs with an
-established association and 3 negative controls. `signals.mart_known_signals_eval` compares
+`seed_known_signals` lists 9 positive pairs with an established association and 3 negative
+controls. `signals.mart_known_signals_eval` compares
 them with `mart_signals` in `ALL`. A positive passes with a ≥ 3, PRR ≥ 2 and `ror_lcl` > 1; a
 negative control passes when it is not an Evans signal. Names must match a non-fallback
 ingredient and a PT exactly; nothing is remapped when they do not.
@@ -279,9 +279,18 @@ Agranulocytosis) to 397.5 (warfarin–International normalised ratio increased).
 controls have PRR 0.997 (atorvastatin–Pneumonia), 1.36 (metformin–Cough) and 1.42
 (albuterol–Constipation). Metformin–Cough and albuterol–Constipation still have `ror_lcl`
 above 1 (1.23 and 1.30) and so meet the ROR criterion, though not the Evans one: with large
-counts, a small excess is significant without being strong. The references of the pairs
-(`reference`) are still to be filled in by the owner (`reference_status =
-pending_user_confirmation`).
+counts, a small excess is significant without being strong.
+
+Each pair cites the FDA label behind its expected result (`reference`), and `reference_status`
+says where the pair stands in that label: `label_boxed_warning` (7 positives), `label_warning`
+(atorvastatin–Rhabdomyolysis), `label_monitoring` (warfarin–International normalised ratio
+increased) or `label_not_listed` (the 3 negative controls). Three caveats:
+
+- A negative control means the reaction is not listed in the label's adverse reactions, not
+  that the drug is proven not to cause it.
+- For warfarin, an increased INR is a monitoring result that the label anticipates, not an
+  adverse reaction listed in the label.
+- The references were read in copies of the FDA labels, consulted on 2026-10-29.
 
 ## Operational limits
 

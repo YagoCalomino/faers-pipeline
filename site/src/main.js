@@ -542,6 +542,14 @@ async function viewQuality() {
 
 // ---------------------------------------------------------------------------- validation
 
+// Plain-language names of seed_known_signals.reference_status.
+const REFERENCE_STATUS = {
+  label_boxed_warning: 'Boxed warning',
+  label_warning: 'Warnings and precautions',
+  label_monitoring: 'Monitoring, not a listed reaction',
+  label_not_listed: 'Not listed in the label',
+};
+
 async function viewValidation() {
   setTitle('Validation');
   main.innerHTML = '<h1 tabindex="-1">Validation against known pairs</h1><p class="loading">Loading…</p>';
@@ -560,7 +568,7 @@ async function viewValidation() {
               ${num(r.a, fmtCount(r.a), 'a')}${num(r.prr, fmtRatio(r.prr), 'prr')}${num(r.ror_lcl, fmtRatio(r.ror_lcl), 'ror_lcl')}${num(r.chi2, fmtRatio(r.chi2), 'chi2')}
               <td>${r.is_signal_evans ? 'Yes' : 'No'}</td>
               <td>${r.passed ? '<span class="ok">As expected</span>' : `<span class="bad">Not as expected</span>${r.failure_reason ? ` (${esc(r.failure_reason)})` : ''}`}</td>
-              <td>${r.reference ? esc(r.reference) : '<span class="muted">reference pending</span>'}</td>
+              <td>${esc(REFERENCE_STATUS[r.reference_status] ?? r.reference_status ?? '')}<br><span class="muted">${esc(r.reference ?? '')}</span></td>
             </tr>`,
           )
           .join('')}</tbody></table>`,
@@ -577,8 +585,16 @@ async function viewValidation() {
       excess can still put a control's ROR lower bound above 1.</p>
     <section aria-labelledby="pos-h"><h2 id="pos-h">Positive pairs</h2>${table('Positive pairs', pos)}</section>
     <section aria-labelledby="neg-h"><h2 id="neg-h">Negative controls</h2>${table('Negative controls', neg)}</section>
-    <p class="help">The references (label or publication) of the pairs are still to be filled in
-      by the project owner.</p>`;
+    <section aria-labelledby="ref-h"><h2 id="ref-h">References</h2>
+      <p>Each pair cites the FDA label behind its expected result and where the pair stands in it.</p>
+      <ul>
+        <li>A negative control means the reaction is not listed in the label's adverse reactions,
+          not that the drug is proven not to cause it.</li>
+        <li>For warfarin, an increased INR is a monitoring result that the label anticipates, not an
+          adverse reaction listed in the label.</li>
+        <li>The references were read in copies of the FDA labels, consulted on 2026-10-29.</li>
+      </ul>
+    </section>`;
   announce('Validation loaded');
 }
 

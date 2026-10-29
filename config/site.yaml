@@ -175,5 +175,5 @@ downloads:
       a_fallback_same_name: "Cases of a fallback ingredient with the same name (split counts)."
       passed: "Positive: a >= 3, PRR >= 2 and ROR lower bound > 1. Negative: not an Evans pair."
       failure_reason: "Why the pair did not pass."
-      reference: "Source of the expected association (label or publication); empty until confirmed."
-      reference_status: "pending_user_confirmation until the reference is filled in."
+      reference: "FDA label and sections behind the expected result (labels consulted on 2026-10-29)."
+      reference_status: "Where the pair stands in the label: label_boxed_warning, label_warning, label_monitoring (a monitored laboratory value, not a listed adverse reaction) or label_not_listed (not in the adverse reactions; not proof of no association)."
