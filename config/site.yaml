@@ -60,10 +60,10 @@ site:
 
 # Concentration alert on a pair (ALL period, over the pair's a cases; mart_signals_top). A
 # reporting artefact is suspected when any rule holds:
-#   - quarter: at least min_cases_for_quarter_rule reports and min_top_quarter_share of them in
-#     one init quarter (with 3 to 7 reports one quarter easily holds 100%);
+#   - quarter: at least min_cases_for_quarter_rule cases and min_top_quarter_share of them in
+#     one init quarter (with 3 to 7 cases one quarter easily holds 100%);
 #   - long reports: median reactions per report at least min_median_reactions_per_case;
-#   - country: at least min_cases_for_country_rule reports, min_top_country_share of them from
+#   - country: at least min_cases_for_country_rule cases, min_top_country_share of them from
 #     one country, and that country is not the ingredient's most frequent one (blank and
 #     placeholder countries left out of both). A share alone is not an alert: most FAERS reports
 #     come from the US, so the pair is compared with its own ingredient.

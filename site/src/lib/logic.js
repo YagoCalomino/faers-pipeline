@@ -40,7 +40,7 @@ export function concentrationReasons(pair, rule) {
 export const SORT_KEYS = {
   ror_lcl: { label: 'ROR lower bound', field: 'ror_lcl' },
   prr: { label: 'PRR', field: 'prr' },
-  a: { label: 'Reports', field: 'a' },
+  a: { label: 'Cases', field: 'a' },
 };
 
 // Sorted copy; nulls last in both directions; ties by reaction PT, then reaction key.
@@ -109,7 +109,7 @@ export const ingredientHref = (slug) => `#/ingredient/${slug}`;
 export const pairHref = (slug, reactionKey) => `#/ingredient/${slug}/${reactionKey}`;
 
 // One point per window quarter; a is null where the pair had fewer than signal_min_cases
-// reports that quarter (absent from mart_signals).
+// cases that quarter (absent from mart_signals).
 export function trendSeries(trend, quarters) {
   const byQuarter = new Map((trend || []).map((t) => [t.period_key, t]));
   return quarters.map((q) => {

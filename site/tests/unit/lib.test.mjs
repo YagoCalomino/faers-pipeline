@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { trendSvg } from '../../src/lib/chart.js';
-import { fmtCount, fmtInterval, fmtPct, fmtRatio, fmtShare, fmtShareMin, rawValue } from '../../src/lib/format.js';
+import { countryLabel, fmtCount, fmtInterval, fmtPct, fmtRatio, fmtShare, fmtShareMin, rawValue } from '../../src/lib/format.js';
 import {
   concentrationReasons,
   groupMetrics,
@@ -36,6 +36,9 @@ test('number formats', () => {
   assert.equal(fmtShareMin(0.004), '<1%');
   assert.equal(fmtShareMin(0.083), '8%');
   assert.equal(fmtShareMin(0), '0%');
+  assert.equal(countryLabel('CA'), 'Canada (CA)');
+  assert.equal(countryLabel('XX'), 'XX'); // no known name: the code alone
+  assert.equal(countryLabel(null), '—');
   assert.equal(fmtPct(0.601664), '0.60%');
   assert.equal(fmtPct(2), '2.0%');
   assert.equal(fmtPct(39.4815), '39.5%');

@@ -4,6 +4,7 @@ import './style.css';
 import { config, meta } from 'virtual:site-config';
 import { trendSvg } from './lib/chart.js';
 import {
+  countryLabel,
   DASH,
   fmtCount,
   fmtInterval,
@@ -69,7 +70,7 @@ function scrollTable(label, html) {
 // Short text of each reason, for the badge in the pairs table.
 function reasonShort(r) {
   if (r.kind === 'quarter') return `${fmtShare(r.share)} of cases in ${esc(r.quarter)}`;
-  if (r.kind === 'country') return `${fmtShare(r.share)} of cases from ${esc(r.country)}; ingredient: ${fmtShareMin(r.ingredientShare)} ${esc(r.country)}`;
+  if (r.kind === 'country') return `${fmtShare(r.share)} of cases from ${esc(countryLabel(r.country))}; ingredient: ${fmtShareMin(r.ingredientShare)} ${esc(r.country)}`;
   return `median ${fmtCount(r.median)} reactions per report`;
 }
 
@@ -77,7 +78,7 @@ function reasonShort(r) {
 function reasonLong(r) {
   if (r.kind === 'quarter') return `${fmtShare(r.share)} of these cases were first received in ${esc(r.quarter)}.`;
   if (r.kind === 'country')
-    return `${fmtShare(r.share)} of these cases come from ${esc(r.country)}, against ${fmtShareMin(r.ingredientShare)} of all cases of the ingredient (its most frequent country is ${esc(r.ingredientTopCountry)}, ${fmtShare(r.ingredientTopShare)}).`;
+    return `${fmtShare(r.share)} of these cases come from ${esc(countryLabel(r.country))}, against ${fmtShareMin(r.ingredientShare)} of all cases of the ingredient (its most frequent country is ${esc(countryLabel(r.ingredientTopCountry))}, ${fmtShare(r.ingredientTopShare)}).`;
   return `The reports of these cases list a median of ${fmtCount(r.median)} reactions each.`;
 }
 
@@ -285,6 +286,9 @@ function renderPairsTable(doc) {
       ? `<p><button type="button" class="link-button" id="show-all">${sortState.all ? `Show the first ${size}` : `Show all ${sorted.length} reactions`}</button></p>`
       : '';
   document.getElementById('pairs').innerHTML = `
+    <p class="help" id="alert-legend"><strong>Concentration alert:</strong> most of the pair's cases
+      come from one quarter or from one country unusual for the ingredient, or their reports list
+      very many reactions, which points to a reporting pattern rather than to the drug.</p>
     <p class="table-summary" id="pairs-summary">${sorted.length} reactions, sorted by ${SORT_KEYS[key].label} (${dir === 'desc' ? 'highest first' : 'lowest first'}).
       ${flagged ? `${flagged} marked concentrated.` : ''}</p>
     ${scrollTable(
@@ -435,7 +439,7 @@ async function viewPair(slug, reactionKey) {
 // ------------------------------------------------------------------------------- quality
 
 const METRIC_LABELS = {
-  demo: 'DEMO (cases)',
+  demo: 'DEMO (case versions)',
   drug: 'DRUG',
   reac: 'REAC',
   outc: 'OUTC',
@@ -559,8 +563,8 @@ async function viewValidation() {
   const table = (caption, list) =>
     scrollTable(
       caption,
-      `<table class="known"><caption>${esc(caption)}</caption>
-        <thead><tr><th scope="col">Ingredient</th><th scope="col">Reaction (PT)</th><th scope="col" class="num">Reports</th><th scope="col" class="num">PRR</th><th scope="col" class="num">ROR lower bound</th><th scope="col" class="num">χ²</th><th scope="col">Evans</th><th scope="col">Result</th><th scope="col">Reference</th></tr></thead>
+      `<table class="known"><caption class="sr-only">${esc(caption)}</caption>
+        <thead><tr><th scope="col">Ingredient</th><th scope="col">Reaction (PT)</th><th scope="col" class="num">Cases</th><th scope="col" class="num">PRR</th><th scope="col" class="num">ROR lower bound</th><th scope="col" class="num">χ²</th><th scope="col">Evans</th><th scope="col">Result</th><th scope="col">Reference</th></tr></thead>
         <tbody>${list
           .map(
             (r) => `<tr>
@@ -577,10 +581,10 @@ async function viewValidation() {
   main.innerHTML = `
     <h1 tabindex="-1">Validation against known pairs</h1>
     <p class="lede">${passed} of ${rows.length} reference pairs behave as expected in all loaded
-      reports. A sanity check of the pipeline (drug-name mapping, deduplication, counting), not a
+      cases. A sanity check of the pipeline (drug-name mapping, deduplication, counting), not a
       validation of disproportionality as a method.</p>
     <p>Positive pairs have an established association and are expected to have at least 3
-      reports, PRR ≥ 2 and a ROR lower bound above 1. Negative controls were chosen for clinical
+      cases, PRR ≥ 2 and a ROR lower bound above 1. Negative controls were chosen for clinical
       implausibility and are expected not to meet the Evans criterion. With large counts, a small
       excess can still put a control's ROR lower bound above 1.</p>
     <section aria-labelledby="pos-h"><h2 id="pos-h">Positive pairs</h2>${table('Positive pairs', pos)}</section>

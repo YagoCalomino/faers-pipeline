@@ -44,6 +44,19 @@ export function fmtShareMin(v) {
   return !missing(v) && v > 0 && v < 0.005 ? '<1%' : fmtShare(v);
 }
 
+// "Canada (CA)" for a country code with a known English name, else the code as it is.
+let REGIONS;
+export function countryLabel(code) {
+  if (missing(code) || code === '') return DASH;
+  try {
+    REGIONS ??= new Intl.DisplayNames(['en'], { type: 'region', fallback: 'none' });
+    const name = REGIONS.of(String(code).toUpperCase());
+    return name ? `${name} (${code})` : String(code);
+  } catch {
+    return String(code);
+  }
+}
+
 export function fmtPct(v) {
   if (missing(v)) return DASH;
   return `${Math.abs(v) >= 10 ? PCT_LARGE.format(v) : PCT_SMALL.format(v)}%`;

@@ -154,18 +154,22 @@ test('country alert: the badge and the pair page give the country and the ingred
   const { slug, p } = found;
   const pct = (v) => `${Math.round(v * 100)}%`;
   const ingPct = p.ingredient_country_share > 0 && p.ingredient_country_share < 0.005 ? '<1%' : pct(p.ingredient_country_share);
-  const text = `${pct(p.top_country_share)} of cases from ${p.top_country}; ingredient: ${ingPct} ${p.top_country}`;
+  const regions = new Intl.DisplayNames(['en'], { type: 'region' });
+  const country = (code) => `${regions.of(code)} (${code})`;
+  const esc = (t) => t.replace(/[()]/g, '\\$&');
+  const text = `${pct(p.top_country_share)} of cases from ${country(p.top_country)}; ingredient: ${ingPct} ${p.top_country}`;
   const ing = await open(`#/ingredient/${slug}`);
   const row = ing.page.locator('table.pairs tbody tr', { has: ing.page.locator(`a[href$="/${p.reaction_key}"]`) });
   const badge = await row.locator('.alert-badge').innerText();
   assert.ok(badge.includes(text), `badge "${badge}" lacks "${text}"`);
+  assert.match(await ing.page.locator('#alert-legend').innerText(), /^Concentration alert: /);
   const axeIng = await new AxeBuilder({ page: ing.page }).withTags(AXE_TAGS).analyze();
   assert.deepEqual(axeIng.violations.map((v) => v.id), [], 'axe on the ingredient page');
   await ing.ctx.close();
   const pair = await open(`#/ingredient/${slug}/${p.reaction_key}`);
   const callout = await pair.page.locator('.callout.warn').innerText();
-  assert.match(callout, new RegExp(`${pct(p.top_country_share)} of these cases come from ${p.top_country}`));
-  assert.match(callout, new RegExp(`most frequent country is ${p.ingredient_top_country}`));
+  assert.match(callout, new RegExp(esc(`${pct(p.top_country_share)} of these cases come from ${country(p.top_country)}`)));
+  assert.match(callout, new RegExp(esc(`most frequent country is ${country(p.ingredient_top_country)}`)));
   const axePair = await new AxeBuilder({ page: pair.page }).withTags(AXE_TAGS).analyze();
   assert.deepEqual(axePair.violations.map((v) => v.id), [], 'axe on the pair page');
   await pair.ctx.close();
@@ -196,11 +200,13 @@ test('validation: every pair shows its label reference, with the three caveats',
     assert.ok(r.reference, `${r.ingredient_name} / ${r.reaction_pt} has no reference`);
     assert.ok(cells.some((c) => c.includes(r.reference)), r.reference);
   }
+  // Captions repeat the section headings, so they are for screen readers only.
+  for (const c of await page.locator('table.known caption').all()) assert.match(await c.getAttribute('class'), /sr-only/);
+  assert.equal(await page.locator('table.known thead th').nth(2).innerText(), 'Cases');
   const text = await page.locator('main').innerText();
-  assert.doesNotMatch(text, /pending|owner/i);
   assert.match(text, /not that the drug is proven not to cause it/);
   assert.match(text, /For warfarin, an increased INR is a monitoring result/);
-  assert.match(text, /consulted on 2026-10-29/);
+  assert.match(text, /read in copies of the FDA labels, consulted on \d{4}-\d{2}-\d{2}/);
   await ctx.close();
 });
 

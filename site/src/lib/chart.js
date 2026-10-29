@@ -1,6 +1,6 @@
-// Quarterly trend of a pair as an inline SVG bar chart (reports per init quarter). Hand-drawn:
+// Quarterly trend of a pair as an inline SVG bar chart (cases per init quarter). Hand-drawn:
 // one series, at most a few dozen bars, so a chart library would add weight without need.
-// Quarters with fewer than 3 reports have no bar and a "<3" label; the provisional quarter is
+// Quarters with fewer than 3 cases have no bar and a "<3" label; the provisional quarter is
 // drawn with a hatched bar. Colors come from CSS custom properties, so the chart follows the
 // light and dark themes. The page shows the same values in a table next to the chart.
 
@@ -55,7 +55,7 @@ export function trendSvg(series, { provisionalQuarter, titleId, descId, title, d
     );
   });
   parts.push(
-    `<text class="axis" x="12" y="${PAD.top + ih / 2}" transform="rotate(-90 12 ${PAD.top + ih / 2})" text-anchor="middle">Reports</text>`,
+    `<text class="axis" x="12" y="${PAD.top + ih / 2}" transform="rotate(-90 12 ${PAD.top + ih / 2})" text-anchor="middle">Cases</text>`,
     '</svg>',
   );
   return parts.join('');

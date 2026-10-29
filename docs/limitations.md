@@ -205,25 +205,25 @@ ingredient's own country mix, or together with a high `median_reactions_per_case
 The public site marks a pair as concentrated when any of three rules holds
 (`config/site.yaml` `concentration_alert`):
 
-- **Quarter:** at least 10 reports and 80% or more of them in one init quarter. The minimum of
-  10 keeps pairs with 3 to 7 reports, where one quarter easily holds all of them, out.
-- **Long reports:** a median of 40 or more reactions per report.
-- **Country:** at least 10 reports, 90% or more of them from one country, and that country is
+- **Quarter:** at least 10 cases and 80% or more of them in one init quarter. The minimum of
+  10 keeps pairs with 3 to 7 cases, where one quarter easily holds all of them, out.
+- **Long reports:** a median of 40 or more reactions in the reports of the pair's cases.
+- **Country:** at least 10 cases, 90% or more of them from one country, and that country is
   not the ingredient's most frequent country (blank and placeholder countries left out of
   both). Comparing with the ingredient keeps the many pairs that are 90% from the US, like
   their drug, out of the alert.
 
-The badge gives the reason, for example "96% of reports from CA; ingredient: 8% CA".
+The badge gives the reason, for example "96% of cases from Canada (CA); ingredient: 8% CA".
 
 The quarter and long-report rules missed the atorvastatin clusters described above: Vaginal
 flatulence, Heart sounds, Neurologic neglect syndrome and Carotid artery thrombosis are 96–100%
 from CA and Genital infection viral 100% from DE, while atorvastatin's most frequent country is
-GB (27.5% of its reports; CA 8.3%, DE 2.3%); their quarter shares are 12–77% and only two have a
+GB (27.5% of its cases; CA 8.3%, DE 2.3%); their quarter shares are 12–77% and only two have a
 median of 40 reactions or more. The country rule flags all five.
 
 Measured on the build of 2026-10-27 (61,618 rows):
 
-| Rule set | Rows flagged | Top 10 ingredients by reports (291 rows) |
+| Rule set | Rows flagged | Top 10 ingredients by cases (291 rows) |
 |---|---|---|
 | Quarter or long reports (before) | 19.1% | 30.9% |
 | Country rule alone | 6.7% (4,128) | 17.5% |
@@ -237,14 +237,14 @@ rituximab and methotrexate had 23, 20 and 19 of their 30 pairs flagged.
 
 An alternative was measured: the **lift** of the country, the pair's share from its top country
 divided by the ingredient's share from the same country (`top_country_share /
-ingredient_country_share`), with at least 10 reports. Lift of 3, 5 or 10 flags, together with
+ingredient_country_share`), with at least 10 cases. Lift of 3, 5 or 10 flags, together with
 the quarter and long-report rules, 29.4%, 25.3% and 22.2% of the rows; the five atorvastatin
 pairs have lifts of 11.6 to 43. Lift also flags pairs that are not concentrated in one
-country (palbociclib–Death: 36% of reports from MA, lift 8.8) unless a minimum share is added,
+country (palbociclib–Death: 36% of cases from MA, lift 8.8) unless a minimum share is added,
 which makes two thresholds plus a ratio. The country rule is simpler to state and to show, and
 was kept. Its blind spot: a pair concentrated in the ingredient's own most frequent country is
 never flagged by it, however small that country's share of the ingredient (239 rows have 90% or
-more of their reports there, at least three times the ingredient's share, and no other alert).
+more of their cases there, at least three times the ingredient's share, and no other alert).
 Only 3 rows flagged by the country rule have a lift below 2.
 
 A first version of the alert (80% in one quarter without a minimum, median of 20) flagged 42.1%
