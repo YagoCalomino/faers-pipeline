@@ -317,8 +317,9 @@ increased) or `label_not_listed` (the 3 negative controls). Three caveats:
 ## MedDRA terms
 
 Reaction terms are MedDRA® Preferred Terms as reported in FDA FAERS. MedDRA® is a registered
-trademark of ICH. This project does not distribute MedDRA: it adds no MedDRA codes, versions or
-hierarchy, only the term text found in the FDA files. Whether publishing these terms, on the
+trademark of ICH. This project does not distribute the MedDRA dictionary (codes, hierarchy
+or versions); the downloads carry reaction terms (Preferred Terms) as they appear in FAERS.
+Whether publishing these terms, on the
 pages and in the Parquet downloads, needs a MedDRA licence has not been confirmed; the decision
 and the next step (remove the Parquet downloads if a licence is required for the list of terms) are
 in ADR 0004 (`docs/adr/0004-meddra-terms.md`).

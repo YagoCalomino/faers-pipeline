@@ -187,7 +187,9 @@ make site-dev       # live preview on data/site_export/
   without a parent, `update-ref`): the working tree, the index and the current branch are not
   touched, and the previous `gh-pages` commit is replaced. It refuses a `dist/` whose
   `data/manifest.json` is not the one recorded in the ready marker.
-- Publishing is manual: `git push --force origin gh-pages` (force, because the branch always has
+- Publishing is manual because the site is built from the full warehouse (about 1.5 GB,
+  built locally from the lake) and CI only has the fixture subset:
+  `git push --force origin gh-pages` (force, because the branch always has
   a single commit), then, once, Settings > Pages > Deploy from a branch > `gh-pages`, `/ (root)`.
 - Checks of the published numbers: `scripts/verify_site_values.py` (export JSON = DuckDB) and
   `site/tests/verify-values.mjs` (rendered page = DuckDB); timings and screenshots:
