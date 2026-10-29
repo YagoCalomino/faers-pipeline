@@ -13,7 +13,7 @@ source:
   user_agent: "faers-pipeline-portfolio"
 
 schedule:
-  # The 8 MVP quarters: 2024Q3 to 2026Q2 (both ends included). Checked 2026-10-23:
+  # The 8-quarter scope: 2024Q3 to 2026Q2 (both ends included). Checked 2026-10-23:
   # 2024Q3 and 2026Q2 zips downloaded; 2026Q3 not yet published.
   start_quarter: "2024Q3"
   end_quarter: "2026Q2"

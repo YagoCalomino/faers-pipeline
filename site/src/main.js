@@ -92,7 +92,6 @@ function alertBadge(reasons) {
 
 async function viewHome() {
   setTitle('Search');
-  const rule = config.alert;
   main.innerHTML = `
     <h1 tabindex="-1">Find an ingredient</h1>
     <p class="lede">Reports to the FDA Adverse Event Reporting System (FAERS) from
@@ -123,14 +122,10 @@ async function viewHome() {
         bound of the reporting odds ratio and the 10 with the most cases among pairs that
         meet the Evans criterion. ${fmtCount(meta.n_ingredients)} ingredients and
         ${fmtCount(meta.n_pairs)} pairs are included.</p>
-      <p>A pair is marked <strong>concentrated</strong> when it has at least
-        ${fmtCount(rule.min_cases_for_quarter_rule)} cases and ${fmtShare(rule.min_top_quarter_share)}
-        or more of them come from one quarter; when it has at least
-        ${fmtCount(rule.min_cases_for_country_rule)} cases and ${fmtShare(rule.min_top_country_share)}
-        or more of them come from one country that is not the ingredient's most frequent country;
-        or when its reports list a median of
-        ${fmtCount(rule.min_median_reactions_per_case)} or more reactions each: patterns of
-        reporting clusters rather than of the drug.</p>
+      <p>A pair is marked <strong>concentrated</strong> when most of its cases come from one
+        quarter or from one country unusual for the ingredient, or when their reports list very many
+        reactions: patterns of reporting clusters rather than of the drug. The rule is on the
+        <a href="#/method">Method &amp; limitations</a> page.</p>
     </section>`;
   const rows = await loadSearch();
   document.getElementById('top-list').innerHTML = rows
@@ -408,13 +403,8 @@ async function viewPair(slug, reactionKey) {
         <div><dt>Median reactions per report</dt><dd>${p.median_reactions_per_case == null ? DASH : fmtCount(p.median_reactions_per_case)}</dd></div>
       </dl>
       <p class="help">Most FAERS reports come from the United States, so a high country share is
-        not unusual by itself. The pair is marked concentrated by the quarter share
-        (${fmtShare(config.alert.min_top_quarter_share)} or more, with at least
-        ${fmtCount(config.alert.min_cases_for_quarter_rule)} cases), by the country share
-        (${fmtShare(config.alert.min_top_country_share)} or more from one country, with at least
-        ${fmtCount(config.alert.min_cases_for_country_rule)} cases, when that country is not the
-        ingredient's most frequent one) or by the median number of reactions
-        (${fmtCount(config.alert.min_median_reactions_per_case)} or more).</p>
+        not unusual by itself. The rule that marks a pair as concentrated is on the
+        <a href="#/method">Method &amp; limitations</a> page.</p>
     </section>
     <section aria-labelledby="trend-h">
       <h2 id="trend-h">Cases per quarter</h2>

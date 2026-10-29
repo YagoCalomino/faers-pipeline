@@ -16,7 +16,7 @@
 |---|---|---|
 | [0001](adr/0001-time-anchor.md) | A case belongs to the quarter of its first receipt by FDA (`init_fda_dt`). | accepted |
 | [0002](adr/0002-dbt-version.md) | dbt Core with dbt-duckdb and the classic parser; the new parser is checked for compatibility only. | accepted |
-| [0003](adr/0003-site-tooling.md) | A static site of the project's own (Vite, plain JavaScript) reading per-ingredient JSON, published from an orphan `gh-pages` branch. | accepted |
+| [0003](adr/0003-site-tooling.md) | A hand-written static site (Vite, plain JavaScript) reading per-ingredient JSON, published from an orphan `gh-pages` branch. | accepted |
 | [0004](adr/0004-meddra-terms.md) | Keep MedDRA preferred terms from FAERS on the site and in the downloads with a trademark notice, pending a check of the MedDRA licence; if a licence is needed for the term list, remove the Parquet downloads. | proposed |
 
 Each ADR has a status, a date, the context with the measurements behind it, the decision and

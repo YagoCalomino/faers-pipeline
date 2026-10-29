@@ -1,4 +1,4 @@
-# ADR 0002: dbt version for the MVP
+# ADR 0002: dbt version for the 8-quarter scope
 
 - Status: accepted
 - Date: 2026-10-24
@@ -37,7 +37,7 @@ After the change, `dbt build` passes on both targets with dbt-core 1.12.6: 36 no
 
 ## Decision
 
-Use dbt Core 1.12 with dbt-duckdb 1.11 for the MVP. Keep the project parse-clean under the v2
+Use dbt Core 1.12 with dbt-duckdb 1.11 for the 8-quarter scope. Keep the project parse-clean under the v2
 parser: run `make dbt-parse-v2` after each change to the dbt project and fix any new finding there, so a
 later move to v2 is a version change rather than a rewrite.
 
@@ -45,6 +45,6 @@ later move to v2 is a version change rather than a rewrite.
 
 - Source and model properties follow the layout the v2 parser accepts (`meta` under `config`).
 - The v2 parser was only used to parse; building with v2 and the v2 DuckDB support were not
-  evaluated and are out of scope for the MVP.
+  evaluated and are out of scope here.
 - Unit tests whose input is an `external_location` source use `format: sql` fixtures: dbt-core
   1.12 cannot look up the columns of such a source, which the `dict` format requires.

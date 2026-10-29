@@ -231,9 +231,9 @@ Measured on the build of 2026-10-27 (61,618 rows):
 
 The country rule adds 2,580 rows to the alert (4.2 points). In the top 10 ingredients it adds
 13 rows (prednisone 5, acetaminophen 3, lenalidomide 3, semaglutide 1, methotrexate 1) and none
-for dupilumab, tirzepatide, adalimumab, rituximab or risankizumab. The 30% limit applies to the
-whole export; the top 10 were already above it before the country rule, because adalimumab,
-rituximab and methotrexate had 23, 20 and 19 of their 30 pairs flagged.
+for dupilumab, tirzepatide, adalimumab, rituximab or risankizumab. Most of the top 10 share
+comes from the other rules: before the country rule, adalimumab, rituximab and methotrexate
+already had 23, 20 and 19 of their 30 pairs flagged.
 
 An alternative was measured: the **lift** of the country, the pair's share from its top country
 divided by the ingredient's share from the same country (`top_country_share /

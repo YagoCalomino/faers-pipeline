@@ -51,8 +51,7 @@ Before opening a pull request:
 ### Site
 
 - Site settings (concentration alert, size limits, column descriptions) live in
-  `config/site.yaml`. The alert flags a pair with at least 10 cases and 80% of them in one
-  init quarter, a median of 40 or more reactions per report, or at least 10 cases with 90% of
-  them from one country that is not the ingredient's most frequent country. After changing the
-  rule, run `make site-ci`, `python -I scripts/site_alert_stats.py` (share of flagged rows) and
+  `config/site.yaml`. The concentration alert flags reporting clusters by quarter, country or
+  report length; the full rule is in [docs/limitations.md](docs/limitations.md), "Concentration
+  alert". After changing the rule, run `make site-ci`, `python -I scripts/site_alert_stats.py` (share of flagged rows) and
   `make publish-site`.

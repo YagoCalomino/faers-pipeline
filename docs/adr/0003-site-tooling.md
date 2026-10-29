@@ -79,7 +79,7 @@ Observations:
 
 Accepted on 2026-10-26, after the measurements above.
 
-- **Tool.** A page of the project's own: Vite as the build tool and plain JavaScript, no UI
+- **Tool.** A hand-written static site: Vite as the build tool and plain JavaScript, no UI
   framework. Hash routing (`#/ingredient/<slug>`), so links can be shared and no server-side
   rewrite is needed on GitHub Pages.
 - **Data.** The pages read the per-ingredient JSON slices and the small lookup files from the
@@ -95,6 +95,7 @@ Accepted on 2026-10-26, after the measurements above.
   `config/site.yaml`; every link inside the site is relative.
 - **Concentration alert.** The rule (share of a pair's cases in one init quarter, median
   reactions per case) and its thresholds live in `config/site.yaml`.
+  The rule was later extended with a country anomaly check; see docs/limitations.md.
 
 ## Alternatives discarded
 
