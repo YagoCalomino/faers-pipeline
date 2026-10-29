@@ -169,6 +169,10 @@ two criteria (a ≥ 3, PRR ≥ 2) already make fragile; the ROR criterion does n
 - **Fallback ingredients.** Names without an RxNorm match are their own ingredient
   (`match_type = 'fallback'`); a signal can be split between a fallback text and the RxNorm
   ingredient. Generic fallbacks (`is_generic_fallback`) are excluded from `mart_signals_top`.
+- **No Bayesian shrinkage.** PRR and ROR are used instead of EBGM (MGPS) or BCPNN. Without
+  shrinkage, pairs with few cases are unstable (a few cases can give a very high ratio with a
+  wide interval); in exchange, each value follows from the four counts of the 2x2 table by a
+  closed formula and can be checked independently.
 
 ### Patterns seen in the top pairs
 
@@ -292,6 +296,26 @@ increased) or `label_not_listed` (the 3 negative controls). Three caveats:
   adverse reaction listed in the label.
 - The references were read in copies of the FDA labels, consulted on 2026-10-29.
 
+### Layers of validation
+
+The numbers are checked in five places, each independent of the one before:
+
+1. **dbt tests** on every layer (`dbt/faers_dbt/models/**/_*.yml` and
+   `dbt/faers_dbt/tests/`), including `assert_signal_statistics_known_values.sql`, which
+   compares the PRR, ROR and χ² macros with literal values for six 2x2 tables. A full build is
+   swapped in only if every test passes.
+2. **Independent recomputation of those literals** in plain Python, without dbt or DuckDB
+   (`tests/unit/test_signal_known_values.py`).
+3. **Reconciliation of the lake with the warehouse** after each build
+   (`src/faers_pipeline/reconcile.py`, task `reconcile_warehouse` of `faers_transform`): case
+   and drug, reaction and outcome row counts recomputed from the Parquet lake outside dbt; any
+   divergence fails the run.
+4. **Known pairs** (`seed_known_signals`, `mart_known_signals_eval`), described above.
+5. **Site numbers.** `src/faers_pipeline/site_check.py` validates every export in the
+   `publish_site` DAG; `scripts/verify_site_values.py` compares the exported JSON with a direct
+   DuckDB query and `site/tests/verify-values.mjs` compares the rendered pages with those
+   values.
+
 ## Operational limits
 
 - **Failure callback on a hard kill.** Every task has a failure callback that writes a marker
@@ -308,6 +332,10 @@ increased) or `label_not_listed` (the 3 negative controls). Three caveats:
   `faers_ingest` or `rxnorm_enrich` runs, but not the other way round. This is accepted: the
   reconciliation step after each build compares the lake with the warehouse and fails on any
   divergence. Do not start a backfill while a build runs (runbook).
+- **Scale.** Measured on 8 quarters (2024Q3 to 2026Q2: 3,253,489 DEMO rows, 2,858,073 cases):
+  full dbt build 3.4 min, memory peak 3.05 GiB in the container (DuckDB `memory_limit` 2.5GB),
+  warehouse file 1,500 MB, Parquet lake 350 MB (`docs/numbers.md`). Larger windows were not
+  tested, and the pipeline has not been run on the full FAERS history.
 - **Provisional latest quarter.** The cohort of the most recent quarter keeps growing as later
   files arrive (see "Limits of the signals").
 - **Combination products and fallback names.** A case with a combination product counts once

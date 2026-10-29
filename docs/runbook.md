@@ -223,7 +223,7 @@ A failed task blocks the Assets downstream of it, so the next DAG of the chain d
 
 | DAG / task | Likely cause | Action |
 |---|---|---|
-| `faers_ingest.wait_for_release` (timeout) | Quarter not published within `availability_sensor.timeout_s` | Check the FDA page; clear the run later. |
+| `faers_ingest.wait_for_release` (timeout) | Quarter not published within `availability_sensor.timeout_s` | See "When the release sensor times out" below. |
 | `faers_ingest.download_zip` | Network or FDA server error | Retries run automatically; clear the run if they are exhausted. |
 | `faers_ingest.parse_to_parquet` / `validate` | Layout change (missing column, empty file) or memory | Read the reason in the marker; compare the zip's README with `config/faers_schema.yaml`. Nothing partial is published. |
 | `faers_ingest.cleanup_extracted` | Manifest missing or inconsistent (the task then keeps the files and succeeds) | Inspect the manifest; `make cleanup-extracted` lists what would be deleted. |
@@ -232,6 +232,25 @@ A failed task blocks the Assets downstream of it, so the next DAG of the chain d
 | `faers_transform.build_warehouse` | dbt model or test failure; the previous warehouse is kept | Run `make dbt-rebuild` to see the failing node; fix, then trigger `faers_transform`. |
 | `faers_transform.build_warehouse`, test `assert_known_positive_signals_detected` | A positive pair of `seed_known_signals` no longer has a ≥ 3, PRR ≥ 2 and `ror_lcl` > 1; the previous warehouse is kept | The failed build file is removed, so rebuild into a scratch file (see above) and query `signals.mart_known_signals_eval` there (`failure_reason`, `a_fallback_same_name`): check names, RxNorm mapping and ingredient splitting. Do not edit the seed to make it pass. |
 | `faers_transform.reconcile_warehouse` | Lake and warehouse counts differ | `make reconcile` prints the table; the warehouse Asset is not published. |
+
+### When the release sensor times out
+
+`faers_ingest.wait_for_release` checks the quarter's zip every `availability_sensor.poke_interval_s`
+(6 h) in reschedule mode, so it holds no worker slot between checks, but its run counts towards
+`schedule.max_active_runs` (2) the whole time. A network error during a check counts as "not
+published yet", not as a failure. Once `availability_sensor.timeout_s` (30 days) has passed since
+the first check, Airflow raises `AirflowSensorTimeout`:
+
+- the task fails at once, without the 3 retries of the DAG (Airflow does not retry a sensor
+  timeout in reschedule mode), and the failure callback writes its marker in `logs/failures/`;
+- the tasks after it end as `upstream_failed`, so nothing is downloaded or written to the lake,
+  the `faers_raw_parquet` Asset is not updated and `rxnorm_enrich` and `faers_transform` do not
+  start;
+- other quarters' runs are not blocked (no `depends_on_past`).
+
+When the zip is published, clear `wait_for_release` of that run (with its downstream tasks).
+Clearing starts a new try and deletes the reschedule records of the old one, so the 30 days
+count again from the first new check.
 
 ## Disk
 
