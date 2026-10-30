@@ -348,7 +348,10 @@ button.sort {
   background: var(--warn-bg);
   color: var(--warn-text);
   font-size: 0.85rem;
-  white-space: nowrap;
+  /* Wraps inside its cell, so a long country alert does not widen the table past the page. */
+  white-space: normal;
+  min-width: 10rem;
+  max-width: 18rem;
 }
 .callout.warn {
   margin: 1rem 0;

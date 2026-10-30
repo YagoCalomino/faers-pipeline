@@ -25,6 +25,34 @@ export function selectSections(markdown, titles) {
   return out.join('\n');
 }
 
+const ANCHOR = /(<a\b[\s\S]*?<\/a>)/;
+const CODE_PATH = /<code>([\w.-]+(?:\/[\w.-]+)+\/?)<\/code>/g;
+
+// Turns repository paths written as code (`docs/x.md`, `dbt/faers_dbt/tests/`) into links to
+// the file or folder on GitHub. `kind(path)` returns 'file', 'dir' or null; paths it does not
+// know (globs, files outside the repository) stay as plain code. Text already inside a link is
+// left as it is.
+export function linkRepoPaths(html, repoUrl, branch, kind) {
+  return html
+    .split(ANCHOR)
+    .map((part, i) =>
+      i % 2
+        ? part
+        : part.replace(CODE_PATH, (code, path) => {
+            const k = kind(path.replace(/\/$/, ''));
+            if (!k) return code;
+            const href = `${repoUrl}/${k === 'dir' ? 'tree' : 'blob'}/${branch}/${path.replace(/\/$/, '')}`;
+            return `<a href="${href}" rel="noopener">${code}</a>`;
+          })
+    )
+    .join('');
+}
+
+// Drops the document's level-1 heading: the page shows its own, named as in the menu.
+export function dropTitle(html) {
+  return html.replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>\s*/, '');
+}
+
 const HEADING = /<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/g;
 const TABLE = /<table[\s>][\s\S]*?<\/table>/g;
 

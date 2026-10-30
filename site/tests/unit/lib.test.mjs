@@ -12,7 +12,7 @@ import {
   sortPairs,
   trendSeries,
 } from '../../src/lib/logic.js';
-import { selectSections, wrapTables } from '../../src/lib/markdown.js';
+import { dropTitle, linkRepoPaths, selectSections, wrapTables } from '../../src/lib/markdown.js';
 
 const RULE = {
   min_top_quarter_share: 0.8,
@@ -178,4 +178,24 @@ test('selectSections: keeps the preamble and the listed level-2 sections, in fil
   assert.equal(out, ['# Title', 'intro', '## A', 'a text', '### A.1', 'a1', '```', '## not a heading', '```', '## B', 'b text'].join(NL));
   assert.ok(!out.includes('local paths'));
   assert.throws(() => selectSections(md, ['A', 'Missing']), /Missing/);
+});
+
+test('linkRepoPaths: known repository paths become GitHub links, the rest stays code', () => {
+  const kinds = { 'docs/a.md': 'file', 'dbt/tests': 'dir' };
+  const html =
+    '<p><code>docs/a.md</code>, <code>dbt/tests/</code>, <code>dbt/**/_*.yml</code>, <code>x.sql</code>, ' +
+    '<code>docs/missing.md</code> and <a href="#/m"><code>docs/a.md</code></a></p>';
+  const out = linkRepoPaths(html, 'https://github.com/o/r', 'main', (p) => kinds[p] ?? null);
+  assert.equal(
+    out,
+    '<p><a href="https://github.com/o/r/blob/main/docs/a.md" rel="noopener"><code>docs/a.md</code></a>, ' +
+      '<a href="https://github.com/o/r/tree/main/dbt/tests" rel="noopener"><code>dbt/tests/</code></a>, ' +
+      '<code>dbt/**/_*.yml</code>, <code>x.sql</code>, <code>docs/missing.md</code> and ' +
+      '<a href="#/m"><code>docs/a.md</code></a></p>'
+  );
+});
+
+test('dropTitle: removes only a leading level-1 heading', () => {
+  assert.equal(dropTitle('<h1 id="k">Known limitations</h1>\n<p>x</p><h1>y</h1>'),'<p>x</p><h1>y</h1>');
+  assert.equal(dropTitle('<p>x</p>'), '<p>x</p>');
 });

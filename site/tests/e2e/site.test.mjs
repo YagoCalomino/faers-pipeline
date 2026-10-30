@@ -78,6 +78,7 @@ test('every page renders its heading, banner, notice and footer, with no externa
     assert.equal(await page.locator('footer .attribution').innerText(), ATTRIBUTION, name);
     assert.equal(await page.locator('footer .meddra').innerText(), MEDDRA, name);
     if (name === 'downloads') assert.equal(await page.locator('main .meddra').innerText(), MEDDRA);
+    assert.match(await page.locator('footer').innerText(), /The FDA does not endorse this project\./, name);
     assert.match(await page.locator('footer').innerText(), new RegExp(`Data exported ${META.export_date}`));
     assert.match(await page.locator('footer').innerText(), new RegExp(META.rxnorm_versions[0] ?? 'not recorded'));
     assert.deepEqual(problems, [], name);
@@ -255,6 +256,18 @@ test('method page: only the configured sections of limitations.md, with the case
   const text = await page.locator('article.prose').innerText();
   assert.ok(!text.includes('Operational limits'), 'operational limits stay in the repository');
   assert.match(text, /a case is one FAERS case ID/);
+  assert.deepEqual(await page.locator('main h1').allInnerTexts(), ['Method & limitations'], 'one h1, named as in the menu');
+  // Repository paths are links to GitHub, under an allowed prefix.
+  const repo = SITE_CFG.site.repo_url;
+  const hrefs = await page.locator('main a:has(code)').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  for (const path of ['docs/limitations.md', 'docs/calibration/rxnorm_calibration_sample.csv', 'tests/unit/test_signal_known_values.py']) {
+    assert.ok(hrefs.includes(`${repo}/blob/main/${path}`), `no link to ${path}`);
+  }
+  for (const h of hrefs) assert.ok(SITE_CFG.site.allowed_link_prefixes.some((pre) => h.startsWith(pre)), h);
+  const unlinked = await page
+    .locator('article.prose code')
+    .evaluateAll((cs) => cs.filter((c) => !c.closest('a') && /^[\w.-]+(\/[\w.-]+)+\/?$/.test(c.textContent)).map((c) => c.textContent));
+  assert.deepEqual(unlinked, [], 'repository paths left as plain text');
   await ctx.close();
 });
 
@@ -279,6 +292,35 @@ test('method page: axe and focusable scroll regions at narrow and wide viewports
   }
   assert.ok(scrolledNarrow > 0, 'at 360 px some table scrolls (the case under test happens)');
   assert.deepEqual(all, []);
+});
+
+// The concentration badge wraps inside its cell: at a wide viewport the pairs table fits the page,
+// so no badge is cut off at the edge of its scroll region.
+test('ingredient: concentration badges are not cut off at wide viewports', async () => {
+  const slug = SEARCH.rows
+    .map((r) => r[SEARCH.columns.indexOf('slug')])
+    .find((s) => JSON.parse(readFileSync(resolve(DIST, `data/json/signals/${s}.json`), 'utf8')).pairs.some((p) => flagged(p).length));
+  assert.ok(slug, 'the export has an ingredient with a concentration badge');
+  for (const width of [1440, 1668]) {
+    const { ctx, page } = await open(`#/ingredient/${slug}`, { viewport: { width, height: 900 } });
+    // The fixture's badges are short; the longest real one has three reasons.
+    await page.locator('table.pairs .alert-badge').first().evaluate((b) => {
+      b.textContent = '⚠ median 53 reactions per report; 96% of cases from Canada (CA); ingredient: 8% CA';
+    });
+    const region = page.locator('.table-scroll:has(table.pairs)');
+    const fits = await region.evaluate((e) => e.scrollWidth <= e.clientWidth);
+    assert.ok(fits, `${width} px: the pairs table scrolls sideways`);
+    const box = await region.boundingBox();
+    const badges = await page.locator('table.pairs .alert-badge').evaluateAll((bs) =>
+      bs.map((b) => {
+        const r = b.getBoundingClientRect();
+        return { right: r.right, text: b.textContent };
+      })
+    );
+    assert.ok(badges.length > 0, `${width} px: no badge on the page`);
+    for (const b of badges) assert.ok(b.right <= box.x + box.width + 0.5, `${width} px: badge cut off: ${b.text}`);
+    await ctx.close();
+  }
 });
 
 test('every page: elements that scroll horizontally are focusable, narrow and wide', async () => {

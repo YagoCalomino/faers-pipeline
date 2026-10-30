@@ -9,12 +9,13 @@
 // Output: SITE_OUT (default dist): index.html, assets/, and data/ (a copy of the export).
 // base './': every URL in the build is relative, so it works under any sub-path
 // (GitHub Pages project sites live under /<repo>/).
+import { execFileSync } from 'node:child_process';
 import { cpSync, createReadStream, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve, normalize, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { marked } from 'marked';
 import YAML from 'yaml';
-import { selectSections, wrapTables } from './src/lib/markdown.js';
+import { dropTitle, linkRepoPaths, selectSections, wrapTables } from './src/lib/markdown.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..');
@@ -22,6 +23,8 @@ const EXPORT_DIR = resolve(HERE, process.env.SITE_EXPORT || '../data/site_export
 const OUT_DIR = resolve(HERE, process.env.SITE_OUT || 'dist');
 const EXPORT_SCHEMA_VERSION = 2;
 const DATA_ENTRIES = ['meta.json', 'manifest.json', 'json', 'parquet'];
+// Branch the Method page links to on GitHub.
+const SOURCE_BRANCH = 'main';
 
 const readYaml = (rel) => YAML.parse(readFileSync(join(REPO, rel), 'utf8'));
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -69,13 +72,34 @@ function shellHtml(meta, config) {
   return {
     '<!--BANNER-->': `Data through <strong>${esc(meta.last_quarter)}</strong>${provisional}`,
     '<!--FOOTER-->': [
-      `<p>Source: <a href="${esc(config.fdaUrl)}" rel="noopener">${esc(config.site.fda_source_name)}</a>, quarterly files ${esc(meta.first_quarter)} to ${esc(meta.last_quarter)}. Drug names mapped with RxNorm (release ${esc(rxnorm)}); the mapping is not updated with later RxNorm releases and may not reflect the most current or accurate data available from NLM.</p>`,
+      `<p>Source: <a href="${esc(config.fdaUrl)}" rel="noopener">${esc(config.site.fda_source_name)}</a>, quarterly files ${esc(meta.first_quarter)} to ${esc(meta.last_quarter)}. The FDA does not endorse this project. Drug names mapped with RxNorm (release ${esc(rxnorm)}); the mapping is not updated with later RxNorm releases and may not reflect the most current or accurate data available from NLM.</p>`,
       `<p class="attribution">${esc(meta.rxnav_attribution)}</p>`,
       `<p class="meddra">${esc(config.site.meddra_notice)}</p>`,
       `<p>Data exported ${esc(meta.export_date)}. Not medical advice. <a href="#/method">Method &amp; limitations</a> · <a href="${esc(config.site.repo_url)}" rel="noopener">Source code</a></p>`,
     ].join('\n'),
     '<!--TITLE-->': esc(config.site.title),
   };
+}
+
+// 'file', 'dir' or null for a repository path: only versioned files are linked, so a link never
+// points to a local file that is not on GitHub. Without git, files on disk are used instead.
+function repoPathKind() {
+  let tracked = null;
+  try {
+    tracked = execFileSync('git', ['ls-files'], { cwd: REPO, encoding: 'utf8' }).split('\n').filter(Boolean);
+  } catch {
+    tracked = null;
+  }
+  if (!tracked) {
+    return (p) => {
+      const f = join(REPO, p);
+      if (!existsSync(f)) return null;
+      return statSync(f).isDirectory() ? 'dir' : 'file';
+    };
+  }
+  const files = new Set(tracked);
+  const dirs = new Set(tracked.flatMap((t) => t.split('/').slice(0, -1).map((_, i, a) => a.slice(0, i + 1).join('/'))));
+  return (p) => (files.has(p) ? 'file' : dirs.has(p) ? 'dir' : null);
 }
 
 function serveExport(req, res, next) {
@@ -110,7 +134,10 @@ function siteData() {
         // scroll container the keyboard cannot reach (axe scrollable-region-focusable).
         // Only the sections listed in config/site.yaml method_page; the rest stays in the repository.
         const md = selectSections(readFileSync(join(REPO, 'docs/limitations.md'), 'utf8'), readYaml('config/site.yaml').method_page.sections);
-        const html = wrapTables(marked.parse(md, { gfm: true }));
+        // The document's own title is dropped (the page uses the menu name), and repository paths
+        // written as code become links to GitHub (config/site.yaml allowed_link_prefixes).
+        const repoUrl = readYaml('config/site.yaml').site.repo_url;
+        const html = wrapTables(linkRepoPaths(dropTitle(marked.parse(md, { gfm: true })), repoUrl, SOURCE_BRANCH, repoPathKind()));
         return `export const html = ${JSON.stringify(html)};`;
       }
       return null;

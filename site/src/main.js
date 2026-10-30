@@ -598,9 +598,8 @@ async function viewMethod() {
   setTitle('Method & limitations');
   main.innerHTML = '<h1 tabindex="-1">Method &amp; limitations</h1><p class="loading">Loading…</p>';
   const { html } = await import('virtual:limitations');
-  main.innerHTML = `<p class="crumbs">Method and limitations of the results, from <code>docs/limitations.md</code>; the operational limits of the pipeline are in that file in the repository.</p><article class="prose">${html}</article>`;
-  const h1 = main.querySelector('h1');
-  if (h1) h1.tabIndex = -1;
+  const doc = `<a href="${esc(config.site.repo_url)}/blob/main/docs/limitations.md" rel="noopener"><code>docs/limitations.md</code></a>`;
+  main.innerHTML = `<h1 tabindex="-1">Method &amp; limitations</h1><p class="crumbs">Method and limitations of the results, from ${doc}; the operational limits of the pipeline are in that file in the repository.</p><article class="prose">${html}</article>`;
   announce('Method and limitations loaded');
 }
 
