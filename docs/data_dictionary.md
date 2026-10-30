@@ -287,7 +287,7 @@ excluded. Per ingredient, the union of two lists (`config/signals.yaml`, `top`):
 - the top `by_a_evans` (10) pairs with `is_signal_evans` by `a` descending, ties by `ror_lcl`.
 
 The first list favours strength with a minimum of precision; the second keeps the frequent
-signals that a wide `ror_lcl` ranking pushes down (atorvastatin–Rhabdomyolysis: rank 48 by
+Evans pairs that a wide `ror_lcl` ranking pushes down (atorvastatin–Rhabdomyolysis: rank 48 by
 `ror_lcl`, rank 3 by `a`). 61,618 rows for 3,229 ingredients in the build of 2026-10-26
 (48,333 from the `ror_lcl` list, 26,797 from the `a` list, 13,512 in both). `trend` lists
 `period_key`, `a` and `prr` for each window quarter where the pair reached 3 cases (a missing
