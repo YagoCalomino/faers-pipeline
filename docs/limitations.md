@@ -302,7 +302,11 @@ increased) or `label_not_listed` (the 3 negative controls). Three caveats:
 
 ### Layers of validation
 
-The numbers are checked in five places, each independent of the one before:
+The numbers are checked in five places. Only the second is independent of the
+warehouse: it runs in plain Python, without dbt, DuckDB or the warehouse. The third
+recomputes counts from the Parquet lake outside dbt, then compares them with the core
+facts. The first, fourth and fifth read the marts that dbt builds: they check those marts
+and what is exported from them, not a separate computation of the statistics.
 
 1. **dbt tests** on every layer (`dbt/faers_dbt/models/**/_*.yml` and
    `dbt/faers_dbt/tests/`), including `assert_signal_statistics_known_values.sql`, which
