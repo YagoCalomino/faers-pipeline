@@ -24,6 +24,10 @@ pages, served under a sub-path as on a GitHub Pages project site.
 
 Two runs gave the same sha256 for every file, on the real warehouse and on the fixture.
 
+The measurements in this ADR are kept as they were taken, with the four Parquet tables of
+that time. Since ADR 0004 (`0004-meddra-terms.md`), only `ingredients` and `dq_metrics` are
+exported as Parquet.
+
 ### GitHub Pages limits (docs.github.com, read 2026-10-26)
 
 Published site at most 1 GB; deployments time out after 10 minutes; soft bandwidth limit of
@@ -83,7 +87,9 @@ Accepted on 2026-10-26, after the measurements above.
   framework. Hash routing (`#/ingredient/<slug>`), so links can be shared and no server-side
   rewrite is needed on GitHub Pages.
 - **Data.** The pages read the per-ingredient JSON slices and the small lookup files from the
-  export. The Parquet tables are published as open-data downloads, not read by the pages.
+  export. The Parquet tables without MedDRA terms (`ingredients`, `dq_metrics`) are published
+  as open-data downloads, not read by the pages; tables with reaction terms are not offered
+  for download (ADR 0004).
   DuckDB-WASM stays out of the default path; it may come back as an optional page for ad hoc
   queries, loaded on demand.
 - **Publishing.** The Airflow DAG `publish_site` only exports, validates the export and emits

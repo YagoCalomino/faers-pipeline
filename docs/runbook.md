@@ -141,7 +141,7 @@ make export-ci   # same export from the ci database built on the fixture lake (t
 
 - Contents: `meta.json` (data window, provisional quarter, RxNorm version, counts, RxNav
   attribution, export date), `manifest.json` (size and sha256 of every other file),
-  `parquet/` (ingredients, signals_top, dq_metrics, known_signals) and `json/` (ingredient list,
+  `parquet/` (ingredients, dq_metrics; `export.parquet_tables`) and `json/` (ingredient list,
   one file per ingredient with its pairs, data-quality metrics, known pairs).
 - The folder is replaced as a whole: the export is built in `data/site_export.building/` and
   swapped in only when complete; a failed export removes that folder and keeps the previous one.

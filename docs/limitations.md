@@ -349,9 +349,8 @@ The numbers are checked in five places, each independent of the one before:
 ## MedDRA terms
 
 Reaction terms are MedDRA® Preferred Terms as reported in FDA FAERS. MedDRA® is a registered
-trademark of ICH. This project does not distribute the MedDRA dictionary (codes, hierarchy
-or versions); the downloads carry reaction terms (Preferred Terms) as they appear in FAERS.
-Whether publishing these terms, on the
-pages and in the Parquet downloads, needs a MedDRA licence has not been confirmed; the decision
-and the next step (remove the Parquet downloads if a licence is required for the list of terms) are
-in ADR 0004 (`docs/adr/0004-meddra-terms.md`).
+trademark of the International Council for Harmonisation of Technical Requirements for
+Pharmaceuticals for Human Use (ICH). This project does not distribute the MedDRA dictionary and
+does not offer a downloadable dataset of MedDRA terms. Reaction terms (Preferred Terms) are
+shown on the site pages as they appear in FAERS.
+The decision and its residual risk are in ADR 0004 (`docs/adr/0004-meddra-terms.md`).

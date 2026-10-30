@@ -34,7 +34,7 @@ flowchart LR
   end
   TR -.runs.-> DBT
   SIG --> WH[(faers.duckdb)] --> PUB
-  OUT[(site export<br/>JSON + Parquet)] --> SITE[make publish-site<br/>Vite build, checks, browser tests,<br/>orphan gh-pages commit] --> PAGES[GitHub Pages]
+  OUT[(site export<br/>JSON, Parquet of ingredients<br/>and data quality)] --> SITE[make publish-site<br/>Vite build, checks, browser tests,<br/>orphan gh-pages commit] --> PAGES[GitHub Pages]
 ```
 
 ## What this shows, and what it does not
@@ -118,8 +118,10 @@ Fixtures are small real subsets of FAERS and RxNorm; CI runs the same checks. La
 > responsible for the product and does not endorse or recommend this or any other product.
 
 Reaction terms are MedDRA® Preferred Terms as reported in FDA FAERS. MedDRA® is a registered
-trademark of ICH. This project does not distribute the MedDRA dictionary (codes, hierarchy
-or versions); the downloads carry reaction terms (Preferred Terms) as they appear in FAERS.
+trademark of the International Council for Harmonisation of Technical Requirements for
+Pharmaceuticals for Human Use (ICH). This project does not distribute the MedDRA dictionary and
+does not offer a downloadable dataset of MedDRA terms. Reaction terms (Preferred Terms) are
+shown on the site pages as they appear in FAERS.
 
 ## Author’s Notes
 - **Scope and objective.** I defined the project and its scope: a reproducible pipeline using public pharmacovigilance data, structured with tools for orchestration (Airflow), transformation (dbt), and analysis (DuckDB), a domain closely aligned with my professional experience in healthcare software.
