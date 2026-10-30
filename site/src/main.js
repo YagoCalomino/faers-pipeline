@@ -408,7 +408,7 @@ async function viewPair(slug, reactionKey) {
     </section>
     <section aria-labelledby="trend-h">
       <h2 id="trend-h">Cases per quarter</h2>
-      <p class="help">Quarter in which the FDA first received each case.${meta.last_quarter_is_provisional ? ` ${esc(meta.provisional_quarter)}* is provisional: its count grows as later files arrive.` : ''} Quarters with fewer than 3 cases show “&lt;3”. Cases first received before ${esc(meta.first_quarter)} count in the totals above but not here.</p>
+      <p class="help">Quarter in which the FDA first received each case.${meta.last_quarter_is_provisional ? ` ${esc(meta.provisional_quarter)}* is provisional: its count grows as later files arrive.` : ''} Quarters with fewer than 3 cases show "&lt;3". Cases first received before ${esc(meta.first_quarter)} count in the totals above but not here.</p>
       <figure class="chart">${trendSvg(series, { provisionalQuarter: meta.provisional_quarter, titleId: 'trend-title', descId: 'trend-desc', title: chartTitle, desc: chartDesc })}</figure>
       ${scrollTable(
         'Cases per quarter',
