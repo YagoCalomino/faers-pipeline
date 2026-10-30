@@ -6,7 +6,9 @@ Layout of the export folder:
     meta.json                       data window, provisional quarter, RxNorm version, counts,
                                     attribution text, export date
     manifest.json                   every other file with its size and sha256
-    parquet/<table>.parquet         ingredients, signals_top, dq_metrics, known_signals
+    parquet/<table>.parquet         the tables in export.parquet_tables (ingredients,
+                                    dq_metrics); tables with MedDRA reaction terms are
+                                    not written as Parquet (docs/adr/0004-meddra-terms.md)
     json/ingredients.json           the ingredient list
     json/search.json                compact ingredient list for the search box
     json/signals/<slug>.json        one ingredient and its pairs of mart_signals_top, with the
@@ -283,7 +285,8 @@ def _write_all(
         con.execute("set threads = 1")  # one writer thread: identical bytes on every run
         if "parquet" in formats:
             (staging / "parquet").mkdir()
-            for name, query in sql.items():
+            for name in cfg["parquet_tables"]:
+                query = sql[name]
                 target = staging / "parquet" / f"{name}.parquet"
                 con.execute(
                     f"copy ({query}) to '{_sql_path(target)}' "
@@ -341,6 +344,8 @@ def export_site(
     if unknown or not formats:
         raise ValueError(f"export formats must be among {FORMATS}, got {formats}")
     sql = queries(bool(cfg["include_generic_fallback"]))
+    if "parquet" in formats and not set(cfg["parquet_tables"]) <= set(sql):
+        raise ValueError(f"parquet_tables must be among {sorted(sql)}: {cfg['parquet_tables']}")
 
     out_dir = Path(out_dir)
     staging = out_dir.with_name(out_dir.name + ".building")

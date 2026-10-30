@@ -634,13 +634,14 @@ function viewDownloads() {
     .join('');
   main.innerHTML = `
     <h1 tabindex="-1">Downloads</h1>
-    <p class="lede">The tables behind this site, as open data. Exported ${esc(meta.export_date)}
-      from the build with data through ${esc(meta.last_quarter)}. The same rows are also in
-      <code>data/json/</code>, one file per ingredient.</p>
+    <p class="lede">The ingredient list and the data-quality metrics of this site, as open
+      data. Exported ${esc(meta.export_date)} from the build with data through
+      ${esc(meta.last_quarter)}. Tables with reaction terms are not offered for download:
+      the terms are MedDRA terms, owned by ICH.</p>
     <p class="meddra">${esc(config.site.meddra_notice)}</p>
     ${sections}
     <p class="help">Any Parquet reader opens these files, for example DuckDB:
-      <code>select * from 'signals_top.parquet' where ingredient_name = 'atorvastatin'</code>.</p>`;
+      <code>select ingredient_name, n_cases_ps_ss from 'ingredients.parquet' order by n_cases_ps_ss desc limit 10</code>.</p>`;
 }
 
 // -------------------------------------------------------------------------------- router

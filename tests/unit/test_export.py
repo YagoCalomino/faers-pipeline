@@ -18,6 +18,7 @@ FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "site_export"
 DAY = date(2026, 10, 26)
 CFG = {
     "formats": ["parquet", "json"],
+    "parquet_tables": ["ingredients", "dq_metrics"],
     "parquet_compression": "zstd",
     "json_float_digits": 17,
     "include_generic_fallback": False,
@@ -57,8 +58,11 @@ def test_export_layout_and_content(tmp_path):
     names = [i["ingredient_name"] for i in ingredients]
     assert names == ["clozapine", "atorvastatin", "FATTY ACIDS"]  # by PS/SS cases, desc
     assert "HERBALS" not in names  # generic fallback left out by default
-    for table in ("ingredients", "signals_top", "dq_metrics", "known_signals"):
-        assert (out / "parquet" / f"{table}.parquet").is_file()
+    # Tables with MedDRA reaction terms are not written as Parquet (ADR 0004).
+    assert sorted(p.name for p in (out / "parquet").iterdir()) == [
+        "dq_metrics.parquet",
+        "ingredients.parquet",
+    ]
     for ing in ingredients:
         doc = _load(out / "json" / "signals" / f"{ing['slug']}.json")
         assert doc["ingredient"] == ing
@@ -126,6 +130,11 @@ def test_single_format(tmp_path):
     out, summary = _run(tmp_path, _warehouse(tmp_path), formats=["parquet"])
     assert not (out / "json").exists() and (out / "parquet").is_dir()
     assert set(summary["by_format"]) == {"parquet"}
+
+
+def test_unknown_parquet_table_rejected(tmp_path):
+    with pytest.raises(ValueError, match="parquet_tables"):
+        _run(tmp_path, _warehouse(tmp_path), cfg={"parquet_tables": ["ingredients", "x"]})
 
 
 def test_unknown_format_rejected(tmp_path):

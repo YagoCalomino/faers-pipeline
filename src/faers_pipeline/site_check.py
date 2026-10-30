@@ -11,8 +11,9 @@ validate_export checks, on the candidate folder and the warehouse it came from:
     cells      every exported pair has b, c, d and n_total with a + b + c + d = n_total
     meta       meta.json has the fields the site shows and its counts match the marts
     sizes      total bytes, largest file and number of files within config/site.yaml limits
-    columns    every Parquet column has a description in config/site.yaml downloads, and every
-               described column exists
+    columns    the Parquet files are exactly the tables described in config/site.yaml downloads;
+               every Parquet column has a description, every described column exists, and no
+               Parquet file has a MedDRA term column (docs/adr/0004-meddra-terms.md)
 
 Ready marker (export.ready_marker): JSON with the sha256 of manifest.json, the export date and
 the validation summary. make publish-site builds the site only when the marker's sha256 equals
@@ -43,7 +44,8 @@ META_FIELDS = (
     "n_ingredients",
     "n_pairs",
 )
-PARQUET_TABLES = ("ingredients", "signals_top", "dq_metrics", "known_signals")
+# Columns that carry MedDRA reaction terms: never offered as a download (ADR 0004).
+MEDDRA_COLUMNS = ("reaction_pt",)
 
 
 class ExportValidationError(Exception):
@@ -122,8 +124,9 @@ def _parquet_info(out: Path) -> tuple[dict[str, int], dict[str, list[str]]]:
     rows, columns = {}, {}
     con = duckdb.connect()
     try:
-        for name in PARQUET_TABLES:
-            path = _sql_path(out / "parquet" / f"{name}.parquet")
+        for file in sorted((out / "parquet").glob("*.parquet")):
+            name = file.stem
+            path = _sql_path(file)
             source = f"read_parquet('{path}')"
             rows[name] = con.execute(f"select count(*) from {source}").fetchone()[0]
             described = con.execute(f"describe select * from {source}").fetchall()
@@ -165,8 +168,19 @@ def validate_export(
     if "parquet" in formats:
         rows, columns = _parquet_info(out)
         for name, n in rows.items():
+            if name not in exported:
+                problems.append(f"parquet/{name}: not an exported table")
+                continue
             exported[name]["parquet"] = n
+        if set(rows) != set(downloads):
+            problems.append(
+                f"parquet files {sorted(rows)} differ from the downloads described in "
+                f"config/site.yaml {sorted(downloads)}"
+            )
         for name, cols in columns.items():
+            meddra = [c for c in cols if c in MEDDRA_COLUMNS]
+            if meddra:
+                problems.append(f"parquet/{name}: MedDRA term columns {meddra} (ADR 0004)")
             described = set((downloads.get(name) or {}).get("columns") or {})
             undocumented = [c for c in cols if c not in described]
             stale = sorted(described - set(cols))

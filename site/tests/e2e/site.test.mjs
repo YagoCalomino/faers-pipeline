@@ -341,3 +341,21 @@ test('keyboard: the ingredient page is usable with Tab and Enter only', async ()
   assert.equal(await page.evaluate(() => document.activeElement.id), 'main');
   await ctx.close();
 });
+
+test('downloads: only the tables without reaction terms, with an example on ingredients', async () => {
+  const { ctx, page } = await open(ROUTES.downloads);
+  const files = await page.locator('main section h2').allInnerTexts();
+  assert.deepEqual(files.sort(), ['dq_metrics.parquet', 'ingredients.parquet']);
+  const links = await page.locator('main a[download]').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  assert.deepEqual(links.sort(), ['data/parquet/dq_metrics.parquet', 'data/parquet/ingredients.parquet']);
+  const text = await page.locator('main').innerText();
+  assert.match(text, /Tables with reaction terms are not offered for download/);
+  assert.match(text, /from 'ingredients\.parquet'/);
+  assert.ok(!/signals_top|known_signals|reaction_pt|data\/json/.test(text), 'no table with reaction terms');
+  // The pair tables are not copied into the site as Parquet either.
+  for (const name of ['signals_top', 'known_signals']) {
+    const res = await page.request.get(`${BASE}data/parquet/${name}.parquet`);
+    assert.equal(res.status(), 404, name);
+  }
+  await ctx.close();
+});

@@ -10,9 +10,12 @@ export:
   # Written beside out_dir only when publish_site validated the export: it records the sha256
   # of manifest.json, and make publish-site refuses an export whose manifest differs.
   ready_marker: "/opt/airflow/data/site_export.ready.json"
-  # parquet: one file per table, published as open-data downloads.
+  # parquet: one file per table in parquet_tables, published as open-data downloads.
   # json: one file per ingredient with its pairs, plus small lookup files, read by the pages.
   formats: [parquet, json]
+  # Tables with MedDRA reaction terms (signals_top, known_signals) are not offered as
+  # downloads (docs/adr/0004-meddra-terms.md); the pages read them from json/.
+  parquet_tables: [ingredients, dq_metrics]
   parquet_compression: zstd
   # Significant digits of doubles in JSON. 17 keeps every double exactly (round trip), so the
   # pages show the same numbers as the warehouse; fewer digits also round counts stored as
@@ -87,8 +90,9 @@ method_page:
     - "Signals (PRR, ROR)"
     - "MedDRA terms"
 
-# Descriptions of the open-data downloads (parquet/<table>.parquet). Every exported column must
-# have a description here (checked by validate_export).
+# Descriptions of the open-data downloads (parquet/<table>.parquet), one per table in
+# export.parquet_tables. Every exported column must have a description here (checked by
+# validate_export).
 downloads:
   ingredients:
     description: "One row per ingredient shown on the site (generic fallbacks left out)."
@@ -101,50 +105,7 @@ downloads:
       is_fallback: "True when the ingredient has no RxNorm match."
       is_generic_fallback: "True for a class of products (HERBALS, VITAMINS, ...)."
       n_cases_ps_ss: "Distinct cases with the ingredient as primary or secondary suspect."
-      n_pairs: "Number of pairs of the ingredient in signals_top."
-  signals_top:
-    description: >-
-      Top reactions per ingredient in the period ALL (every loaded case): the top 20 computable
-      pairs by ROR lower bound and the top 10 pairs meeting the Evans criterion by cases.
-      Counts are deduplicated cases (one per FAERS case), never drug or reaction lines.
-    columns:
-      ingredient_key: "Surrogate key of the ingredient."
-      ingredient_id: "RxNorm ingredient RxCUI, or FB:<text> for a fallback."
-      ingredient_name: "Ingredient name."
-      reaction_key: "Surrogate key of the MedDRA preferred term."
-      reaction_pt: "MedDRA preferred term as reported."
-      rank_ror_lcl: "Rank of the pair by ROR lower bound within the ingredient (computable pairs)."
-      rank_a_evans: "Rank by cases among the ingredient's pairs meeting the Evans criterion."
-      in_top_ror_lcl: "True when the pair is in the top list by ROR lower bound."
-      in_top_a_evans: "True when the pair is in the top list by cases (Evans pairs)."
-      a: "Cases with the ingredient (PS/SS) and the reaction."
-      b: "Cases with the ingredient and without the reaction."
-      c: "Cases without the ingredient and with the reaction."
-      d: "Cases with neither."
-      n_total: "All cases of the period (a + b + c + d)."
-      n_drug: "Cases with the ingredient (a + b)."
-      n_reac: "Cases with the reaction (a + c)."
-      prr: "Proportional reporting ratio, [a/(a+b)] / [c/(c+d)]."
-      prr_lcl: "Lower bound of the PRR 95% confidence interval."
-      prr_ucl: "Upper bound of the PRR 95% confidence interval."
-      ror: "Reporting odds ratio, ad/(bc); null when b, c or d is 0."
-      ror_lcl: "Lower bound of the ROR 95% confidence interval."
-      ror_ucl: "Upper bound of the ROR 95% confidence interval."
-      chi2: "Pearson chi-squared, 1 degree of freedom, no continuity correction."
-      is_signal_evans: "a >= 3, PRR >= 2 and chi2 >= 4 (Evans et al. 2001)."
-      is_signal_ror: "a >= 3 and ROR lower bound > 1."
-      match_type: "Best RxNorm match of the ingredient."
-      is_fallback: "True when the ingredient has no RxNorm match."
-      top_country: "Most frequent reporter country among the pair's cases (blank and placeholder values left out)."
-      top_country_share: "Share of the pair's cases from top_country."
-      top_quarter: "Most frequent init quarter (first receipt by FDA) among the pair's cases."
-      top_quarter_share: "Share of the pair's cases in top_quarter."
-      median_reactions_per_case: "Median number of distinct reactions in the latest report of each of the pair's cases."
-      n_pair_cases: "Cases of the pair counted for the concentration columns (equals a)."
-      ingredient_top_country: "Most frequent reporter country among all the ingredient's cases (blank and placeholder values left out)."
-      ingredient_top_country_share: "Share of the ingredient's cases (n_drug) from ingredient_top_country."
-      ingredient_country_share: "Share of the ingredient's cases (n_drug) from the pair's top_country; 0 when top_country is null."
-      trend: "Per window quarter: period_key, a and prr, for quarters where a >= 3."
+      n_pairs: "Number of pairs of the ingredient shown on the site."
   dq_metrics:
     description: "Data-quality metrics of the pipeline (raw rows, deduplication, missing values, RxNorm coverage, drug role mix)."
     columns:
@@ -154,26 +115,3 @@ downloads:
       metric: "Metric name."
       value: "Metric value."
       unit: "rows, cases, lines or pct."
-  known_signals:
-    description: >-
-      Pairs with an established association (positive) and negative controls, chosen for
-      this project, compared with the period ALL. A sanity check of the pipeline, not a
-      validation of the method.
-    columns:
-      expected: "positive or negative."
-      ingredient_name: "Ingredient as listed in the reference set."
-      reaction_pt: "MedDRA preferred term as listed in the reference set."
-      ingredient_id: "Matched RxNorm ingredient, null when the name does not match."
-      a: "Cases with the ingredient and the reaction (ALL)."
-      n_drug: "Cases with the ingredient."
-      n_reac: "Cases with the reaction."
-      prr: "Proportional reporting ratio."
-      ror_lcl: "Lower bound of the ROR 95% confidence interval."
-      chi2: "Pearson chi-squared."
-      is_signal_evans: "Meets the Evans criterion."
-      is_signal_ror: "Meets the ROR criterion."
-      a_fallback_same_name: "Cases of a fallback ingredient with the same name (split counts)."
-      passed: "Positive: a >= 3, PRR >= 2 and ROR lower bound > 1. Negative: not an Evans pair."
-      failure_reason: "Why the pair did not pass."
-      reference: "FDA label and sections behind the expected result (labels consulted on 2026-10-29)."
-      reference_status: "Where the pair stands in the label: label_boxed_warning, label_warning, label_monitoring (a monitored laboratory value, not a listed adverse reaction) or label_not_listed (not in the adverse reactions; not proof of no association)."

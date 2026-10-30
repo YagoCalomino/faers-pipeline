@@ -53,7 +53,8 @@ def test_valid_export_passes(tmp_path):
         "search": 3,
         "files": 3,
     }
-    assert report["exported_counts"]["signals_top"] == {"parquet": 9, "json": 9}
+    assert report["exported_counts"]["signals_top"] == {"json": 9}
+    assert report["exported_counts"]["known_signals"] == {"json": 12}
 
 
 def test_tampered_file_fails_the_manifest_check(tmp_path):
@@ -103,13 +104,43 @@ def test_undocumented_column_fails(tmp_path):
     wh = _warehouse(tmp_path)
     out = _export(tmp_path, wh)
     downloads = json.loads(json.dumps(DOWNLOADS))
-    del downloads["known_signals"]["columns"]["chi2"]
+    del downloads["ingredients"]["columns"]["n_pairs"]
     downloads["dq_metrics"]["columns"]["not_a_column"] = "x"
     with pytest.raises(site_check.ExportValidationError) as info:
         site_check.validate_export(out, wh, LIMITS, downloads)
     joined = " | ".join(info.value.problems)
-    assert "parquet/known_signals: columns without description ['chi2']" in joined
+    assert "parquet/ingredients: columns without description ['n_pairs']" in joined
     assert "downloads.dq_metrics: described columns not exported ['not_a_column']" in joined
+
+
+def test_parquet_with_meddra_terms_fails(tmp_path):
+    # A table with reaction terms written as Parquet, even when described, is refused.
+    wh = _warehouse(tmp_path)
+    out = tmp_path / "candidate"
+    cfg = {**CFG, "parquet_tables": ["ingredients", "dq_metrics", "known_signals"]}
+    export.export_site(
+        wh, out, cfg=cfg, rxnorm_cfg=RXNORM_CFG, export_day=DAY, window_end_quarter="2026Q2"
+    )
+    downloads = {
+        **DOWNLOADS,
+        "known_signals": {
+            "columns": {c: "x" for c in site_check._parquet_info(out)[1]["known_signals"]}
+        },
+    }
+    with pytest.raises(site_check.ExportValidationError) as info:
+        site_check.validate_export(out, wh, LIMITS, downloads)
+    assert info.value.problems == [
+        "parquet/known_signals: MedDRA term columns ['reaction_pt'] (ADR 0004)"
+    ]
+
+
+def test_parquet_file_without_description_fails(tmp_path):
+    wh = _warehouse(tmp_path)
+    out = _export(tmp_path, wh)
+    downloads = {k: v for k, v in DOWNLOADS.items() if k != "dq_metrics"}
+    with pytest.raises(site_check.ExportValidationError) as info:
+        site_check.validate_export(out, wh, LIMITS, downloads)
+    assert any("differ from the downloads described" in p for p in info.value.problems)
 
 
 def test_promote_writes_a_marker_that_matches(tmp_path):
@@ -143,5 +174,6 @@ def test_config_describes_every_exported_column(tmp_path):
     wh = _warehouse(tmp_path)
     out = _export(tmp_path, wh)
     _, columns = site_check._parquet_info(out)
+    assert set(columns) == set(DOWNLOADS) == set(SITE_CFG["export"]["parquet_tables"])
     for table, cols in columns.items():
         assert set(cols) == set(DOWNLOADS[table]["columns"]), table
