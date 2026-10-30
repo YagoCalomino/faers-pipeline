@@ -50,6 +50,8 @@ flowchart LR
 - **Not shown:** causality or incidence (reports have no exposure denominator;
   disproportionality only points to pairs for review), distributed processing, clinical review.
   Not medical advice.
+- An adapter for Anvisa's VigiMed open data is a natural extension; it would need its own
+  drug-name normalization and its own handling of MedDRA terms.
 
 ## Numbers
 
