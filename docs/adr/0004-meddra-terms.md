@@ -60,6 +60,12 @@ review of the full licence agreement:
 - Residual risk: the pages still show reaction terms, and the per-ingredient JSON files and
   `json/known_signals.json` that feed the site are public files, readable by anyone who opens
   the site.
+- The repository also holds MedDRA terms in test fixtures, which are part of the same residual
+  risk: the FAERS samples `tests/fixtures/faers_sample/*/ASCII/REAC*.txt` (reaction terms) and
+  `INDI*.txt` (indication terms), taken from FDA's public quarterly files, and the export
+  fixture Parquet files `tests/fixtures/site_export/signals.mart_signals.parquet`,
+  `signals.mart_signals_top.parquet` and `signals.mart_known_signals_eval.parquet`, which have a
+  `reaction_pt` column.
 - The pipeline and the marts do not change; only the export, its validation and the Downloads
   page.
 - The Parquet files published earlier on `gh-pages` are removed by the next publish, which

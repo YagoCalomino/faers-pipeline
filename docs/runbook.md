@@ -40,9 +40,18 @@ on new Asset events.
 ## Re-run a quarter
 
 Clearing a run of `faers_ingest` re-runs it from the availability check: the zip is downloaded
-again (the ingest log records `source_changed` when its sha256 differs), parsed, and the
-quarter's Parquet partition and manifest are replaced atomically. The asset chain then runs
+again (the ingest log records `source_changed` when its sha256 differs) and parsed. Each
+Parquet file is replaced atomically on its own (`parse.to_parquet` writes a `.tmp` file, then
+calls `os.replace`); the quarter as a whole is not. The manifest is written, and the Asset
+`faers_raw_parquet` emitted, only after `validate` passes. The asset chain then runs
 `rxnorm_enrich` (new names only) and `faers_transform`.
+
+A run that fails part-way can leave the quarter's partition with new files for some types and
+old ones for others: the file types are parsed in parallel, and the column contract is checked
+after a file has been written. dbt reads every `quarter=*` partition of the lake, not the
+manifest, so a manual `make dbt-rebuild` would pick up that mix. Run it only after the
+quarter's ingestion has finished successfully; `faers_transform` itself only runs on the Asset
+event.
 
 ```bash
 $AF tasks clear faers_ingest -s 2026-04-01T00:00:00+00:00 -e 2026-04-01T00:00:00+00:00 -y
@@ -225,7 +234,7 @@ A failed task blocks the Assets downstream of it, so the next DAG of the chain d
 |---|---|---|
 | `faers_ingest.wait_for_release` (timeout) | Quarter not published within `availability_sensor.timeout_s` | See "When the release sensor times out" below. |
 | `faers_ingest.download_zip` | Network or FDA server error | Retries run automatically; clear the run if they are exhausted. |
-| `faers_ingest.parse_to_parquet` / `validate` | Layout change (missing column, empty file) or memory | Read the reason in the marker; compare the zip's README with `config/faers_schema.yaml`. Nothing partial is published. |
+| `faers_ingest.parse_to_parquet` / `validate` | Layout change (missing column, empty file) or memory | Read the reason in the marker; compare the zip's README with `config/faers_schema.yaml`. No manifest or Asset event is emitted, but files already parsed stay in the lake; re-run the quarter before any manual warehouse build. |
 | `faers_ingest.cleanup_extracted` | Manifest missing or inconsistent (the task then keeps the files and succeeds) | Inspect the manifest; `make cleanup-extracted` lists what would be deleted. |
 | `rxnorm_enrich.resolve_chunk` | RxNav unavailable (five terms in a row in error) | Retries run automatically; terms already resolved are kept. Re-trigger later. |
 | `faers_transform.wait_for_writers_idle` (timeout) | An ingestion or lookup run stayed active | Check the other DAGs' runs. |

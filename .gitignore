@@ -4,9 +4,6 @@ data/**
 !data/**/.gitkeep
 logs/
 
-# Working planning document: kept out of the public repository
-docs/PLANO_FAERS_PIPELINE*.md
-
 # Secrets
 .env
 
