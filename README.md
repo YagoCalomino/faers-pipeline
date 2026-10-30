@@ -121,6 +121,11 @@ Reaction terms are MedDRA® Preferred Terms as reported in FDA FAERS. MedDRA® i
 trademark of ICH. This project does not distribute the MedDRA dictionary (codes, hierarchy
 or versions); the downloads carry reaction terms (Preferred Terms) as they appear in FAERS.
 
+## Author’s Notes
+- **Scope and objective.** I defined the project and its scope: a reproducible pipeline using public pharmacovigilance data, structured with tools for orchestration (Airflow), transformation (dbt), and analysis (DuckDB), a domain closely aligned with my professional experience in healthcare software.
+- **Decisions.** I made the final decisions at each stage of the process; for instance, I opted against using fuzzy matching with RxNorm following the calibration phase, decided to flag (rather than remove) patterns of concentrated reporting, and established the website publication process as a manual, validated step.
+- **Verifications.** I personally executed the pipeline and the publication steps, reviewing every change report and test result before finalizing any updates. Furthermore, I verified the drug label references for the 12 known pairs by cross-referencing them with the official FDA-approved labels.
+
 ## License
 
 Code: [MIT](LICENSE). The license covers the code of this repository, not the FDA or NLM data.
