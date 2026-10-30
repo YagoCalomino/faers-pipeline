@@ -21,8 +21,8 @@ by hand. `make readme-numbers` regenerates this table and the short summary in t
 | Full dbt build (models and tests) | 3.4 min, 30 model success, 3 seed success, 152 test pass, 1 unit_test pass |
 | Memory peak of the build | 3.05 GiB (container), 2.99 GiB (dbt process); DuckDB memory_limit 2.5GB |
 | Warehouse file right after the measured build | 1,500.0 MB |
-| Site export | 3,239 files, 67.0 MB |
-| Built site | 3,244 files, 67.5 MB (largest file 6.5 MB) |
+| Site export | 3,237 files, 60.5 MB |
+| Built site | 3,242 files, 61.0 MB (largest file 0.8 MB) |
 | Airflow: one quarter of `faers_ingest` (median of 8 runs) | 2.2 min |
 | Airflow: first full `rxnorm_enrich` (API lookups at 5 requests/s) / later runs (cache) | 51.0 min / 0.2 min |
 | Airflow: `faers_transform` / `publish_site` (median) | 3.5 min / 2.8 min |
