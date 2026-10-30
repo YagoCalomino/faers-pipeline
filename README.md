@@ -11,9 +11,11 @@ results with their data-quality metrics.
 
 **Explorer:** <https://yagocalomino.github.io/faers-pipeline/> (static site, no backend).
 
-| Search | Ingredient page | Pair detail on a phone |
+| Search | Ingredient page (atorvastatin) | Pair detail on a phone |
 |---|---|---|
-| ![Search page of the explorer](docs/img/readme-search.jpg) | ![Ingredient page with concentration alerts](docs/img/readme-ingredient.jpg) | ![Pair detail and quarterly trend on a phone](docs/img/readme-pair-mobile.jpg) |
+| ![Search page of the explorer, with the ingredients that have the most cases](docs/img/readme-search.jpg) | ![Atorvastatin page: reactions with cases, PRR, ROR and concentration alerts by country and quarter](docs/img/readme-ingredient.jpg) | ![Atorvastatin and rhabdomyolysis on a phone: where the cases come from and cases per quarter](docs/img/readme-pair-mobile.jpg) |
+
+On the atorvastatin page, the first rows are reporting clusters; the concentration alert marks them.
 
 ## Architecture
 
