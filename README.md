@@ -125,16 +125,15 @@ Pharmaceuticals for Human Use (ICH). This project does not distribute the MedDRA
 does not offer a downloadable dataset of MedDRA terms. Reaction terms (Preferred Terms) are
 shown on the site pages as they appear in FAERS.
 
-## Author’s Notes
-- **Scope and objective.** I defined the project and its scope: a reproducible pipeline using public pharmacovigilance data, structured with tools for orchestration (Airflow), transformation (dbt), and analysis (DuckDB), a domain closely aligned with my professional experience in healthcare software.
-- **Decisions.** I made the final decisions at each stage of the process; for instance, I opted against using fuzzy matching with RxNorm following the calibration phase, decided to flag (rather than remove) patterns of concentrated reporting, and established the website publication process as a manual, validated step.
-- **Verifications.** I personally executed the pipeline and the publication steps, reviewing every change report and test result before finalizing any updates. Furthermore, I verified the drug label references for the 12 known pairs by cross-referencing them with the official FDA-approved labels.
+## Author's notes
+- **How it was built.** I used an AI coding assistant to write much of the code under my instructions. Scope, design decisions, calibration and validation are mine, and are documented in `docs/`.
+- **Scope.** A reproducible pipeline over public pharmacovigilance data, to practise orchestration (Airflow), transformation (dbt) and analytics on DuckDB, in a domain close to my work in healthcare software.
+- **Decisions.** I made the final call at each decision point: approximate RxNorm matching stays off after the calibration sample, concentrated report patterns are flagged instead of filtered out, and the site is published as a manual, validated step.
+- **Checks.** I run the builds and the publishing steps myself and read every change report and test result before pushing. I checked the label references of the 12 known pairs against the FDA label text.
 
 ## License
 
 Code: [MIT](LICENSE). The license covers the code of this repository, not the FDA or NLM data.
-Built with AI-assisted coding tools; design decisions, calibration and validation are documented
-in [docs/](docs/).
 
 ## Português (Brasil)
 
