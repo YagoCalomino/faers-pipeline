@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Disproportionality (PRR, ROR) of drug and reaction pairs in FDA adverse event reports (FAERS). Reports do not show causation or incidence." />
+    <title>FAERS disproportionality explorer</title>
+    <link rel="icon" href="data:," />
+    <script type="module" crossorigin src="./assets/index-ByJL68J2.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Dz3I0QA_.css">
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap">
+        <p class="brand"><a href="#/">FAERS disproportionality explorer</a></p>
+        <nav aria-label="Main">
+          <ul>
+            <li><a href="#/">Search</a></li>
+            <li><a href="#/quality">Quality</a></li>
+            <li><a href="#/validation">Validation</a></li>
+            <li><a href="#/method">Method &amp; limitations</a></li>
+            <li><a href="#/downloads">Downloads</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="banner wrap" id="data-banner">Data through <strong>2026Q2</strong> <span class="badge" title="Its cases are still growing as later FAERS files arrive">latest quarter is provisional</span></div>
+    </header>
+    <div class="wrap">
+      <p class="notice" role="note">
+        <strong>Read before use.</strong> These numbers measure disproportionality in
+        spontaneous reports: whether a reaction is reported more often with a drug than with
+        other drugs. They do not show that the drug causes the reaction, do not estimate how
+        often it happens, and are not medical advice.
+        <a href="#/method">Method &amp; limitations</a>
+      </p>
+    </div>
+    <main id="main" class="wrap" tabindex="-1">
+      <noscript>
+        <p>This explorer needs JavaScript to load its data. The ingredient list and the
+        data-quality metrics are also published as Parquet files in
+        <code>data/parquet/</code>.</p>
+      </noscript>
+    </main>
+    <p class="sr-only" aria-live="polite" id="status"></p>
+    <footer class="site-footer">
+      <div class="wrap">
+<p>Source: <a href="https://www.fda.gov/drugs/fda-adverse-event-monitoring-system-aems/fda-adverse-event-monitoring-system-aems-latest-quarterly-data-files" rel="noopener">FDA Adverse Event Reporting System (FAERS), now the FDA Adverse Event Monitoring System (AEMS)</a>, quarterly files 2024Q3 to 2026Q2. The FDA does not endorse this project. Drug names mapped with RxNorm (release 05-Oct-2026); the mapping is not updated with later RxNorm releases and may not reflect the most current or accurate data available from NLM.</p>
+<p class="attribution">This product uses publicly available data from the U.S. National Library of Medicine (NLM), National Institutes of Health, Department of Health and Human Services; NLM is not responsible for the product and does not endorse or recommend this or any other product.</p>
+<p class="meddra">Reaction terms are MedDRA® Preferred Terms as reported in FDA FAERS. MedDRA® is a registered trademark of the International Council for Harmonisation of Technical Requirements for Pharmaceuticals for Human Use (ICH). This project does not distribute the MedDRA dictionary and does not offer a downloadable dataset of MedDRA terms. Reaction terms (Preferred Terms) are shown on the site pages as they appear in FAERS.</p>
+<p>Data exported 2026-10-31 (UTC). Not medical advice. <a href="#/method">Method &amp; limitations</a> · <a href="https://github.com/YagoCalomino/faers-pipeline" rel="noopener">Source code</a></p>
+      </div>
+    </footer>
+  </body>
+</html>
