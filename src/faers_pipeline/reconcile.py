@@ -11,6 +11,7 @@ latest quarter, then highest primaryid.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import duckdb
@@ -133,6 +134,18 @@ def reconcile(lake: Path, warehouse: Path) -> dict:
     finally:
         con.close()
     return {"rows": rows, "divergent": [r[0] for r in rows if r[-1] != 0]}
+
+
+def check_against(lake: Path) -> Callable[[Path], list[str]]:
+    """Check for warehouse.build_atomic: reconciles a new warehouse file with `lake`, prints the
+    table and returns the divergent entities (empty when every count matches)."""
+
+    def check(new_warehouse: Path) -> list[str]:
+        result = reconcile(lake, new_warehouse)
+        print(format_table(result["rows"]), flush=True)
+        return result["divergent"]
+
+    return check
 
 
 def format_table(rows: list[list], header: list[str] = HEADER) -> str:

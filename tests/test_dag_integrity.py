@@ -161,16 +161,11 @@ def test_faers_transform_shape(transform_dag):
     assert set(transform_dag.task_ids) == {
         "wait_for_writers_idle",
         "build_warehouse",
-        "reconcile_warehouse",
         "publish_warehouse",
     }
     assert transform_dag.catchup is False and transform_dag.max_active_runs == 1
     assert transform_dag.get_task("wait_for_writers_idle").mode == "reschedule"
-    assert transform_dag.get_task("reconcile_warehouse").upstream_task_ids == {"build_warehouse"}
-    assert transform_dag.get_task("publish_warehouse").upstream_task_ids == {
-        "build_warehouse",
-        "reconcile_warehouse",
-    }
+    assert transform_dag.get_task("publish_warehouse").upstream_task_ids == {"build_warehouse"}
 
 
 def test_faers_transform_runs_on_the_rxnorm_asset_only(transform_dag, rxnorm_dag):
@@ -181,8 +176,7 @@ def test_faers_transform_runs_on_the_rxnorm_asset_only(transform_dag, rxnorm_dag
 
 
 def test_warehouse_writers_use_the_one_slot_pool(transform_dag):
-    for task_id in ("build_warehouse", "reconcile_warehouse"):
-        assert transform_dag.get_task(task_id).pool == "duckdb_writer"
+    assert transform_dag.get_task("build_warehouse").pool == "duckdb_writer"
     pools = json.loads(POOLS.read_text(encoding="utf-8"))
     assert pools["duckdb_writer"]["slots"] == 1
 
@@ -191,8 +185,7 @@ def test_warehouse_asset_only_after_build_and_reconcile(transform_dag):
     task = transform_dag.get_task("publish_warehouse")
     assert {o.name for o in task.outlets} == {"faers_warehouse"}
     assert task.trigger_rule == "all_success"
-    for task_id in ("build_warehouse", "reconcile_warehouse"):
-        assert not transform_dag.get_task(task_id).outlets
+    assert not transform_dag.get_task("build_warehouse").outlets
 
 
 def test_every_task_has_the_failure_callback(bag):

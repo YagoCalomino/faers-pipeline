@@ -304,20 +304,21 @@ increased) or `label_not_listed` (the 3 negative controls). Three caveats:
 
 The numbers are checked in five places. Only the second is independent of the
 warehouse: it runs in plain Python, without dbt, DuckDB or the warehouse. The third
-recomputes counts from the Parquet lake outside dbt, then compares them with the core
-facts. The first, fourth and fifth read the marts that dbt builds: they check those marts
+recomputes counts from the Parquet lake with the same winner rule, outside dbt, then compares
+them with the core facts of each new build before it is swapped in. The first, fourth and fifth read the marts that dbt builds: they check those marts
 and what is exported from them, not a separate computation of the statistics.
 
 1. **dbt tests** on every layer (`dbt/faers_dbt/models/**/_*.yml` and
    `dbt/faers_dbt/tests/`), including `assert_signal_statistics_known_values.sql`, which
    compares the PRR, ROR and χ² macros with literal values for six 2x2 tables. A full build is
-   swapped in only if every test passes.
+   swapped in only if every test passes and the reconciliation (3) finds no divergence.
 2. **Independent recomputation of those literals** in plain Python, without dbt or DuckDB
    (`tests/unit/test_signal_known_values.py`).
-3. **Reconciliation of the lake with the warehouse** after each build
-   (`src/faers_pipeline/reconcile.py`, task `reconcile_warehouse` of `faers_transform`): case
-   and drug, reaction and outcome row counts recomputed from the Parquet lake outside dbt; any
-   divergence fails the run.
+3. **Reconciliation of the lake with the warehouse** on each new build, before the swap
+   (`src/faers_pipeline/reconcile.py`, in `build_warehouse` of `faers_transform` and in
+   `make dbt-rebuild`): case and drug, reaction and outcome row counts recomputed from the
+   Parquet lake with the same winner rule, outside dbt; any divergence fails the build and keeps
+   the previous warehouse.
 4. **Known pairs** (`seed_known_signals`, `mart_known_signals_eval`), described above.
 5. **Site numbers.** `src/faers_pipeline/site_check.py` validates every export in the
    `publish_site` DAG; `scripts/verify_site_values.py` compares the exported JSON with a direct
@@ -338,8 +339,8 @@ and what is exported from them, not a separate computation of the statistics.
   export.
 - **An ingestion started during a build is not blocked.** `faers_transform` waits while
   `faers_ingest` or `rxnorm_enrich` runs, but not the other way round. This is accepted: the
-  reconciliation step after each build compares the lake with the warehouse and fails on any
-  divergence. Do not start a backfill while a build runs (runbook).
+  reconciliation of each new build with the lake runs before the swap, and any divergence keeps
+  the previous warehouse. Do not start a backfill while a build runs (runbook).
 - **Scale.** Measured on 8 quarters (2024Q3 to 2026Q2: 3,253,489 DEMO rows, 2,858,073 cases):
   full dbt build 3.4 min, memory peak 3.05 GiB in the container (DuckDB `memory_limit` 2.5GB),
   warehouse file 1,500 MB, Parquet lake 350 MB (`docs/numbers.md`). Larger windows were not

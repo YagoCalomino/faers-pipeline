@@ -40,8 +40,8 @@ docs/     runbook, data dictionary, limitations, numbers, ADRs, README screensho
 
 1. Start with the [README](../README.md): the problem, the architecture diagram, the numbers.
 2. Follow one quarter through the code: `dags/faers_ingest.py` (download, parse to Parquet,
-   validate) -> `dags/rxnorm_enrich.py` -> `dags/faers_transform.py` (dbt build, atomic swap,
-   reconciliation) -> `dags/publish_site.py` (export and validation).
+   validate) -> `dags/rxnorm_enrich.py` -> `dags/faers_transform.py` (dbt build,
+   reconciliation, atomic swap) -> `dags/publish_site.py` (export and validation).
 3. The SQL lives in `dbt/faers_dbt/models/`: `staging/` (typing), `intermediate/`
    (deduplication and the drugs and reactions of each case's latest version), `marts/core/`
    (dimensions and facts) and `marts/signals/` (PRR, ROR, data quality, known pairs).

@@ -109,14 +109,15 @@ folds pending files into the cache.
 ## Rebuild the warehouse
 
 The warehouse only holds dbt outputs; the lake is the source of truth. Both ways below are
-atomic: dbt writes `data/warehouse/_build/faers.duckdb`, which replaces the warehouse only when
-every model and test passes. A failed build keeps the previous warehouse and removes the new
-file.
+atomic: dbt writes `data/warehouse/_build/faers.duckdb`, the lake -> warehouse reconciliation
+(`src/faers_pipeline/reconcile.py`) runs on that new file, and it replaces the warehouse only
+when every model and test passes and no count diverges. A failed build or reconciliation keeps
+the previous warehouse and removes the new file; the reconciliation table is in the output.
 
 ```bash
 make dbt-rebuild                  # from the host, outside Airflow
 $AF dags trigger faers_transform  # through Airflow (duckdb_writer pool)
-make reconcile                    # lake -> warehouse counts, exit 1 on divergence
+make reconcile                    # lake -> live warehouse counts, exit 1 on divergence
 ```
 
 Do not run a build while an ingestion is writing the lake.
@@ -240,7 +241,7 @@ A failed task blocks the Assets downstream of it, so the next DAG of the chain d
 | `faers_transform.wait_for_writers_idle` (timeout) | An ingestion or lookup run stayed active | Check the other DAGs' runs. |
 | `faers_transform.build_warehouse` | dbt model or test failure; the previous warehouse is kept | Run `make dbt-rebuild` to see the failing node; fix, then trigger `faers_transform`. |
 | `faers_transform.build_warehouse`, test `assert_known_positive_signals_detected` | A positive pair of `seed_known_signals` no longer has a ≥ 3, PRR ≥ 2 and `ror_lcl` > 1; the previous warehouse is kept | The failed build file is removed, so rebuild into a scratch file (see above) and query `signals.mart_known_signals_eval` there (`failure_reason`, `a_fallback_same_name`): check names, RxNorm mapping and ingredient splitting. Do not edit the seed to make it pass. |
-| `faers_transform.reconcile_warehouse` | Lake and warehouse counts differ | `make reconcile` prints the table; the warehouse Asset is not published. |
+| `faers_transform.build_warehouse`, reconciliation | Lake and new warehouse counts differ (the table is in the task log) | The previous warehouse is kept and no Asset is published. Check the lake (re-run an ingestion that failed part-way), then trigger `faers_transform`. |
 
 ### When the release sensor times out
 

@@ -1,6 +1,7 @@
 """Atomic warehouse build (faers_pipeline.warehouse.build_atomic) without running dbt: a runner
 stands in for `dbt build`, writing the DuckDB file dbt would write (DUCKDB_PATH) and returning an
-exit code. The reconciliation runs on the fixture lake against the file that ends up in place."""
+exit code. The reconciliation runs on the fixture lake, as the check before the swap and against
+the file that ends up in place."""
 
 from __future__ import annotations
 
@@ -12,7 +13,7 @@ import duckdb
 import pytest
 
 from faers_pipeline import warehouse
-from faers_pipeline.reconcile import reconcile
+from faers_pipeline.reconcile import check_against, reconcile
 
 FACTS = ["fct_case", "fct_case_drug", "fct_case_reaction", "fct_case_outcome"]
 
@@ -156,3 +157,51 @@ def test_extra_env_reaches_dbt_but_not_the_database_path(tmp_path):
     warehouse.build_atomic(tmp_path, tmp_path / "faers.duckdb", runner=run, extra_env=extra)
     assert seen["DBT_TARGET_PATH"] == "/x/target"
     assert seen["DUCKDB_PATH"] == str(tmp_path / "_build" / "faers.duckdb")
+
+
+def test_divergent_reconciliation_keeps_the_old_warehouse_and_says_why(
+    fixture_lake, expected_counts, tmp_path, capsys
+):
+    wh = tmp_path / "faers.duckdb"
+    write_facts(wh, expected_counts)
+    before = fingerprint(wh)
+    wrong = {**expected_counts, "fct_case": expected_counts["fct_case"] - 1}
+    with pytest.raises(warehouse.WarehouseBuildError, match=r"DEMO -> fct_case.*kept"):
+        warehouse.build_atomic(
+            tmp_path, wh, runner=runner_writing(wrong), check=check_against(fixture_lake)
+        )
+    assert fingerprint(wh) == before
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["faers.duckdb"]
+    assert "fct_case" in capsys.readouterr().out  # the reconciliation table is printed
+
+
+def test_passing_reconciliation_swaps_in_the_new_file(fixture_lake, expected_counts, tmp_path):
+    wh = tmp_path / "faers.duckdb"
+    write_facts(wh, {})
+    seen = []
+
+    def check(new: Path) -> list[str]:
+        seen.append(new)
+        return check_against(fixture_lake)(new)
+
+    summary = warehouse.build_atomic(
+        tmp_path, wh, runner=runner_writing(expected_counts), check=check
+    )
+    assert seen == [tmp_path / "_build" / "faers.duckdb"]  # checked before the swap
+    assert summary["checked"] is True
+    assert reconcile(fixture_lake, wh)["divergent"] == []
+    assert not (tmp_path / "_build").exists()
+
+
+def test_error_in_the_check_keeps_the_old_warehouse(tmp_path):
+    wh = tmp_path / "faers.duckdb"
+    write_facts(wh, {"fct_case": 5})
+    before = fingerprint(wh)
+
+    def broken(new: Path) -> list[str]:
+        raise OSError("lake not readable")
+
+    with pytest.raises(warehouse.WarehouseBuildError, match="lake not readable"):
+        warehouse.build_atomic(tmp_path, wh, runner=runner_writing({"fct_case": 2}), check=broken)
+    assert fingerprint(wh) == before
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["faers.duckdb"]

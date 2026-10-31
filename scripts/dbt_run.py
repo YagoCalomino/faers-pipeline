@@ -9,10 +9,12 @@ Usage (inside the container, e.g. via make):
     python -I scripts/dbt_run.py build
     python -I scripts/dbt_run.py --ci build          # target ci (LAKE_PATH, DBT_CI_DIR required)
     python -I scripts/dbt_run.py --atomic build      # full build into a build folder, swapped in
-                                                     # only if every model and test passes
+                                                     # only if every model and test passes and
+                                                     # the lake reconciliation finds no divergence
 
---atomic never leaves a half-built warehouse: on failure the previous file stays as it was and
-the new file is removed. Never run a build while an ingestion is writing the lake.
+--atomic never leaves a half-built or unreconciled warehouse: on failure the previous file stays
+as it was and the new file is removed. The reconciliation is the one of the faers_transform DAG.
+Never run a build while an ingestion is writing the lake.
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ os.environ.setdefault("FAERS_CONFIG_DIR", str(REPO / "config"))
 
 from faers_pipeline import warehouse  # noqa: E402
 from faers_pipeline.config import load_config  # noqa: E402
+from faers_pipeline.reconcile import check_against  # noqa: E402
 
 PROJECT_DIR = REPO / "dbt" / "faers_dbt"
 
@@ -41,7 +44,9 @@ def main(argv: list[str]) -> int:
         if ci or args[0] != "build":
             sys.exit("--atomic only applies to a `build` of the local warehouse")
         try:
-            print(warehouse.build_atomic(PROJECT_DIR, args=args), flush=True)
+            lake = Path(load_config("faers.yaml")["paths"]["lake"])
+            summary = warehouse.build_atomic(PROJECT_DIR, args=args, check=check_against(lake))
+            print(summary, flush=True)
         except warehouse.WarehouseBuildError as exc:
             print(f"BUILD FAILED: {exc}", file=sys.stderr, flush=True)
             return 1

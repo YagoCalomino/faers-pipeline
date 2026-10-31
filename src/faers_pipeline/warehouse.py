@@ -11,7 +11,9 @@ Variables already set in the environment win (the ci target sets LAKE_PATH and D
 Atomic build: dbt writes <warehouse dir>/<atomic_build_dir>/<warehouse name> (DUCKDB_PATH points
 there; same file name so DuckDB gives it the same catalog name) and the file replaces the
 warehouse with os.replace (same filesystem) only when the whole `dbt build` (models and tests)
-exits 0. On failure the previous warehouse is untouched and the new file is removed. A full
+exits 0 and the optional check (the lake -> warehouse reconciliation in the DAG and in
+`make dbt-rebuild`) finds no divergence in the new file. On failure the previous warehouse is
+untouched and the new file is removed. A full
 build always starts from an empty file, so the warehouse never carries free blocks of earlier
 builds.
 """
@@ -38,7 +40,7 @@ WITH_VARS = {"build", "run", "test", "parse", "compile", "ls", "list", "show", "
 
 
 class WarehouseBuildError(RuntimeError):
-    """The dbt build failed; the previous warehouse was kept."""
+    """The dbt build or the check before the swap failed; the previous warehouse was kept."""
 
 
 def dbt_executable() -> Path:
@@ -121,11 +123,15 @@ def build_atomic(
     args: Sequence[str] = ("build",),
     runner: Callable[[dict], int] | None = None,
     extra_env: dict | None = None,
+    check: Callable[[Path], list[str]] | None = None,
 ) -> dict:
-    """Full dbt build into the build folder, swapped in only if dbt exits 0.
+    """Full dbt build into the build folder, swapped in only if dbt exits 0 and `check`
+    passes.
 
-    `runner(env) -> exit code` replaces the real dbt call in tests. Raises WarehouseBuildError
-    (after removing the new file) when the build fails; the old warehouse is never touched then.
+    `runner(env) -> exit code` replaces the real dbt call in tests. `check(new file) -> problems`
+    runs on the new file before the swap (reconcile.check_against); any problem, or an error in
+    the check, fails the build. Raises WarehouseBuildError (after removing the new file) when the
+    build or the check fails; the old warehouse is never touched then.
     """
     faers = load_config("faers.yaml")
     warehouse = Path(warehouse or faers["paths"]["warehouse"])
@@ -158,6 +164,19 @@ def build_atomic(
         con.close()
     if _wal(new).exists():
         raise WarehouseBuildError(f"{_wal(new)} still exists after CHECKPOINT; not swapping")
+    if check is not None:
+        try:
+            problems = check(new)
+        except Exception as exc:
+            _remove(new, _wal(new))
+            _rmdir_if_empty(build_dir)
+            raise WarehouseBuildError(f"check of {new} failed ({exc}); kept {warehouse}") from exc
+        if problems:
+            _remove(new, _wal(new))
+            _rmdir_if_empty(build_dir)
+            raise WarehouseBuildError(
+                f"check of the new warehouse failed: {problems}; kept {warehouse} as it was"
+            )
     # A WAL left by the old file must not be replayed onto the new one.
     _remove(_wal(warehouse))
     os.replace(new, warehouse)
@@ -168,6 +187,7 @@ def build_atomic(
         "dbt_seconds": seconds,
         "dbt_peak_rss_mb": peak_mb,
         "bytes": warehouse.stat().st_size,
+        "checked": check is not None,
     }
     log.info("warehouse swapped: %s", summary)
     return summary
