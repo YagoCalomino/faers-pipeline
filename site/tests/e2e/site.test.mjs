@@ -211,6 +211,25 @@ test('validation: every pair shows its label reference, with the three caveats',
   await ctx.close();
 });
 
+test('reading notes: home volume caption, deleted ids on Quality, PS/SS share on the pair', async () => {
+  const home = await open(ROUTES.home);
+  assert.match(
+    await home.page.locator('#top-help').innerText(),
+    /^Reporting volume, not risk: counts depend on market size and on manufacturer and support-program reporting\.$/
+  );
+  await home.ctx.close();
+  const quality = await open(ROUTES.quality);
+  const note = await quality.page.locator('#deleted-help').innerText();
+  assert.match(note, /an id can appear in more than one deletion list, so the per-file sum can exceed the number of removed cases/);
+  assert.match(note, /"—" means none found\.$/);
+  await quality.ctx.close();
+  const pair = await open(ROUTES.pair);
+  const trend = await pair.page.locator('section[aria-labelledby="trend-h"] .help').first();
+  assert.match(await trend.innerText(), /The PS\/SS share changes by quarter \(see the Quality page\)\.$/);
+  assert.equal(await trend.locator('a').getAttribute('href'), '#/quality');
+  await pair.ctx.close();
+});
+
 test('unknown routes show not found', async () => {
   const { ctx, page } = await open('#/ingredient/no-such-ingredient');
   await page.getByRole('heading', { level: 1, name: 'Not found' }).waitFor();

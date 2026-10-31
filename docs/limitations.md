@@ -4,98 +4,13 @@ A *report* is one version of a FAERS case as submitted to the FDA; a *case* is o
 counted once through its latest report after deduplication, and every count of the ingredient
 and pair pages (including a, b, c and d) is a count of cases.
 
-## RxNorm normalization of drug names
-
-FAERS drug names (cleaned `PROD_AI`) are mapped to RxNorm ingredients (IN) with the NLM RxNav
-API (`rxnorm_enrich` DAG, `config/rxnorm.yaml`). The policy favours precision over coverage: a
-wrong ingredient creates false disproportionality signals, while a name left unmapped only
-splits counts.
-
-### Approximate matching is off
-
-RxNav's approximate search (`getApproximateMatch`) was calibrated on a manually labelled sample
-of 60 terms, versioned with its marks in `docs/calibration/rxnorm_calibration_sample.csv`
-(2026-10-26). Of 20 approximate matches from RxNorm sources that resolve to an ingredient, 6
-were correct. The score does not separate right from
-wrong matches: wrong matches scored 8.0 to 12.9 and 20.7, right ones 10.1 to 15.3. Typical
-errors were a different substance with a similar name (prulifloxacin → orbifloxacin,
-empegfilgrastim → lipegfilgrastim, nimotuzumab → inotuzumab ozogamicin) and the counter-ion of
-a salt instead of the drug (dexamethasone sodium succinate → sodium succinate, teneligliptin
-hydrobromide → hydrobromic acid). `approximate_rules.min_score` is therefore `null`: names
-without an exact or normalized match stay as fallback ingredients (`FB:<text>`).
-
-In the calibration sample, exact and normalized matches were correct in 20 of 20 rows. Of the
-20 terms left as `not_found`, 17 were marked right and 3 wrong (ARABICA COFFEE BEAN, KARAYA
-GUM, SPEARMINT: real substances whose two candidate RxCUIs may be synonyms; the marks record
-this as a doubt).
-
-### Ambiguous exact matches are not resolved
-
-When the exact (or normalized) search returns several RxCUIs whose ingredients differ, the term
-is left as `not_found` and falls back to its own text. Examples: KARAYA GUM (karaya gum / karaya
-gum extract), METHIONINE (methionine / racemethionine), SPEARMINT (spearmint extract / spearmint
-allergenic extract), ARABICA COFFEE BEAN (Coffea arabica seed extract / arabica coffee bean
-allergenic extract). A rule that accepts the single candidate whose name equals the term
-(ignoring case) was tested and not adopted: it resolves only KARAYA GUM and METHIONINE, and it
-moved about 27 PS/SS drug lines from fallback to normalized in the names looked up at the time
-of the test.
-
-### Generic terms
-
-Some reports name a class of products instead of an ingredient (HERBALS, VITAMINS, MINERALS,
-DIETARY SUPPLEMENT, UNSPECIFIED INGREDIENT, DEVICE). They have no single RxNorm ingredient and stay as
-fallback ingredients; `dim_ingredient` flags them with `is_generic_fallback`, from the
-editable list `generic_terms` in `config/rxnorm.yaml`.
-
-### Measured coverage
-
-In the build of 2026-10-26, 99.05% of the 7,182,171 PS/SS drug lines map to RxNorm ingredients
-(exact 98.98%, normalized 0.07%); 0.95% are fallback (`signals.mart_dq_rxnorm_coverage`).
-Keeping approximate matches off leaves some real drugs as fallback, for example PANTOPRAZOLE
-MAGNESIUM, AZTREONAM LYSINE and ASPIRIN DL-LYSINE, whose salt forms have no exact or normalized
-match in RxNorm.
-
-### Salt and counter-ion stripping is not applied
-
-A rule that removes trailing salt or counter-ion words from a name and repeats the exact search
-on the remainder was tested on the 50 fallback names with the most PS/SS lines (2026-10-26, 25
-real lookups) and not adopted. The word list came from the data: final words of names that
-matched, which RxNorm dropped from the ingredient name (for example BESYLATE in AMLODIPINE
-BESYLATE → amlodipine).
-
-- With a strict list (44 words seen in at least 5 matched names), 2 names resolve (PANTOPRAZOLE
-  SODIUM ANHYDROUS → pantoprazole, CITALOPRAM HYDROCHLORIDE → citalopram), about 2,100 PS/SS
-  lines.
-- With a loose list (312 words seen at least once), 7 names resolve, 9,464 PS/SS lines,
-  including PANTOPRAZOLE MAGNESIUM, AZTREONAM LYSINE and HYDROXYCHLOROQUINE DIPHOSPHATE, but
-  also wrong or over-specific matches: removing "NOS" (not otherwise specified) maps INSULIN NOS
-  to regular human insulin and IMMUNE GLOBULIN NOS to immunoglobulin G.
-
-The gain is small next to the 7.18 million PS/SS lines, and the loose list adds errors of the
-kind the precision-first policy exists to avoid. Names in the salt forms above stay as fallback
-ingredients; a signal can be split between such a fallback and the reference ingredient.
-
-### Other effects of the mapping
-
-- **Combinations.** A `PROD_AI` with several ingredients separated by a backslash maps to one
-  row per ingredient. Counts of cases per ingredient must use distinct cases; counting rows
-  overstates them (tested in dbt).
-- **Partial combinations.** When only some parts of a combination match, the matched parts
-  keep their RxNorm ingredient and each unmatched part becomes `FB:<part>`.
-- **Salts, prodrugs and biosimilars** are grouped in the reference ingredient by RxNorm's own
-  relations (for example amlodipine besylate → amlodipine, foscarbidopa → carbidopa). The
-  original text is kept for audit.
-- **Scope.** Only names that appear with a suspect role (PS, SS; `config/signals.yaml`) are
-  looked up. Names used only as concomitant, interacting or not administered stay as fallback.
-  Drug lines without `PROD_AI` use the reported drug name, which is not looked up.
-- **Version.** Every lookup is stamped with the RxNorm release it used. The cache has no
-  automatic expiry; refreshing it after a new RxNorm release is a manual decision.
-
 ## Signals (PRR, ROR)
 
 `signals.mart_signals` measures disproportionality: whether a reaction is reported more often
 with an ingredient than with all other drugs in FAERS. It does not measure incidence or risk,
 and a signal is a hypothesis for review, not evidence that the drug causes the reaction.
+In this project a "signal" means a signal of disproportionate reporting (SDR): a statistical
+hypothesis for review, not a confirmed safety signal.
 
 ### Method
 
@@ -177,6 +92,20 @@ two criteria (a ≥ 3, PRR ≥ 2) already make fragile; the ROR criterion does n
   shrinkage, pairs with few cases are unstable (a few cases can give a very high ratio with a
   wide interval); in exchange, each value follows from the four counts of the 2x2 table by a
   closed formula and can be checked independently.
+- **Solicited and study reports are not filtered out.** The pipeline does not filter by report
+  type or source: `rept_cod` is kept in the raw lake but not read by the staging models, so
+  solicited reports (for example from patient-support programs) and study reports count like
+  spontaneous ones.
+- **Masking.** The comparison background is every other drug in FAERS. When a few heavily
+  reported drugs account for many reports of a reaction, those reports sit in the comparison
+  group of every other drug and lower their PRR and ROR for that reaction, which can hide a
+  disproportionality.
+- **Duplicates across reporters.** Deduplication is by `caseid` only; the same event reported
+  separately by different reporters stays as separate cases.
+- **Cases first received before the window.** The `ALL` period includes cases first received
+  before 2024Q3 (219,625 of 2,858,073 cases, 7.68%; ADR 0001) only because a later version of
+  them, a follow-up, is in one of the loaded files. Follow-up cases may differ from first-time
+  reports.
 
 ### Patterns seen in the top pairs
 
@@ -324,6 +253,93 @@ and what is exported from them, not a separate computation of the statistics.
    `publish_site` DAG; `scripts/verify_site_values.py` compares the exported JSON with a direct
    DuckDB query and `site/tests/verify-values.mjs` compares the rendered pages with those
    values.
+
+## RxNorm normalization of drug names
+
+FAERS drug names (cleaned `PROD_AI`) are mapped to RxNorm ingredients (IN) with the NLM RxNav
+API (`rxnorm_enrich` DAG, `config/rxnorm.yaml`). The policy favours precision over coverage: a
+wrong ingredient creates false disproportionality signals, while a name left unmapped only
+splits counts.
+
+### Approximate matching is off
+
+RxNav's approximate search (`getApproximateMatch`) was calibrated on a manually labelled sample
+of 60 terms, versioned with its marks in `docs/calibration/rxnorm_calibration_sample.csv`
+(2026-10-26). Of 20 approximate matches from RxNorm sources that resolve to an ingredient, 6
+were correct. The score does not separate right from
+wrong matches: wrong matches scored 8.0 to 12.9 and 20.7, right ones 10.1 to 15.3. Typical
+errors were a different substance with a similar name (prulifloxacin → orbifloxacin,
+empegfilgrastim → lipegfilgrastim, nimotuzumab → inotuzumab ozogamicin) and the counter-ion of
+a salt instead of the drug (dexamethasone sodium succinate → sodium succinate, teneligliptin
+hydrobromide → hydrobromic acid). `approximate_rules.min_score` is therefore `null`: names
+without an exact or normalized match stay as fallback ingredients (`FB:<text>`).
+
+In the calibration sample, exact and normalized matches were correct in 20 of 20 rows. Of the
+20 terms left as `not_found`, 17 were marked right and 3 wrong (ARABICA COFFEE BEAN, KARAYA
+GUM, SPEARMINT: real substances whose two candidate RxCUIs may be synonyms; the marks record
+this as a doubt).
+
+### Ambiguous exact matches are not resolved
+
+When the exact (or normalized) search returns several RxCUIs whose ingredients differ, the term
+is left as `not_found` and falls back to its own text. Examples: KARAYA GUM (karaya gum / karaya
+gum extract), METHIONINE (methionine / racemethionine), SPEARMINT (spearmint extract / spearmint
+allergenic extract), ARABICA COFFEE BEAN (Coffea arabica seed extract / arabica coffee bean
+allergenic extract). A rule that accepts the single candidate whose name equals the term
+(ignoring case) was tested and not adopted: it resolves only KARAYA GUM and METHIONINE, and it
+moved about 27 PS/SS drug lines from fallback to normalized in the names looked up at the time
+of the test.
+
+### Generic terms
+
+Some reports name a class of products instead of an ingredient (HERBALS, VITAMINS, MINERALS,
+DIETARY SUPPLEMENT, UNSPECIFIED INGREDIENT, DEVICE). They have no single RxNorm ingredient and stay as
+fallback ingredients; `dim_ingredient` flags them with `is_generic_fallback`, from the
+editable list `generic_terms` in `config/rxnorm.yaml`.
+
+### Measured coverage
+
+In the build of 2026-10-26, 99.05% of the 7,182,171 PS/SS drug lines map to RxNorm ingredients
+(exact 98.98%, normalized 0.07%); 0.95% are fallback (`signals.mart_dq_rxnorm_coverage`).
+Keeping approximate matches off leaves some real drugs as fallback, for example PANTOPRAZOLE
+MAGNESIUM, AZTREONAM LYSINE and ASPIRIN DL-LYSINE, whose salt forms have no exact or normalized
+match in RxNorm.
+
+### Salt and counter-ion stripping is not applied
+
+A rule that removes trailing salt or counter-ion words from a name and repeats the exact search
+on the remainder was tested on the 50 fallback names with the most PS/SS lines (2026-10-26, 25
+real lookups) and not adopted. The word list came from the data: final words of names that
+matched, which RxNorm dropped from the ingredient name (for example BESYLATE in AMLODIPINE
+BESYLATE → amlodipine).
+
+- With a strict list (44 words seen in at least 5 matched names), 2 names resolve (PANTOPRAZOLE
+  SODIUM ANHYDROUS → pantoprazole, CITALOPRAM HYDROCHLORIDE → citalopram), about 2,100 PS/SS
+  lines.
+- With a loose list (312 words seen at least once), 7 names resolve, 9,464 PS/SS lines,
+  including PANTOPRAZOLE MAGNESIUM, AZTREONAM LYSINE and HYDROXYCHLOROQUINE DIPHOSPHATE, but
+  also wrong or over-specific matches: removing "NOS" (not otherwise specified) maps INSULIN NOS
+  to regular human insulin and IMMUNE GLOBULIN NOS to immunoglobulin G.
+
+The gain is small next to the 7.18 million PS/SS lines, and the loose list adds errors of the
+kind the precision-first policy exists to avoid. Names in the salt forms above stay as fallback
+ingredients; a signal can be split between such a fallback and the reference ingredient.
+
+### Other effects of the mapping
+
+- **Combinations.** A `PROD_AI` with several ingredients separated by a backslash maps to one
+  row per ingredient. Counts of cases per ingredient must use distinct cases; counting rows
+  overstates them (tested in dbt).
+- **Partial combinations.** When only some parts of a combination match, the matched parts
+  keep their RxNorm ingredient and each unmatched part becomes `FB:<part>`.
+- **Salts, prodrugs and biosimilars** are grouped in the reference ingredient by RxNorm's own
+  relations (for example amlodipine besylate → amlodipine, foscarbidopa → carbidopa). The
+  original text is kept for audit.
+- **Scope.** Only names that appear with a suspect role (PS, SS; `config/signals.yaml`) are
+  looked up. Names used only as concomitant, interacting or not administered stay as fallback.
+  Drug lines without `PROD_AI` use the reported drug name, which is not looked up.
+- **Version.** Every lookup is stamped with the RxNorm release it used. The cache has no
+  automatic expiry; refreshing it after a new RxNorm release is a manual decision.
 
 ## Operational limits
 

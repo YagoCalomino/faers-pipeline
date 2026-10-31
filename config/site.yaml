@@ -86,8 +86,8 @@ concentration_alert:
 # callbacks), stay in the repository only. The build fails if a listed heading is missing.
 method_page:
   sections:
-    - "RxNorm normalization of drug names"
     - "Signals (PRR, ROR)"
+    - "RxNorm normalization of drug names"
     - "MedDRA terms"
 
 # Descriptions of the open-data downloads (parquet/<table>.parquet), one per table in

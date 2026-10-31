@@ -111,6 +111,8 @@ async function viewHome() {
     </div>
     <section aria-labelledby="top-h">
       <h2 id="top-h">Ingredients with the most cases</h2>
+      <p class="help" id="top-help">Reporting volume, not risk: counts depend on market size and on
+        manufacturer and support-program reporting.</p>
       <ol class="top-list" id="top-list"><li class="loading">Loading…</li></ol>
     </section>
     <section aria-labelledby="about-h">
@@ -408,7 +410,7 @@ async function viewPair(slug, reactionKey) {
     </section>
     <section aria-labelledby="trend-h">
       <h2 id="trend-h">Cases per quarter</h2>
-      <p class="help">Quarter in which the FDA first received each case.${meta.last_quarter_is_provisional ? ` ${esc(meta.provisional_quarter)}* is provisional: its count grows as later files arrive.` : ''} Quarters with fewer than 3 cases show "&lt;3". Cases first received before ${esc(meta.first_quarter)} count in the totals above but not here.</p>
+      <p class="help">Quarter in which the FDA first received each case.${meta.last_quarter_is_provisional ? ` ${esc(meta.provisional_quarter)}* is provisional: its count grows as later files arrive.` : ''} Quarters with fewer than 3 cases show "&lt;3". Cases first received before ${esc(meta.first_quarter)} count in the totals above but not here. The PS/SS share changes by quarter (see the <a href="#/quality">Quality</a> page).</p>
       <figure class="chart">${trendSvg(series, { provisionalQuarter: meta.provisional_quarter, titleId: 'trend-title', descId: 'trend-desc', title: chartTitle, desc: chartDesc })}</figure>
       ${scrollTable(
         'Cases per quarter',
@@ -515,6 +517,9 @@ async function viewQuality() {
       <p>A case keeps only its latest version; cases in the FDA deletion lists are removed.</p>
       ${keyValueTable('All loaded files', allOf('deduplication'), ['demo_rows', 'distinct_caseids', 'superseded_versions_removed', 'deleted_cases_removed', 'cases_after_deduplication', 'pct_duplicate_rows_removed', 'pct_demo_rows_removed_total'])}
       ${metricTable('Per FAERS file quarter', fq.deduplication ?? {}, ['demo_rows', 'winning_versions', 'deleted_ids_listed', 'deleted_ids_found_in_demo'], 'File quarter')}
+      <p class="help" id="deleted-help">Deleted ids found in loaded cases: an id can appear in more
+        than one deletion list, so the per-file sum can exceed the number of removed cases;
+        "${DASH}" means none found.</p>
     </section>
     <section aria-labelledby="rx-h"><h2 id="rx-h">RxNorm coverage of drug names</h2>
       <p>Share of primary and secondary suspect (PS/SS) drug lines by match type. Names without a
