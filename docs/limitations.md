@@ -357,10 +357,9 @@ ingredients; a signal can be split between such a fallback and the reference ing
   `faers_ingest` or `rxnorm_enrich` runs, but not the other way round. This is accepted: the
   reconciliation of each new build with the lake runs before the swap, and any divergence keeps
   the previous warehouse. Do not start a backfill while a build runs (runbook).
-- **Scale.** Measured on 8 quarters (2024Q3 to 2026Q2: 3,253,489 DEMO rows, 2,858,073 cases):
-  full dbt build 3.4 min, memory peak 3.05 GiB in the container (DuckDB `memory_limit` 2.5GB),
-  warehouse file 1,500 MB, Parquet lake 350 MB (`docs/numbers.md`). Larger windows were not
-  tested, and the pipeline has not been run on the full FAERS history.
+- **Scale.** Measured on 8 quarters (2024Q3 to 2026Q2); rows, cases, build time, memory peak
+  and file sizes of the last measured build are in [docs/numbers.md](numbers.md). Larger
+  windows were not tested, and the pipeline has not been run on the full FAERS history.
 - **Provisional latest quarter.** The cohort of the most recent quarter keeps growing as later
   files arrive (see "Limits of the signals").
 - **Combination products and fallback names.** A case with a combination product counts once

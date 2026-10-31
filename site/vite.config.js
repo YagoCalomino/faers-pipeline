@@ -75,7 +75,7 @@ function shellHtml(meta, config) {
       `<p>Source: <a href="${esc(config.fdaUrl)}" rel="noopener">${esc(config.site.fda_source_name)}</a>, quarterly files ${esc(meta.first_quarter)} to ${esc(meta.last_quarter)}. The FDA does not endorse this project. Drug names mapped with RxNorm (release ${esc(rxnorm)}); the mapping is not updated with later RxNorm releases and may not reflect the most current or accurate data available from NLM.</p>`,
       `<p class="attribution">${esc(meta.rxnav_attribution)}</p>`,
       `<p class="meddra">${esc(config.site.meddra_notice)}</p>`,
-      `<p>Data exported ${esc(meta.export_date)}. Not medical advice. <a href="#/method">Method &amp; limitations</a> · <a href="${esc(config.site.repo_url)}" rel="noopener">Source code</a></p>`,
+      `<p>Data exported ${esc(meta.export_date)} (UTC). Not medical advice. <a href="#/method">Method &amp; limitations</a> · <a href="${esc(config.site.repo_url)}" rel="noopener">Source code</a></p>`,
     ].join('\n'),
     '<!--TITLE-->': esc(config.site.title),
   };

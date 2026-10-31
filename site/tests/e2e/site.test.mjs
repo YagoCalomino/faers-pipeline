@@ -79,7 +79,7 @@ test('every page renders its heading, banner, notice and footer, with no externa
     assert.equal(await page.locator('footer .meddra').innerText(), MEDDRA, name);
     if (name === 'downloads') assert.equal(await page.locator('main .meddra').innerText(), MEDDRA);
     assert.match(await page.locator('footer').innerText(), /The FDA does not endorse this project\./, name);
-    assert.match(await page.locator('footer').innerText(), new RegExp(`Data exported ${META.export_date}`));
+    assert.match(await page.locator('footer').innerText(), new RegExp(`Data exported ${META.export_date} \\(UTC\\)`));
     assert.match(await page.locator('footer').innerText(), new RegExp(META.rxnorm_versions[0] ?? 'not recorded'));
     assert.deepEqual(problems, [], name);
     const text = (await page.locator('body').innerText()).toLowerCase();

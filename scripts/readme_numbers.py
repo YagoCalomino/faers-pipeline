@@ -150,9 +150,10 @@ def collect(warehouse: Path, data_dir: Path, dist: Path) -> dict:
 
 def measured_on(n: dict) -> str:
     b, r = n.get("build"), n.get("runs")
-    text = f" Build measured {b['measured_at'][:10]}." if b else ""
+    # Both timestamps are recorded in UTC (scripts/measure_build.py, collect_run_times.py).
+    text = f" Build measured {b['measured_at'][:10]} (UTC)." if b else ""
     if r:
-        text += f" Run times collected {r['collected_at'][:10]}."
+        text += f" Run times collected {r['collected_at'][:10]} (UTC)."
     return text
 
 

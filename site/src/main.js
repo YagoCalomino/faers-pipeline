@@ -639,7 +639,7 @@ function viewDownloads() {
   main.innerHTML = `
     <h1 tabindex="-1">Downloads</h1>
     <p class="lede">The ingredient list and the data-quality metrics of this site, as open
-      data. Exported ${esc(meta.export_date)} from the build with data through
+      data. Exported ${esc(meta.export_date)} (UTC) from the build with data through
       ${esc(meta.last_quarter)}. Tables with reaction terms are not offered for download:
       the terms are MedDRA terms, owned by ICH.</p>
     <p class="meddra">${esc(config.site.meddra_notice)}</p>
