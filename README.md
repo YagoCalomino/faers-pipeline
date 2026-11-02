@@ -131,10 +131,12 @@ does not offer a downloadable dataset of MedDRA terms. Reaction terms (Preferred
 shown on the site pages as they appear in FAERS.
 
 ## Author's notes
-- **How it was built.** I used an AI coding assistant to write much of the code under my instructions. Scope, design decisions, calibration and validation are mine, and are documented in `docs/`.
-- **Scope.** A reproducible pipeline over public pharmacovigilance data, to practise orchestration (Airflow), transformation (dbt) and analytics on DuckDB, in a domain close to my work in healthcare software.
-- **Decisions.** I made the final call at each decision point: approximate RxNorm matching stays off after the calibration sample, concentrated report patterns are flagged instead of filtered out, and the site is published as a manual, validated step.
-- **Checks.** I run the builds and the publishing steps myself and read every change report and test result before pushing. I checked the label references of the 12 known pairs against the FDA label text.
+
+**Scope.** A reproducible pipeline over public pharmacovigilance data, to practise orchestration (Airflow), transformation (dbt) and analytics on DuckDB, in a domain close to my work in healthcare software.
+
+**Decisions.** I made the final call at each decision point: approximate RxNorm matching stays off after the calibration sample, concentrated report patterns are flagged instead of filtered out, and the site is published as a manual, validated step.
+
+**Checks.** I run the builds and the publishing steps myself and read every change result and test result before pushing. I checked the label references of the 12 known pairs against the FDA label text.
 
 ## License
 
