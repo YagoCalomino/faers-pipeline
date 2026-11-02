@@ -35,7 +35,8 @@ const ROUTES = {
   method: '#/method',
   downloads: '#/downloads',
 };
-const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+const reEsc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 let server;
 let browser;
@@ -72,9 +73,19 @@ test('every page renders its heading, banner, notice and footer, with no externa
     const { ctx, page, problems } = await open(route);
     assert.equal(await page.locator('main h1').count() >= 1, true, name);
     const banner = await page.locator('#data-banner').innerText();
-    assert.match(banner, new RegExp(`Data through ${META.last_quarter}`), name);
-    if (META.last_quarter_is_provisional) assert.match(banner, /latest quarter is provisional/, name);
-    assert.match(await page.locator('.notice').innerText(), /do not show that the drug causes the reaction/);
+    assert.match(banner, new RegExp(reEsc(`Data through ${META.last_quarter} · exported ${META.export_date} (UTC)`)), name);
+    if (META.last_quarter_is_provisional) {
+      assert.match(banner, new RegExp(reEsc(`Latest quarter (${META.provisional_quarter}) is provisional`)), name);
+    }
+    const notice = page.locator('aside.notice');
+    assert.equal(await notice.getAttribute('aria-label'), 'Read before use', name);
+    assert.match(
+      (await notice.innerText()).replace(/\s+/g, ' ').trim(),
+      /^Read before use\. These figures compare shares of reports\. They do not show that a medicine causes a reaction or how often it happens, and they are not medical advice\. How to read them$/,
+      name,
+    );
+    assert.equal(await notice.locator('a').getAttribute('href'), '#/method', name);
+    assert.equal(await page.locator('footer a', { hasText: SITE_CFG.site.author.name }).getAttribute('href'), SITE_CFG.site.author.url, name);
     assert.equal(await page.locator('footer .attribution').innerText(), ATTRIBUTION, name);
     assert.equal(await page.locator('footer .meddra').innerText(), MEDDRA, name);
     if (name === 'downloads') assert.equal(await page.locator('main .meddra').innerText(), MEDDRA);
@@ -91,7 +102,7 @@ test('every page renders its heading, banner, notice and footer, with no externa
 test('home: search by keyboard opens the ingredient', async () => {
   const { ctx, page } = await open(ROUTES.home);
   const name = FIRST_DOC.ingredient.ingredient_name;
-  const input = page.getByRole('combobox', { name: 'Ingredient name' });
+  const input = page.getByRole('combobox', { name: 'Search a medicine by its active ingredient (generic name)' });
   await input.focus();
   await page.keyboard.type(name.slice(0, 4));
   await page.getByRole('listbox').waitFor();
@@ -215,7 +226,7 @@ test('reading notes: home volume caption, deleted ids on Quality, PS/SS share on
   const home = await open(ROUTES.home);
   assert.match(
     await home.page.locator('#top-help').innerText(),
-    /^Reporting volume, not risk: counts depend on market size and on manufacturer and support-program reporting\.$/
+    /^Ranked by how many cases name them as a suspect\. Reporting volume, not risk: counts depend on market size and on manufacturer and support-program reporting\.$/
   );
   await home.ctx.close();
   const quality = await open(ROUTES.quality);
@@ -236,19 +247,112 @@ test('unknown routes show not found', async () => {
   await ctx.close();
 });
 
-test('axe: no WCAG A/AA violations, light and dark', async () => {
+// Desktop and phone widths; the phone profile also has touch, where target sizes matter most.
+const AXE_VIEWPORTS = {
+  desktop: { viewport: { width: 1280, height: 900 } },
+  mobile: { viewport: { width: 360, height: 800 }, isMobile: true, hasTouch: true },
+};
+
+test('axe: no WCAG 2.2 A/AA violations, light and dark, desktop and mobile', async () => {
   const all = [];
-  for (const scheme of ['light', 'dark']) {
-    for (const [name, route] of Object.entries(ROUTES)) {
-      const { ctx, page } = await open(route, { colorScheme: scheme });
-      await page.locator('details').evaluateAll((ds) => ds.forEach((d) => (d.open = true)));
-      const res = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
-      report.axe[`${scheme}:${name}`] = { violations: res.violations.length, passes: res.passes.length };
-      for (const v of res.violations) all.push(`${scheme}:${name} ${v.id} (${v.impact}) x${v.nodes.length}: ${v.nodes[0]?.target}`);
-      await ctx.close();
+  for (const [vname, vopts] of Object.entries(AXE_VIEWPORTS)) {
+    for (const scheme of ['light', 'dark']) {
+      for (const [name, route] of Object.entries(ROUTES)) {
+        const { ctx, page } = await open(route, { ...vopts, colorScheme: scheme });
+        assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), scheme, `${vname}:${scheme}:${name} theme`);
+        await page.locator('details').evaluateAll((ds) => ds.forEach((d) => (d.open = true)));
+        const res = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
+        report.axe[`${vname}:${scheme}:${name}`] = { violations: res.violations.length, passes: res.passes.length };
+        for (const v of res.violations) all.push(`${vname}:${scheme}:${name} ${v.id} (${v.impact}) x${v.nodes.length}: ${v.nodes[0]?.target}`);
+        await ctx.close();
+      }
     }
   }
   assert.deepEqual(all, []);
+});
+
+test('theme: the switch overrides the system setting, is saved, and passes axe', async () => {
+  const { ctx, page } = await open(ROUTES.home, { colorScheme: 'light' });
+  const theme = () => page.evaluate(() => document.documentElement.dataset.theme);
+  const toggle = page.locator('#theme-toggle');
+  assert.equal(await theme(), 'light');
+  assert.equal(await toggle.getAttribute('aria-label'), 'Switch to dark theme');
+  await toggle.click();
+  assert.equal(await theme(), 'dark');
+  assert.equal(await toggle.getAttribute('aria-label'), 'Switch to light theme');
+  assert.equal(await page.evaluate(() => localStorage.getItem('theme')), 'dark');
+  // The saved choice wins over the system setting on the next load, before first paint.
+  await page.reload();
+  await page.locator('main h1').waitFor();
+  assert.equal(await theme(), 'dark');
+  const all = [];
+  for (const [name, route] of Object.entries(ROUTES)) {
+    await page.goto(BASE + route);
+    await page.reload();
+    await page.locator('main h1').first().waitFor();
+    await page.waitForLoadState('networkidle');
+    assert.equal(await theme(), 'dark', name);
+    const res = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
+    for (const v of res.violations) all.push(`manual-dark:${name} ${v.id} x${v.nodes.length}: ${v.nodes[0]?.target}`);
+  }
+  assert.deepEqual(all, []);
+  await ctx.close();
+  // Without a saved choice the page follows the system, also when it changes.
+  const sys = await open(ROUTES.home, { colorScheme: 'dark' });
+  assert.equal(await sys.page.evaluate(() => document.documentElement.dataset.theme), 'dark');
+  await sys.page.emulateMedia({ colorScheme: 'light' });
+  await sys.page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
+  await sys.ctx.close();
+});
+
+test('theme: a blocked localStorage does not break the page or the switch', async () => {
+  const ctx = await browser.newContext();
+  await ctx.addInitScript(() => {
+    Object.defineProperty(window, 'localStorage', { get() { throw new Error('blocked'); } });
+  });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(BASE);
+  await page.locator('#top-list li a').first().waitFor();
+  await page.locator('#theme-toggle').click();
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.theme), 'dark');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('masthead: the menu button folds the nav on a phone; nav order follows the design', async () => {
+  const { ctx, page } = await open(ROUTES.home, AXE_VIEWPORTS.mobile);
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  const menu = page.getByRole('button', { name: 'Menu' });
+  assert.equal(await nav.isVisible(), false);
+  assert.equal(await menu.getAttribute('aria-expanded'), 'false');
+  await menu.click();
+  assert.equal(await menu.getAttribute('aria-expanded'), 'true');
+  assert.deepEqual(await nav.locator('a').allInnerTexts(), ['Search', 'Method & limitations', 'Validation', 'Quality', 'Downloads']);
+  for (const box of await nav.locator('a').evaluateAll((as) => as.map((a) => a.getBoundingClientRect().height))) assert.ok(box >= 44, `nav target ${box}px`);
+  await nav.getByRole('link', { name: 'Quality' }).click();
+  await page.waitForURL(/#\/quality$/);
+  assert.equal(await menu.getAttribute('aria-expanded'), 'false');
+  await ctx.close();
+  const desk = await open(ROUTES.home);
+  assert.equal(await desk.page.getByRole('button', { name: 'Menu' }).isVisible(), false);
+  assert.equal(await desk.page.getByRole('navigation', { name: 'Main' }).isVisible(), true);
+  await desk.ctx.close();
+});
+
+test('home: example chips exist in the export, the list reads as volume, footer has three sections', async () => {
+  const { ctx, page } = await open(ROUTES.home);
+  const slugs = new Set(SEARCH.rows.map((r) => r[SEARCH.columns.indexOf('slug')]));
+  const chips = await page.locator('#chips a.chip').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  const expected = SITE_CFG.site.home_examples.filter((s) => slugs.has(s)).map((s) => `#/ingredient/${s}`);
+  assert.deepEqual(chips, expected);
+  assert.equal(await page.locator('#chips').isVisible(), expected.length > 0);
+  const top = await page.locator('#top-list li').count();
+  assert.equal(top, Math.min(12, SEARCH.rows.length));
+  assert.match(await page.locator('main').innerText(), new RegExp(reEsc(`${META.n_cases_all.toLocaleString('en-US')} deduplicated cases`)));
+  assert.deepEqual(await page.locator('footer h2').allInnerTexts(), ['Data', 'Drug names', 'Reaction terms (MedDRA PT)']);
+  await ctx.close();
 });
 
 // Elements that scroll horizontally must be reachable by keyboard (axe scrollable-region-focusable).

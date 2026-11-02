@@ -90,55 +90,98 @@ function alertBadge(reasons) {
 
 // ---------------------------------------------------------------------------------- home
 
+const SEARCH_ICON =
+  '<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path></svg>';
+
 async function viewHome() {
   setTitle('Search');
   main.innerHTML = `
-    <h1 tabindex="-1">Find an ingredient</h1>
-    <p class="lede">Reports to the FDA Adverse Event Reporting System (FAERS) from
-      ${esc(meta.first_quarter)} to ${esc(meta.last_quarter)}, deduplicated to
-      ${fmtCount(meta.n_cases_all)} cases. For each ingredient, the reactions reported
-      disproportionately often with it, measured by the PRR and the ROR.</p>
-    <div class="search">
-      <label for="q">Ingredient name</label>
-      <div class="combo">
-        <input id="q" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false"
-          aria-controls="q-list" aria-describedby="q-help" autocomplete="off" spellcheck="false"
-          placeholder="for example atorvastatin" />
-        <ul id="q-list" role="listbox" aria-label="Matching ingredients" hidden></ul>
+    <section class="hero" aria-labelledby="home-h">
+      <p class="kicker">FDA adverse-event reports · ${esc(meta.first_quarter)} to ${esc(meta.last_quarter)}</p>
+      <h1 id="home-h" tabindex="-1">Which reactions are reported unusually often with a medicine?</h1>
+      <p class="lede">Look up a medicine to see which reactions take up a larger share of its
+        reports to the FDA than of other medicines' reports. It shows patterns in reporting, not
+        proof that a medicine causes anything.</p>
+      <div class="search">
+        <label for="q">Search a medicine by its active ingredient (generic name)</label>
+        <div class="combo">
+          ${SEARCH_ICON}
+          <input id="q" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false"
+            aria-controls="q-list" aria-describedby="q-help" autocomplete="off" spellcheck="false"
+            placeholder="for example, atorvastatin" />
+          <ul id="q-list" role="listbox" aria-label="Matching ingredients" hidden></ul>
+        </div>
+        <p id="q-help" class="help">Names are RxNorm ingredients; brand names are not in the
+          list. Use ↑ ↓ and Enter to pick a suggestion.</p>
       </div>
-      <p id="q-help" class="help">Generic names, as mapped to RxNorm ingredients. Use the arrow
-        keys to move through the suggestions and Enter to open one.</p>
-    </div>
-    <section aria-labelledby="top-h">
-      <h2 id="top-h">Ingredients with the most cases</h2>
-      <p class="help" id="top-help">Reporting volume, not risk: counts depend on market size and on
-        manufacturer and support-program reporting.</p>
-      <ol class="top-list" id="top-list"><li class="loading">Loading…</li></ol>
+      <div class="chips" id="chips" hidden><span>Try</span></div>
+      <p class="stats">${fmtCount(meta.n_cases_all)} deduplicated cases ·
+        ${fmtCount(meta.n_ingredients)} ingredients · ${fmtCount(meta.n_pairs)} ingredient–reaction
+        pairs on this site</p>
     </section>
-    <section aria-labelledby="about-h">
-      <h2 id="about-h">What this is</h2>
-      <p>An open data pipeline (Airflow, DuckDB, dbt) downloads the FDA quarterly files,
-        removes superseded case versions and deleted cases, maps drug names to RxNorm
-        ingredients and counts cases for every ingredient and reaction (MedDRA preferred
-        term). Each ingredient page lists up to 30 reactions: the 20 with the highest lower
-        bound of the reporting odds ratio and the 10 with the most cases among pairs that
-        meet the Evans criterion. ${fmtCount(meta.n_ingredients)} ingredients and
-        ${fmtCount(meta.n_pairs)} pairs are included.</p>
-      <p>A pair is marked <strong>concentrated</strong> when most of its cases come from one
-        quarter or from one country unusual for the ingredient, or when their reports list very many
-        reactions: patterns of reporting clusters rather than of the drug. The rule is on the
-        <a href="#/method">Method &amp; limitations</a> page.</p>
+    <section class="band" aria-labelledby="steps-h">
+      <h2 id="steps-h">How to read this site in 30 seconds</h2>
+      <ol class="steps">
+        <li><span class="n" aria-hidden="true">1</span><div><h3>Pick a medicine</h3>
+          <p>Each page gathers the cases that name one active ingredient as a suspect.</p></div></li>
+        <li><span class="n" aria-hidden="true">2</span><div><h3>Compare the share</h3>
+          <p>For each reaction, see how much larger its share of this medicine's reports is than
+          its share of other medicines' reports.</p></div></li>
+        <li><span class="n" aria-hidden="true">3</span><div><h3>Read it as a lead</h3>
+          <p>A larger share can come from who reports, when and why. It does not say how often a
+          reaction happens or whether the medicine caused it.</p></div></li>
+      </ol>
+    </section>
+    <section class="band" aria-labelledby="top-h">
+      <h2 id="top-h">Browse the most-reported ingredients</h2>
+      <p class="intro" id="top-help">Ranked by how many cases name them as a suspect. Reporting
+        volume, not risk: counts depend on market size and on manufacturer and support-program
+        reporting.</p>
+      <ol class="top-list" id="top-list"><li class="loading">Loading…</li></ol>
+      <p class="help">Grey bars show case counts. Numbers are cases, not people or prescriptions.</p>
+    </section>
+    <section class="band about" aria-labelledby="about-h">
+      <h2 id="about-h">About this project</h2>
+      <div>
+        <p>An open data pipeline (Airflow, DuckDB, dbt) downloads the FDA quarterly files,
+          removes superseded case versions and deleted cases, maps drug names to RxNorm
+          ingredients and counts cases for every ingredient and reaction (MedDRA preferred
+          term). Each ingredient page lists up to 30 reactions: the 20 with the highest lower
+          bound of the reporting odds ratio and the 10 with the most cases among pairs that
+          meet the Evans criterion.</p>
+        <p>A pair is marked <strong>Reporting pattern</strong> when most of its cases come from
+          one quarter or from one country unusual for the ingredient, or when their reports list
+          very many reactions: patterns of how reports arrived rather than of the drug. The rule
+          is on the <a href="#/method">Method &amp; limitations</a> page.</p>
+      </div>
     </section>`;
   const rows = await loadSearch();
+  const max = rows[0]?.cases || 1;
   document.getElementById('top-list').innerHTML = rows
     .slice(0, 12)
     .map(
-      (r) =>
-        `<li><a href="${ingredientHref(r.slug)}">${esc(r.name)}</a> <span class="muted">${fmtCount(r.cases)} cases</span></li>`,
+      (r, i) =>
+        `<li><span class="rank">${i + 1}</span><span class="name"><a href="${ingredientHref(r.slug)}">${esc(r.name)}</a><span class="vol" aria-hidden="true" style="width:${((r.cases / max) * 100).toFixed(1)}%"></span></span><span class="cases">${fmtCount(r.cases)} cases</span></li>`,
     )
     .join('');
+  const known = new Set(rows.map((r) => r.slug));
+  const examples = (config.site.home_examples ?? []).filter((s) => known.has(s));
+  if (examples.length) {
+    const chips = document.getElementById('chips');
+    const names = new Map(rows.map((r) => [r.slug, r.name]));
+    chips.insertAdjacentHTML('beforeend', examples.map((s) => `<a class="chip" href="${ingredientHref(s)}">${esc(names.get(s))}</a>`).join(''));
+    chips.hidden = false;
+  }
   setupCombobox(rows);
   announce('Ingredient list loaded');
+}
+
+// The typed text in bold inside a suggestion.
+function markMatch(name, query) {
+  const q = query.trim().toLowerCase();
+  const i = q ? name.toLowerCase().indexOf(q) : -1;
+  if (i < 0) return esc(name);
+  return `${esc(name.slice(0, i))}<strong>${esc(name.slice(i, i + q.length))}</strong>${esc(name.slice(i + q.length))}`;
 }
 
 function setupCombobox(rows) {
@@ -164,9 +207,8 @@ function setupCombobox(rows) {
   input.addEventListener('input', () => {
     items = searchIngredients(rows, input.value, 10);
     if (!items.length) {
-      list.innerHTML = input.value.trim()
-        ? '<li class="empty" role="option" aria-disabled="true">No ingredient found</li>'
-        : '';
+      const none = `No ingredient matches “${esc(input.value.trim())}”. Try the generic name, for example “atorvastatin” rather than “Lipitor”.`;
+      list.innerHTML = input.value.trim() ? `<li class="empty" role="option" aria-disabled="true">${none}</li>` : '';
       list.hidden = !input.value.trim();
       input.setAttribute('aria-expanded', String(!list.hidden));
       announce(input.value.trim() ? 'No ingredient found' : '');
@@ -175,7 +217,7 @@ function setupCombobox(rows) {
     list.innerHTML = items
       .map(
         (r, i) =>
-          `<li id="q-opt-${i}" role="option" aria-selected="false" data-i="${i}">${esc(r.name)} <span class="muted">${fmtCount(r.cases)} cases${r.fallback ? ', name without RxNorm match' : ''}</span></li>`,
+          `<li id="q-opt-${i}" role="option" aria-selected="false" data-i="${i}"><span>${markMatch(r.name, input.value)}</span> <span class="muted">${fmtCount(r.cases)} cases${r.fallback ? ', name without RxNorm match' : ''}</span></li>`,
       )
       .join('');
     list.hidden = false;
@@ -691,6 +733,60 @@ async function render() {
   firstRender = false;
 }
 
+// Theme switch. index.html sets data-theme before first paint; a choice made here is saved, and
+// without one the page follows the system setting when it changes.
+function setupTheme() {
+  const root = document.documentElement;
+  const button = document.getElementById('theme-toggle');
+  const label = button.querySelector('.theme-label');
+  const show = () => {
+    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    label.textContent = next === 'dark' ? 'Dark' : 'Light';
+    button.setAttribute('aria-label', `Switch to ${next} theme`);
+  };
+  let saved = null;
+  try {
+    saved = localStorage.getItem('theme');
+  } catch {
+    saved = null;
+  }
+  const media = matchMedia('(prefers-color-scheme: dark)');
+  media.addEventListener?.('change', (e) => {
+    if (saved !== 'light' && saved !== 'dark') {
+      root.dataset.theme = e.matches ? 'dark' : 'light';
+      show();
+    }
+  });
+  button.addEventListener('click', () => {
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    saved = root.dataset.theme;
+    try {
+      localStorage.setItem('theme', saved);
+    } catch {
+      // Storage blocked: the choice lasts until the page is closed.
+    }
+    show();
+    announce(`${saved === 'dark' ? 'Dark' : 'Light'} theme`);
+  });
+  show();
+  button.hidden = false;
+}
+
+// Menu button on narrow screens (the nav folds behind it only when JavaScript runs).
+function setupMenu() {
+  const button = document.getElementById('menu-toggle');
+  const nav = document.getElementById('site-nav');
+  const set = (open) => {
+    nav.classList.toggle('open', open);
+    button.setAttribute('aria-expanded', String(open));
+  };
+  button.addEventListener('click', () => set(button.getAttribute('aria-expanded') !== 'true'));
+  nav.addEventListener('click', (e) => e.target.closest('a') && set(false));
+  button.hidden = false;
+}
+
+setupTheme();
+setupMenu();
 window.addEventListener('hashchange', render);
 // The skip link targets #main, which would otherwise be read as a route.
 document.querySelector('.skip').addEventListener('click', (e) => {

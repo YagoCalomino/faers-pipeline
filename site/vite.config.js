@@ -53,6 +53,8 @@ function loadInputs() {
         fda_source_name: siteCfg.site.fda_source_name,
         meddra_notice: siteCfg.site.meddra_notice,
         pairs_page_size: siteCfg.site.pairs_page_size,
+        author: siteCfg.site.author,
+        home_examples: siteCfg.site.home_examples,
       },
       alert: siteCfg.concentration_alert,
       downloads: siteCfg.downloads,
@@ -65,17 +67,23 @@ function loadInputs() {
 // The header banner, notice and footer are part of the static HTML: they show before any data
 // loads and without JavaScript.
 function shellHtml(meta, config) {
+  // Dashed tag: the shared "provisional" motif (dashed tag here, hatched bar and * in charts).
   const provisional = meta.last_quarter_is_provisional
-    ? ' <span class="badge" title="Its cases are still growing as later FAERS files arrive">latest quarter is provisional</span>'
+    ? ` <span class="tag tag-provisional" title="Its cases are still growing as later FAERS files arrive">Latest quarter (${esc(meta.provisional_quarter)}) is provisional</span>`
     : '';
   const rxnorm = meta.rxnorm_versions.length ? meta.rxnorm_versions.join(', ') : 'not recorded';
+  const author = config.site.author;
   return {
-    '<!--BANNER-->': `Data through <strong>${esc(meta.last_quarter)}</strong>${provisional}`,
+    '<!--BANNER-->': `<span>Data through <strong>${esc(meta.last_quarter)}</strong> · exported ${esc(meta.export_date)} (UTC)</span>${provisional}`,
+    // Legal texts keep their wording; only the layout is in three columns.
     '<!--FOOTER-->': [
-      `<p>Source: <a href="${esc(config.fdaUrl)}" rel="noopener">${esc(config.site.fda_source_name)}</a>, quarterly files ${esc(meta.first_quarter)} to ${esc(meta.last_quarter)}. The FDA does not endorse this project. Drug names mapped with RxNorm (release ${esc(rxnorm)}); the mapping is not updated with later RxNorm releases and may not reflect the most current or accurate data available from NLM.</p>`,
-      `<p class="attribution">${esc(meta.rxnav_attribution)}</p>`,
-      `<p class="meddra">${esc(config.site.meddra_notice)}</p>`,
-      `<p>Data exported ${esc(meta.export_date)} (UTC). Not medical advice. <a href="#/method">Method &amp; limitations</a> · <a href="${esc(config.site.repo_url)}" rel="noopener">Source code</a></p>`,
+      '<div class="footer-cols">',
+      `<section aria-labelledby="ft-data"><h2 id="ft-data">Data</h2><p>Source: <a href="${esc(config.fdaUrl)}" rel="noopener">${esc(config.site.fda_source_name)}</a>, quarterly files ${esc(meta.first_quarter)} to ${esc(meta.last_quarter)}. The FDA does not endorse this project.</p></section>`,
+      `<section aria-labelledby="ft-drugs"><h2 id="ft-drugs">Drug names</h2><p>Drug names mapped with RxNorm (release ${esc(rxnorm)}); the mapping is not updated with later RxNorm releases and may not reflect the most current or accurate data available from NLM.</p>`,
+      `<p class="attribution">${esc(meta.rxnav_attribution)}</p></section>`,
+      `<section aria-labelledby="ft-terms"><h2 id="ft-terms">Reaction terms (MedDRA PT)</h2><p class="meddra">${esc(config.site.meddra_notice)}</p></section>`,
+      '</div>',
+      `<p class="footer-last">Data exported ${esc(meta.export_date)} (UTC). Not medical advice. Static site: no tracking, no external requests. <a href="#/method">Method &amp; limitations</a> · <a href="#/downloads">Downloads</a> · <a href="${esc(config.site.repo_url)}" rel="noopener">Source code</a> · Built by <a href="${esc(author.url)}" rel="noopener">${esc(author.name)}</a></p>`,
     ].join('\n'),
     '<!--TITLE-->': esc(config.site.title),
   };

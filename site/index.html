@@ -7,32 +7,48 @@
     <meta name="description" content="Disproportionality (PRR, ROR) of drug and reaction pairs in FDA adverse event reports (FAERS). Reports do not show causation or incidence." />
     <title><!--TITLE--></title>
     <link rel="icon" href="data:," />
+    <!-- Theme before first paint: a saved choice, else the system setting. -->
+    <script>
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem('theme'); } catch (e) {}
+        if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = t;
+        document.documentElement.classList.add('js');
+      })();
+    </script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
-    <header class="site-header">
+    <header class="masthead">
       <div class="wrap">
-        <p class="brand"><a href="#/"><!--TITLE--></a></p>
-        <nav aria-label="Main">
-          <ul>
-            <li><a href="#/">Search</a></li>
-            <li><a href="#/quality">Quality</a></li>
-            <li><a href="#/validation">Validation</a></li>
-            <li><a href="#/method">Method &amp; limitations</a></li>
-            <li><a href="#/downloads">Downloads</a></li>
-          </ul>
-        </nav>
+        <div class="masthead-top">
+          <p class="brand"><a href="#/"><!--TITLE--></a></p>
+          <nav id="site-nav" aria-label="Main">
+            <ul>
+              <li><a href="#/">Search</a></li>
+              <li><a href="#/method">Method &amp; limitations</a></li>
+              <li><a href="#/validation">Validation</a></li>
+              <li><a href="#/quality">Quality</a></li>
+              <li><a href="#/downloads">Downloads</a></li>
+            </ul>
+          </nav>
+          <button type="button" class="btn theme-toggle" id="theme-toggle" hidden>
+            <svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23ZM188.9,190.34A88,88,0,0,1,65.66,67.11a89,89,0,0,1,31.4-26A106,106,0,0,0,96,56,104.11,104.11,0,0,0,200,160a106,106,0,0,0,14.92-1.06A89,89,0,0,1,188.9,190.34Z"></path></svg>
+            <span class="theme-label">Dark</span>
+          </button>
+          <button type="button" class="btn menu-toggle" id="menu-toggle" aria-expanded="false" aria-controls="site-nav" hidden>Menu</button>
+        </div>
+        <p class="rail" id="data-banner"><!--BANNER--></p>
       </div>
-      <div class="banner wrap" id="data-banner"><!--BANNER--></div>
     </header>
     <div class="wrap">
-      <p class="notice" role="note">
-        <strong>Read before use.</strong> These numbers measure disproportionality in
-        spontaneous reports: whether a reaction is reported more often with a drug than with
-        other drugs. They do not show that the drug causes the reaction, do not estimate how
-        often it happens, and are not medical advice.
-        <a href="#/method">Method &amp; limitations</a>
-      </p>
+      <aside class="notice" aria-label="Read before use">
+        <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"></path></svg>
+        <p><strong>Read before use.</strong> These figures compare shares of reports. They do not
+          show that a medicine causes a reaction or how often it happens, and they are not
+          medical advice. <a href="#/method">How to read them</a></p>
+      </aside>
     </div>
     <main id="main" class="wrap" tabindex="-1">
       <noscript>
