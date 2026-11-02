@@ -37,26 +37,69 @@ export function concentrationReasons(pair, rule) {
   return reasons;
 }
 
+// Sort options of the ingredient page (plain label first, technical name in parentheses). The
+// first is the default; "name" sorts A to Z, the others highest first.
 export const SORT_KEYS = {
-  ror_lcl: { label: 'ROR lower bound', field: 'ror_lcl' },
-  prr: { label: 'PRR', field: 'prr' },
-  a: { label: 'Cases', field: 'a' },
+  ror_lcl: { label: 'Most clearly larger share (ROR lower bound)', short: 'ROR lower bound', field: 'ror_lcl', dir: 'desc' },
+  prr: { label: 'Largest share ratio (PRR)', short: 'PRR', field: 'prr', dir: 'desc' },
+  a: { label: 'Most cases', short: 'cases', field: 'a', dir: 'desc' },
+  name: { label: 'Name, A to Z', short: 'name', field: 'reaction_pt', dir: 'asc' },
 };
 
-// Sorted copy; nulls last in both directions; ties by reaction PT, then reaction key.
-export function sortPairs(pairs, key, dir = 'desc') {
+const byPt = (x, y) => x.reaction_pt.localeCompare(y.reaction_pt, 'en') || x.reaction_key.localeCompare(y.reaction_key);
+
+// Sorted copy; nulls (and non-finite values) last in both directions; ties by reaction PT, then
+// reaction key.
+export function sortPairs(pairs, key, dir = SORT_KEYS[key]?.dir ?? 'desc') {
+  if (key === 'name') return [...pairs].sort((x, y) => (dir === 'asc' ? byPt(x, y) : byPt(y, x)));
   const field = SORT_KEYS[key]?.field ?? key;
   const sign = dir === 'asc' ? 1 : -1;
+  const ok = (v) => v != null && Number.isFinite(v);
   return [...pairs].sort((x, y) => {
     const a = x[field];
     const b = y[field];
-    if (a == null && b != null) return 1;
-    if (b == null && a != null) return -1;
-    if (a != null && b != null && a !== b) return sign * (a - b);
-    return (
-      x.reaction_pt.localeCompare(y.reaction_pt, 'en') || x.reaction_key.localeCompare(y.reaction_key)
-    );
+    if (!ok(a) && ok(b)) return 1;
+    if (!ok(b) && ok(a)) return -1;
+    if (ok(a) && ok(b) && a !== b) return sign * (a - b);
+    return byPt(x, y);
   });
+}
+
+// Pairs kept by the ingredient page filters: text in the PT, and reporting pattern
+// ('all', 'with', 'without').
+export function filterPairs(pairs, { text = '', pattern = 'all' }, hasPattern) {
+  const q = text.trim().toLowerCase();
+  return pairs.filter(
+    (p) =>
+      (!q || p.reaction_pt.toLowerCase().includes(q)) &&
+      (pattern === 'all' || (pattern === 'with') === hasPattern(p)),
+  );
+}
+
+// Magnitude bar on a log scale from 1x to MAG_MAX: position in percent of the bar. Values
+// beyond the scale are clamped and flagged; null, non-finite or non-positive values have no
+// position.
+export const MAG_MAX = 30000;
+export const MAG_TICKS = [1, 10, 100, 1000, 10000];
+export function magPos(v) {
+  if (v == null || !Number.isFinite(v) || v <= 0) return null;
+  const raw = (Math.log10(v) / Math.log10(MAG_MAX)) * 100;
+  return { pos: Math.min(100, Math.max(0, raw)), below: raw < 0, above: raw > 100 };
+}
+
+// Dot (PRR) and range (95% CI) of a pair; null when the PRR has no position.
+export function magnitude(p) {
+  const dot = magPos(p.prr);
+  if (!dot) return null;
+  const lo = magPos(p.prr_lcl);
+  const hi = magPos(p.prr_ucl);
+  return {
+    dot: dot.pos,
+    lo: lo ? lo.pos : dot.pos,
+    hi: hi ? hi.pos : dot.pos,
+    above: dot.above || Boolean(hi?.above),
+    below: dot.below || Boolean(lo?.below),
+  };
 }
 
 // Search over json/search.json rows ([name, slug, n_cases, n_pairs, is_fallback], ordered by

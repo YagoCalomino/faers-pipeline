@@ -5,10 +5,16 @@ import { trendSvg } from '../../src/lib/chart.js';
 import { countryLabel, fmtCount, fmtInterval, fmtPct, fmtRatio, fmtShare, fmtShareMin, rawValue } from '../../src/lib/format.js';
 import {
   concentrationReasons,
+  filterPairs,
   groupMetrics,
+  MAG_MAX,
+  MAG_TICKS,
+  magnitude,
+  magPos,
   parseRoute,
   searchIngredients,
   searchRows,
+  SORT_KEYS,
   sortPairs,
   trendSeries,
 } from '../../src/lib/logic.js';
@@ -90,6 +96,51 @@ test('sortPairs: nulls last both ways, ties by PT', () => {
   assert.deepEqual(sortPairs(pairs, 'prr', 'desc').map((p) => p.reaction_pt), ['C', 'A', 'B']);
   assert.deepEqual(sortPairs(pairs, 'a', 'asc').map((p) => p.reaction_pt), ['B', 'C', 'A']);
   assert.equal(pairs[0].reaction_pt, 'B'); // input untouched
+});
+
+test('sortPairs: default directions, name A to Z, ties by reaction key, non-finite last', () => {
+  const pairs = [
+    { reaction_pt: 'b', reaction_key: '2', ror_lcl: 4, prr: Infinity, a: 3 },
+    { reaction_pt: 'A', reaction_key: '9', ror_lcl: 4, prr: 5, a: 9 },
+    { reaction_pt: 'A', reaction_key: '1', ror_lcl: 4, prr: 7, a: 4 },
+  ];
+  // Default of ror_lcl is descending; equal values fall back to PT, then reaction key.
+  assert.deepEqual(sortPairs(pairs, 'ror_lcl').map((p) => p.reaction_key), ['1', '9', '2']);
+  assert.deepEqual(sortPairs(pairs, 'name').map((p) => p.reaction_key), ['1', '9', '2']);
+  // An infinite PRR sorts with the nulls, last.
+  assert.deepEqual(sortPairs(pairs, 'prr').map((p) => p.reaction_key), ['1', '9', '2']);
+  assert.deepEqual(Object.keys(SORT_KEYS), ['ror_lcl', 'prr', 'a', 'name']);
+});
+
+test('filterPairs: text in the PT and reporting-pattern filter', () => {
+  const pairs = [
+    { reaction_pt: 'Rhabdomyolysis', flagged: false },
+    { reaction_pt: 'Autoimmune myositis', flagged: true },
+    { reaction_pt: 'Necrotising myositis', flagged: false },
+  ];
+  const has = (p) => p.flagged;
+  assert.equal(filterPairs(pairs, { text: ' MYOS ' }, has).length, 2);
+  assert.deepEqual(filterPairs(pairs, { pattern: 'with' }, has).map((p) => p.reaction_pt), ['Autoimmune myositis']);
+  assert.equal(filterPairs(pairs, { text: 'myositis', pattern: 'without' }, has).length, 1);
+  assert.equal(filterPairs(pairs, {}, has).length, 3);
+});
+
+test('magnitude bar: log scale from 1x to 30,000x, clamped at both ends, no bar without a PRR', () => {
+  assert.deepEqual(MAG_TICKS, [1, 10, 100, 1000, 10000]);
+  assert.equal(magPos(1).pos, 0);
+  assert.equal(magPos(MAG_MAX).pos, 100);
+  assert.ok(Math.abs(magPos(10).pos - 100 / Math.log10(MAG_MAX)) < 1e-9);
+  // Real extremes of the export: PRR 2,858,069 and 0.466.
+  assert.deepEqual(magPos(2858069), { pos: 100, below: false, above: true });
+  assert.deepEqual(magPos(0.466), { pos: 0, below: true, above: false });
+  for (const v of [null, undefined, NaN, Infinity, -1, 0]) assert.equal(magPos(v), null, String(v));
+  // Rhabdomyolysis with atorvastatin: PRR 40.6 (37.8 to 43.5).
+  const m = magnitude({ prr: 40.56, prr_lcl: 37.78, prr_ucl: 43.55 });
+  assert.ok(m.lo < m.dot && m.dot < m.hi && !m.above && !m.below);
+  // Interval beyond the scale: the range is clamped and flagged.
+  assert.equal(magnitude({ prr: 2547, prr_lcl: 333, prr_ucl: 1e6 }).above, true);
+  assert.equal(magnitude({ prr: null, prr_lcl: 1, prr_ucl: 2 }), null);
+  assert.equal(magnitude({ prr: Infinity }), null);
 });
 
 test('search: prefix matches first, then substring, in case order', () => {

@@ -17,7 +17,12 @@ import {
 } from './lib/format.js';
 import {
   concentrationReasons,
+  filterPairs,
   groupMetrics,
+  MAG_MAX,
+  MAG_TICKS,
+  magnitude,
+  magPos,
   ingredientHref,
   pairHref,
   parseRoute,
@@ -67,11 +72,12 @@ function scrollTable(label, html) {
   return `<div class="table-scroll" role="region" aria-label="${esc(label)}" tabindex="0">${html}</div>`;
 }
 
-// Short text of each reason, for the badge in the pairs table.
+// Short text of each reason, next to the reporting-pattern badge.
 function reasonShort(r) {
-  if (r.kind === 'quarter') return `${fmtShare(r.share)} of cases in ${esc(r.quarter)}`;
-  if (r.kind === 'country') return `${fmtShare(r.share)} of cases from ${esc(countryLabel(r.country))}; ingredient: ${fmtShareMin(r.ingredientShare)} ${esc(r.country)}`;
-  return `median ${fmtCount(r.median)} reactions per report`;
+  if (r.kind === 'quarter') return `Mostly one quarter: ${fmtShare(r.share)} of cases in ${esc(r.quarter)}`;
+  if (r.kind === 'country')
+    return `Mostly one country: ${fmtShare(r.share)} of cases from ${esc(countryLabel(r.country))}; ingredient: ${fmtShareMin(r.ingredientShare)} ${esc(r.country)}`;
+  return `Many reactions per report: median ${fmtCount(r.median)}`;
 }
 
 // Sentence of each reason, for the callout of the pair page.
@@ -82,10 +88,15 @@ function reasonLong(r) {
   return `The reports of these cases list a median of ${fmtCount(r.median)} reactions each.`;
 }
 
-function alertBadge(reasons) {
+// Reporting-pattern badge: tint, dashed-circle glyph and words, so it never depends on color.
+const PATTERN_GLYPH =
+  '<svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 1.6"></circle></svg>';
+const patternTag = () => `<span class="tag tag-pattern">${PATTERN_GLYPH}Reporting pattern</span>`;
+
+// Badge and one-line reasons, shown in every flagged row and card.
+function patternBadge(reasons) {
   if (!reasons.length) return '';
-  const text = reasons.map(reasonShort).join('; ');
-  return `<span class="alert-badge"><span aria-hidden="true">⚠</span> ${text}</span>`;
+  return `<span class="pattern">${patternTag()} <span class="pattern-why">${reasons.map(reasonShort).join('; ')}</span></span>`;
 }
 
 // ---------------------------------------------------------------------------------- home
@@ -270,103 +281,249 @@ function ingredientNote(ing) {
   return `RxNorm ingredient ${esc(ing.ingredient_id)} (${esc(ing.match_type)} match).`;
 }
 
-const sortState = { key: 'ror_lcl', dir: 'desc', all: false };
+// State of the ingredient page controls. Sort and "Show all numbers" persist across
+// ingredients; text, pattern filter and open Details reset on each new ingredient.
+const listState = { key: 'ror_lcl', all: false, expert: false, text: '', pattern: 'all', open: new Set(), slug: null };
+
+const INFO_ICON =
+  '<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"></path></svg>';
+const CHEVRON =
+  '<svg class="chev" width="14" height="14" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"></path></svg>';
+
+// "Evans, ROR", or a dash when no screening rule is met.
+const criteriaText = (p) => [p.is_signal_evans ? 'Evans' : '', p.is_signal_ror ? 'ROR' : ''].filter(Boolean).join(', ') || DASH;
+
+// Plain line of a pair: "40.6× larger share", from the PRR as the table shows it.
+function shareText(prr) {
+  if (prr == null || !Number.isFinite(prr)) return 'Share ratio not available';
+  const shown = fmtRatio(prr);
+  if (shown === '1') return 'Same share as in other medicines’ reports';
+  return prr > 1 ? `${shown}× larger share` : `${shown}× the share (smaller)`;
+}
+
+// Magnitude bar (decorative: the PRR is in its own cell).
+function magBar(p) {
+  const m = magnitude(p);
+  if (!m) return '<span class="mag mag-none" aria-hidden="true"></span>';
+  const cls = ['mag', m.above ? 'mag-above' : '', m.below ? 'mag-below' : ''].filter(Boolean).join(' ');
+  return `<span class="${cls}" aria-hidden="true" style="--dot:${m.dot.toFixed(2)}%;--lo:${m.lo.toFixed(2)}%;--hi:${m.hi.toFixed(2)}%"><span class="mag-ci"></span><span class="mag-dot"></span></span>`;
+}
+
+function magScale() {
+  return `<span class="mag-scale" aria-hidden="true">${MAG_TICKS.map((t) => `<span style="left:${magPos(t).pos.toFixed(2)}%">${fmtCount(t)}×</span>`).join('')}</span>`;
+}
+
+const hasPattern = (p) => concentrationReasons(p, config.alert).length > 0;
 
 async function viewIngredient(slug) {
   const doc = await loadIngredient(slug);
   if (!doc) return notFound(`No ingredient "${slug}" in this export.`);
   const ing = doc.ingredient;
+  if (listState.slug !== slug) Object.assign(listState, { text: '', pattern: 'all', open: new Set(), all: false, slug });
   setTitle(ing.ingredient_name);
+  const withPattern = doc.pairs.filter(hasPattern).length;
+  const total = doc.pairs.length;
+  const radio = (value, label) =>
+    `<label class="seg-opt"><input type="radio" name="pat" value="${value}"${listState.pattern === value ? ' checked' : ''}><span>${label}</span></label>`;
   main.innerHTML = `
-    <p class="crumbs"><a href="#/">Search</a> <span aria-hidden="true">/</span> ${esc(ing.ingredient_name)}</p>
-    <h1 tabindex="-1">${esc(ing.ingredient_name)}</h1>
-    <p class="lede">${fmtCount(ing.n_cases_ps_ss)} cases name ${esc(ing.ingredient_name)} as primary
-      or secondary suspect. ${ingredientNote(ing)}</p>
-    <p>Reactions with the highest disproportionality across all loaded cases. Open a reaction
-      for its 2×2 table, intervals and quarterly trend.</p>
-    <div id="pairs"></div>`;
-  renderPairsTable(doc);
-  announce(`${doc.pairs.length} reactions for ${ing.ingredient_name}`);
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Search</a> <span aria-hidden="true">/</span> ${esc(ing.ingredient_name)}</nav>
+    <section class="page-head" aria-labelledby="ing-h">
+      <p class="kicker">${ing.is_fallback ? 'Ingredient · name without RxNorm match' : `Ingredient · RxNorm ${esc(ing.ingredient_id)}`}</p>
+      <h1 id="ing-h" tabindex="-1">${esc(ing.ingredient_name)}</h1>
+      <p class="lede"><strong>${fmtCount(ing.n_cases_ps_ss)} cases</strong> name ${esc(ing.ingredient_name)} as a
+        suspect medicine (primary or secondary suspect). Below, each reaction's share of these
+        reports is compared with its share of reports for other medicines.</p>
+      <p class="caution">A larger share is a reason to look closer, not evidence that the medicine
+        causes the reaction. ${ingredientNote(ing)} Open a reaction for its 2×2 table and quarterly
+        trend.</p>
+    </section>
+    <div class="controls">
+      <div class="control-row">
+        <div class="field"><label for="flt">Filter reactions</label>
+          <input id="flt" type="search" autocomplete="off" spellcheck="false" placeholder="for example, myositis" value="${esc(listState.text)}" /></div>
+        <div class="field"><label for="srt">Sort by</label>
+          <select id="srt">${Object.entries(SORT_KEYS)
+            .map(([k, s]) => `<option value="${k}"${k === listState.key ? ' selected' : ''}>${esc(s.label)}</option>`)
+            .join('')}</select></div>
+        <fieldset class="seg"><legend>Reporting pattern</legend>
+          ${radio('all', `All (${total})`)}${radio('with', `With pattern (${withPattern})`)}${radio('without', `Without (${total - withPattern})`)}
+        </fieldset>
+        <label class="check"><input type="checkbox" id="expert"${listState.expert ? ' checked' : ''}> Show all numbers</label>
+      </div>
+      <p class="table-summary" id="pairs-summary" aria-live="polite"></p>
+      <p class="legend" id="alert-legend">${patternTag()} <span>Most of the pair's cases come from one
+        quarter, or from one country unusual for this ingredient, or their reports list very many
+        reactions. It describes how reports arrived, not the medicine.</span></p>
+    </div>
+    <div id="pairs"></div>
+    <div class="list-foot">
+      <p id="show-all-wrap"></p>
+      <p class="help">Up to 30 reactions per ingredient: the 20 with the highest ROR lower bound,
+        plus the 10 with the most cases among pairs that meet the Evans rule. Screening rules:
+        Evans (at least 3 cases, PRR ≥ 2, χ² ≥ 4); ROR (at least 3 cases, lower bound of the
+        ROR range above 1). Meeting a rule flags a pair for review; it does not confirm an effect
+        of the drug.</p>
+    </div>`;
+  const rerender = () => renderPairs(doc);
+  document.getElementById('flt').addEventListener('input', (e) => {
+    listState.text = e.target.value;
+    rerender();
+  });
+  document.getElementById('srt').addEventListener('change', (e) => {
+    listState.key = e.target.value;
+    rerender();
+  });
+  for (const r of document.querySelectorAll('input[name="pat"]')) {
+    r.addEventListener('change', () => {
+      listState.pattern = r.value;
+      rerender();
+    });
+  }
+  document.getElementById('expert').addEventListener('change', (e) => {
+    listState.expert = e.target.checked;
+    rerender();
+  });
+  rerender();
+  announce(`${total} reactions for ${ing.ingredient_name}`);
 }
 
-function renderPairsTable(doc) {
-  const { key, dir } = sortState;
-  const sorted = sortPairs(doc.pairs, key, dir);
-  const size = config.site.pairs_page_size;
-  const shown = sortState.all ? sorted : sorted.slice(0, size);
+function renderPairs(doc) {
   const slug = doc.ingredient.slug;
-  const th = (k, label) => {
-    const on = k === key;
-    const ariaSort = on ? (dir === 'desc' ? 'descending' : 'ascending') : 'none';
-    const arrow = on ? (dir === 'desc' ? '▼' : '▲') : '↕';
-    return `<th scope="col" class="num" aria-sort="${ariaSort}"><button type="button" class="sort" data-sort="${k}">${label} <span aria-hidden="true">${arrow}</span></button></th>`;
-  };
+  const { key, expert } = listState;
+  const filtered = filterPairs(doc.pairs, listState, hasPattern);
+  const sorted = sortPairs(filtered, key);
+  const size = config.site.pairs_page_size;
+  const shown = listState.all ? sorted : sorted.slice(0, size);
+  const sortName = { ror_lcl: 'most clearly larger share first (ROR lower bound)', prr: 'largest PRR first', a: 'most cases first', name: 'name, A to Z' }[key];
+  document.getElementById('pairs-summary').textContent =
+    `Showing ${shown.length} of ${doc.pairs.length} reactions, sorted by ${sortName}.`;
+  const cols = expert ? 9 : 5;
   const rows = shown
-    .map((p) => {
+    .map((p, i) => {
       const reasons = concentrationReasons(p, config.alert);
-      const criteria =
-        [p.is_signal_evans ? 'Evans' : '', p.is_signal_ror ? 'ROR' : ''].filter(Boolean).join(', ') ||
-        DASH;
-      return `<tr data-reaction-key="${p.reaction_key}">
-        <th scope="row"><a href="${pairHref(slug, p.reaction_key)}">${esc(p.reaction_pt)}</a></th>
+      const id = `det-${i}`;
+      const open = listState.open.has(p.reaction_key);
+      return `<tr data-reaction-key="${p.reaction_key}" class="${open ? 'is-open' : ''}">
+        <th scope="row"><a href="${pairHref(slug, p.reaction_key)}"><span data-pt>${esc(p.reaction_pt)}</span></a>${patternBadge(reasons)}</th>
         ${num(p.a, fmtCount(p.a), 'a')}
+        <td class="mag-cell">${magBar(p)}</td>
         ${num(p.prr, fmtRatio(p.prr), 'prr')}
-        <td class="num ci" data-field="prr_ci" data-lcl="${rawValue(p.prr_lcl)}" data-ucl="${rawValue(p.prr_ucl)}">${fmtInterval(p.prr_lcl, p.prr_ucl)}</td>
+        ${
+          expert
+            ? `<td class="num ci" data-field="prr_ci" data-lcl="${rawValue(p.prr_lcl)}" data-ucl="${rawValue(p.prr_ucl)}">${fmtInterval(p.prr_lcl, p.prr_ucl)}</td>
         ${num(p.ror, fmtRatio(p.ror), 'ror')}
         <td class="num ci" data-field="ror_ci" data-lcl="${rawValue(p.ror_lcl)}" data-ucl="${rawValue(p.ror_ucl)}">${fmtInterval(p.ror_lcl, p.ror_ucl)}</td>
-        <td>${criteria}</td>
-        <td>${alertBadge(reasons)}</td>
-      </tr>`;
+        <td class="nowrap">${criteriaText(p)}</td>`
+            : ''
+        }
+        <td class="det-cell"><button type="button" class="btn-ghost det" aria-expanded="${open}" aria-controls="${id}" data-key="${p.reaction_key}">Details<span class="sr-only"> for ${esc(p.reaction_pt)}</span>${CHEVRON}</button></td>
+      </tr>
+      <tr class="det-row" id="${id}"${open ? '' : ' hidden'}><td colspan="${cols}">${detailsHtml(slug, p, reasons, 'Open the 2×2 table, quarterly trend and countries')}</td></tr>`;
     })
     .join('');
-  const flagged = doc.pairs.filter((p) => concentrationReasons(p, config.alert).length).length;
-  const more =
-    sorted.length > size
-      ? `<p><button type="button" class="link-button" id="show-all">${sortState.all ? `Show the first ${size}` : `Show all ${sorted.length} reactions`}</button></p>`
-      : '';
+  const cards = shown
+    .map((p, i) => {
+      const reasons = concentrationReasons(p, config.alert);
+      const id = `cdet-${i}`;
+      const open = listState.open.has(p.reaction_key);
+      return `<li data-reaction-key="${p.reaction_key}">
+        <div class="card-head"><a href="${pairHref(slug, p.reaction_key)}"><span data-pt>${esc(p.reaction_pt)}</span></a>
+          <span class="card-cases"><span data-field="a" data-value="${rawValue(p.a)}">${fmtCount(p.a)}</span> cases</span></div>
+        <div class="card-mag">${magBar(p)}<span class="times">${p.prr != null && Number.isFinite(p.prr) ? `${fmtRatio(p.prr)}×` : DASH}</span></div>
+        <p class="card-line">${shareText(p.prr)} (PRR <span data-field="prr" data-value="${rawValue(p.prr)}">${fmtRatio(p.prr)}</span>, range ${fmtInterval(p.prr_lcl, p.prr_ucl)})</p>
+        ${patternBadge(reasons)}
+        <button type="button" class="btn-ghost det" aria-expanded="${open}" aria-controls="${id}" data-key="${p.reaction_key}">Details<span class="sr-only"> for ${esc(p.reaction_pt)}</span>${CHEVRON}</button>
+        <div class="card-det" id="${id}"${open ? '' : ' hidden'}>${detailsHtml(slug, p, reasons, 'Open the 2×2 table and trend')}</div>
+      </li>`;
+    })
+    .join('');
+  const empty = shown.length ? '' : '<p class="empty">No reaction matches these filters.</p>';
   document.getElementById('pairs').innerHTML = `
-    <p class="help" id="alert-legend"><strong>Concentration alert:</strong> most of the pair's cases
-      come from one quarter or from one country unusual for the ingredient, or their reports list
-      very many reactions, which points to a reporting pattern rather than to the drug.</p>
-    <p class="table-summary" id="pairs-summary">${sorted.length} reactions, sorted by ${SORT_KEYS[key].label} (${dir === 'desc' ? 'highest first' : 'lowest first'}).
-      ${flagged ? `${flagged} marked concentrated.` : ''}</p>
-    ${scrollTable(
+    ${empty}
+    <div class="pairs-desktop">${scrollTable(
       'Reactions',
-      `<table class="pairs" aria-describedby="pairs-summary">
-        <caption class="sr-only">Reactions reported with ${esc(doc.ingredient.ingredient_name)}</caption>
+      `<table class="pairs${expert ? ' expert' : ''}">
+        <caption class="sr-only">Reactions reported with ${esc(doc.ingredient.ingredient_name)}, with how much larger their share of reports is</caption>
         <thead><tr>
-          <th scope="col">Reaction (MedDRA PT)</th>
-          ${th('a', 'Cases')}
-          ${th('prr', 'PRR')}
-          <th scope="col" class="num">PRR 95% CI</th>
-          <th scope="col" class="num">ROR</th>
-          ${th('ror_lcl', 'ROR 95% CI')}
-          <th scope="col">Criteria met</th>
-          <th scope="col">Concentration alert</th>
+          <th scope="col" class="col-pt">Reaction (MedDRA PT)</th>
+          <th scope="col" class="num">Cases</th>
+          <th scope="col" class="col-mag"><span class="tip-wrap">How much larger the share is (PRR)
+            <button type="button" class="tip" aria-label="What is this?" aria-expanded="false" aria-controls="mag-tip">${INFO_ICON}</button>
+            <span class="tip-body" id="mag-tip" role="status" hidden>The PRR (proportional reporting ratio) divides the reaction's share of this medicine's reports by its share of all other reports. Dot: best estimate. Line: plausible range (95% CI). Each step on the scale is 10 times larger; values beyond the ends are drawn at the edge with an arrow.</span></span>
+            ${magScale()}</th>
+          <th scope="col" class="num">PRR</th>
+          ${expert ? '<th scope="col" class="num">PRR 95% CI</th><th scope="col" class="num">ROR</th><th scope="col" class="num">ROR 95% CI</th><th scope="col">Criteria met</th>' : ''}
+          <th scope="col" class="det-cell"><span class="sr-only">Details</span></th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`,
-    )}
-    ${more}
-    <p class="help">Sorting by ROR 95% CI uses its lower bound. Criteria: Evans (at least 3
-      cases, PRR ≥ 2, χ² ≥ 4); ROR (at least 3 cases, lower bound above 1). Meeting a
-      criterion flags a pair for review; it does not confirm an effect of the drug.</p>`;
-  for (const b of document.querySelectorAll('button.sort')) {
-    b.addEventListener('click', () => {
-      const k = b.dataset.sort;
-      sortState.dir = sortState.key === k && sortState.dir === 'desc' ? 'asc' : 'desc';
-      sortState.key = k;
-      renderPairsTable(doc);
-      document.querySelector(`button.sort[data-sort="${k}"]`).focus();
-      announce(`Sorted by ${SORT_KEYS[k].label}, ${sortState.dir === 'desc' ? 'highest' : 'lowest'} first`);
-    });
-  }
+    )}</div>
+    <div class="pairs-mobile">
+      <p class="mag-note" aria-hidden="true">Scale: 1× to ${fmtCount(MAG_MAX)}× larger share (PRR), log scale</p>
+      <ul class="pair-cards" aria-label="Reactions reported with ${esc(doc.ingredient.ingredient_name)}">${cards}</ul>
+    </div>`;
+  const more = document.getElementById('show-all-wrap');
+  more.innerHTML =
+    sorted.length > size
+      ? `<button type="button" class="btn" id="show-all">${listState.all ? `Show the first ${size}` : `Show all ${sorted.length} reactions`}</button>`
+      : '';
   document.getElementById('show-all')?.addEventListener('click', () => {
-    sortState.all = !sortState.all;
-    renderPairsTable(doc);
+    listState.all = !listState.all;
+    renderPairs(doc);
     document.getElementById('show-all')?.focus();
   });
+  for (const b of document.querySelectorAll('#pairs button.det')) {
+    b.addEventListener('click', () => {
+      const open = b.getAttribute('aria-expanded') !== 'true';
+      // Table and card of the same pair share the state.
+      for (const twin of document.querySelectorAll(`#pairs button.det[data-key="${b.dataset.key}"]`)) {
+        twin.setAttribute('aria-expanded', String(open));
+        document.getElementById(twin.getAttribute('aria-controls')).hidden = !open;
+        twin.closest('tr')?.classList.toggle('is-open', open);
+      }
+      if (open) listState.open.add(b.dataset.key);
+      else listState.open.delete(b.dataset.key);
+    });
+  }
+  setupToggletip(document.querySelector('#pairs .tip'));
 }
+
+// Details of a pair: numbers with their ranges, rules met, the full pattern sentence, the link.
+function detailsHtml(slug, p, reasons, linkText) {
+  return `<dl class="det-list">
+      <div><dt>How much larger the share is (PRR)</dt><dd><strong>${fmtRatio(p.prr)}</strong> · plausible range (95% CI) ${fmtInterval(p.prr_lcl, p.prr_ucl)}</dd></div>
+      <div><dt>Same comparison as odds (ROR)</dt><dd><strong>${fmtRatio(p.ror)}</strong> · plausible range (95% CI) ${fmtInterval(p.ror_lcl, p.ror_ucl)}</dd></div>
+      <div><dt>Screening rules met</dt><dd>${criteriaText(p)}</dd></div>
+    </dl>
+    ${reasons.length ? `<p class="det-pattern"><strong>Reporting pattern:</strong> ${reasons.map(reasonLong).join(' ')}</p>` : ''}
+    <a href="${pairHref(slug, p.reaction_key)}">${linkText} <span aria-hidden="true">→</span></a>`;
+}
+
+// Click-toggled tips (not hover-only). One pair of document listeners closes an open tip on Esc
+// (focus back on its button) or on a click outside it.
+function setTip(button, open) {
+  button.setAttribute('aria-expanded', String(open));
+  document.getElementById(button.getAttribute('aria-controls')).hidden = !open;
+}
+function setupToggletip(button) {
+  button?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setTip(button, button.getAttribute('aria-expanded') !== 'true');
+  });
+}
+const OPEN_TIPS = 'button.tip[aria-expanded="true"]';
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  for (const b of document.querySelectorAll(OPEN_TIPS)) {
+    setTip(b, false);
+    b.focus();
+  }
+});
+document.addEventListener('click', (e) => {
+  for (const b of document.querySelectorAll(OPEN_TIPS)) {
+    if (!document.getElementById(b.getAttribute('aria-controls')).contains(e.target)) setTip(b, false);
+  }
+});
 
 // ---------------------------------------------------------------------------------- pair
 

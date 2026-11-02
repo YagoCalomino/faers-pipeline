@@ -373,4 +373,4 @@ trademark of the International Council for Harmonisation of Technical Requiremen
 Pharmaceuticals for Human Use (ICH). This project does not distribute the MedDRA dictionary and
 does not offer a downloadable dataset of MedDRA terms. Reaction terms (Preferred Terms) are
 shown on the site pages as they appear in FAERS.
-The decision and its residual risk are in ADR 0004 (`docs/adr/0004-meddra-terms.md`).
+The decision and what it leaves open are in ADR 0004 (`docs/adr/0004-meddra-terms.md`).

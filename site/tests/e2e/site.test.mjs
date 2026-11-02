@@ -132,21 +132,109 @@ function flagged(p) {
   return out;
 }
 
-test('ingredient: sortable columns and concentration alerts follow the config rule', async () => {
+// Default order written out independently of src/lib/logic.js: ror_lcl descending, nulls last,
+// ties by PT, then reaction key; first pairs_page_size rows.
+function defaultOrder(pairs) {
+  const ok = (v) => v != null && Number.isFinite(v);
+  return [...pairs]
+    .sort((x, y) => {
+      if (ok(x.ror_lcl) !== ok(y.ror_lcl)) return ok(x.ror_lcl) ? -1 : 1;
+      if (ok(x.ror_lcl) && x.ror_lcl !== y.ror_lcl) return y.ror_lcl - x.ror_lcl;
+      return x.reaction_pt.localeCompare(y.reaction_pt, 'en') || x.reaction_key.localeCompare(y.reaction_key);
+    })
+    .slice(0, SITE_CFG.site.pairs_page_size)
+    .map((p) => p.reaction_key);
+}
+
+test('ingredient: default order, sort select, filters and reporting-pattern badges follow the config rule', async () => {
   const { ctx, page } = await open(ROUTES.ingredient);
+  const keys = () => page.locator('table.pairs tbody tr[data-reaction-key]').evaluateAll((rs) => rs.map((r) => r.dataset.reactionKey));
   const values = async (field) =>
-    page.locator(`table.pairs td[data-field="${field}"]`).evaluateAll((tds) => tds.map((td) => td.dataset.value));
-  await page.getByRole('button', { name: /^PRR/ }).click();
-  assert.equal(await page.locator('th:has(button[data-sort="prr"])').getAttribute('aria-sort'), 'descending');
+    page.locator(`table.pairs tr[data-reaction-key] td[data-field="${field}"]`).evaluateAll((tds) => tds.map((td) => td.dataset.value));
+  const sort = page.getByRole('combobox', { name: 'Sort by' });
+  assert.equal(await sort.inputValue(), 'ror_lcl');
+  assert.deepEqual(await keys(), defaultOrder(FIRST_DOC.pairs));
+  await sort.selectOption('prr');
   const prr = (await values('prr')).filter((v) => v !== '').map(Number);
   assert.deepEqual(prr, [...prr].sort((a, b) => b - a));
-  await page.getByRole('button', { name: /^PRR/ }).click();
-  assert.equal(await page.locator('th:has(button[data-sort="prr"])').getAttribute('aria-sort'), 'ascending');
-  await page.getByRole('button', { name: /^Cases/ }).click();
+  await sort.selectOption('a');
   const a = (await values('a')).map(Number);
   assert.deepEqual(a, [...a].sort((x, y) => y - x));
-  const expected = FIRST_DOC.pairs.filter((p) => flagged(p).length).length;
-  assert.equal(await page.locator('table.pairs .alert-badge').count(), Math.min(expected, 30));
+  await sort.selectOption('name');
+  const pts = await page.locator('table.pairs tbody th [data-pt]').allInnerTexts();
+  assert.deepEqual(pts, [...pts].sort((x, y) => x.localeCompare(y, 'en')));
+  assert.match(await page.locator('#pairs-summary').innerText(), /sorted by name, A to Z\.$/);
+  // Every flagged pair has the badge in its row (never only in Details), with words and glyph.
+  const expected = FIRST_DOC.pairs.filter((p) => flagged(p).length);
+  assert.equal(await page.locator('table.pairs tbody th .tag-pattern').count(), Math.min(expected.length, 30));
+  for (const p of expected.slice(0, 30)) {
+    const th = page.locator(`table.pairs tr[data-reaction-key="${p.reaction_key}"] th`);
+    assert.equal(await th.locator('.tag-pattern').innerText(), 'Reporting pattern');
+    assert.equal(await th.locator('.tag-pattern svg[aria-hidden="true"]').count(), 1);
+  }
+  // Filters: pattern radio and text.
+  const total = FIRST_DOC.pairs.length;
+  await page.getByRole('radio', { name: `With pattern (${expected.length})` }).check();
+  assert.equal((await keys()).length, Math.min(expected.length, 30));
+  await page.getByRole('radio', { name: `Without (${total - expected.length})` }).check();
+  assert.equal(await page.locator('table.pairs tbody th .tag-pattern').count(), 0);
+  await page.getByRole('radio', { name: `All (${total})` }).check();
+  const word = FIRST_DOC.pairs[0].reaction_pt.split(' ')[0].toLowerCase();
+  await page.getByRole('searchbox', { name: 'Filter reactions' }).fill(word);
+  const want = FIRST_DOC.pairs.filter((p) => p.reaction_pt.toLowerCase().includes(word)).length;
+  assert.equal((await keys()).length, Math.min(want, 30));
+  assert.match(await page.locator('#pairs-summary').innerText(), new RegExp(`^Showing ${Math.min(want, 30)} of ${total} reactions`));
+  await ctx.close();
+});
+
+test('ingredient: "Show all numbers" adds the interval, ROR and criteria columns; Details opens a row', async () => {
+  const { ctx, page } = await open(ROUTES.ingredient);
+  const head = () => page.locator('table.pairs thead th').allInnerTexts();
+  assert.ok(!(await head()).some((t) => t.includes('ROR 95% CI')));
+  await page.getByRole('checkbox', { name: 'Show all numbers' }).check();
+  const h = (await head()).map((t) => t.trim());
+  for (const col of ['PRR 95% CI', 'ROR', 'ROR 95% CI', 'Criteria met']) assert.ok(h.includes(col), col);
+  const p = FIRST_DOC.pairs.find((x) => x.reaction_key === (defaultOrder(FIRST_DOC.pairs)[0]));
+  const row = page.locator(`table.pairs tr[data-reaction-key="${p.reaction_key}"]`);
+  assert.equal(Number(await row.locator('td[data-field="ror_ci"]').getAttribute('data-lcl')), p.ror_lcl);
+  const criteria = [p.is_signal_evans ? 'Evans' : '', p.is_signal_ror ? 'ROR' : ''].filter(Boolean).join(', ') || '—';
+  assert.equal((await row.locator('td').nth(-2).innerText()).trim(), criteria);
+  // Details: aria-expanded and aria-controls point at the row that opens.
+  const det = row.getByRole('button', { name: new RegExp(`^Details for ${reEsc(p.reaction_pt)}$`) });
+  assert.equal(await det.getAttribute('aria-expanded'), 'false');
+  const target = page.locator(`#${await det.getAttribute('aria-controls')}`);
+  assert.equal(await target.isVisible(), false);
+  await det.click();
+  assert.equal(await det.getAttribute('aria-expanded'), 'true');
+  assert.match(await target.innerText(), new RegExp(reEsc(`Screening rules met`)));
+  assert.equal(await target.locator(`a[href$="/${p.reaction_key}"]`).count(), 1);
+  // The magnitude bar is decorative: the PRR has its own cell.
+  assert.equal(await row.locator('.mag').getAttribute('aria-hidden'), 'true');
+  // The toggletip opens on click and closes with Esc, focus back on its button.
+  const tip = page.getByRole('button', { name: 'What is this?' });
+  await tip.click();
+  assert.equal(await tip.getAttribute('aria-expanded'), 'true');
+  assert.equal(await page.locator('#mag-tip').isVisible(), true);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#mag-tip').isVisible(), false);
+  assert.equal(await page.evaluate(() => document.activeElement.classList.contains('tip')), true);
+  await ctx.close();
+});
+
+test('ingredient on a phone: one card per reaction, badge visible, Details with a 44 px target', async () => {
+  const { ctx, page } = await open(ROUTES.ingredient, AXE_VIEWPORTS.mobile);
+  assert.equal(await page.locator('table.pairs').isVisible(), false);
+  const cards = page.locator('.pair-cards > li');
+  assert.equal(await cards.count(), Math.min(FIRST_DOC.pairs.length, 30));
+  const flaggedPairs = FIRST_DOC.pairs.filter((p) => flagged(p).length);
+  for (const p of flaggedPairs.slice(0, 30)) {
+    assert.equal(await page.locator(`.pair-cards li[data-reaction-key="${p.reaction_key}"] .tag-pattern`).isVisible(), true);
+  }
+  const det = cards.first().locator('button.det');
+  assert.ok((await det.boundingBox()).height >= 44);
+  await det.click();
+  assert.equal(await page.locator(`#${await det.getAttribute('aria-controls')}`).isVisible(), true);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0, 'no sideways scroll');
   await ctx.close();
 });
 
@@ -169,12 +257,18 @@ test('country alert: the badge and the pair page give the country and the ingred
   const regions = new Intl.DisplayNames(['en'], { type: 'region' });
   const country = (code) => `${regions.of(code)} (${code})`;
   const esc = (t) => t.replace(/[()]/g, '\\$&');
-  const text = `${pct(p.top_country_share)} of cases from ${country(p.top_country)}; ingredient: ${ingPct} ${p.top_country}`;
+  const text = `Mostly one country: ${pct(p.top_country_share)} of cases from ${country(p.top_country)}; ingredient: ${ingPct} ${p.top_country}`;
   const ing = await open(`#/ingredient/${slug}`);
-  const row = ing.page.locator('table.pairs tbody tr', { has: ing.page.locator(`a[href$="/${p.reaction_key}"]`) });
-  const badge = await row.locator('.alert-badge').innerText();
+  const row = ing.page.locator(`table.pairs tbody tr[data-reaction-key="${p.reaction_key}"]`);
+  const badge = await row.locator('th .pattern').innerText();
+  assert.match(badge, /^Reporting pattern\s/);
   assert.ok(badge.includes(text), `badge "${badge}" lacks "${text}"`);
-  assert.match(await ing.page.locator('#alert-legend').innerText(), /^Concentration alert: /);
+  // The same reason on the phone card.
+  assert.ok((await ing.page.locator(`.pair-cards li[data-reaction-key="${p.reaction_key}"] .pattern-why`).textContent()).includes(text));
+  assert.match(
+    (await ing.page.locator('#alert-legend').innerText()).replace(/\s+/g, ' '),
+    /^Reporting pattern Most of the pair's cases come from one quarter, or from one country unusual for this ingredient, or their reports list very many reactions\. It describes how reports arrived, not the medicine\.$/,
+  );
   const axeIng = await new AxeBuilder({ page: ing.page }).withTags(AXE_TAGS).analyze();
   assert.deepEqual(axeIng.violations.map((v) => v.id), [], 'axe on the ingredient page');
   await ing.ctx.close();
@@ -417,32 +511,37 @@ test('method page: axe and focusable scroll regions at narrow and wide viewports
   assert.deepEqual(all, []);
 });
 
-// The concentration badge wraps inside its cell: at a wide viewport the pairs table fits the page,
-// so no badge is cut off at the edge of its scroll region.
-test('ingredient: concentration badges are not cut off at wide viewports', async () => {
+// The reporting-pattern badge and its reasons wrap inside the row header: at a wide viewport the
+// pairs table fits the page, with or without "Show all numbers", so no badge is cut off at the
+// edge of its scroll region.
+test('ingredient: reporting-pattern badges are not cut off at wide viewports', async () => {
   const slug = SEARCH.rows
     .map((r) => r[SEARCH.columns.indexOf('slug')])
     .find((s) => JSON.parse(readFileSync(resolve(DIST, `data/json/signals/${s}.json`), 'utf8')).pairs.some((p) => flagged(p).length));
-  assert.ok(slug, 'the export has an ingredient with a concentration badge');
+  assert.ok(slug, 'the export has an ingredient with a reporting-pattern badge');
   for (const width of [1440, 1668]) {
-    const { ctx, page } = await open(`#/ingredient/${slug}`, { viewport: { width, height: 900 } });
-    // The fixture's badges are short; the longest real one has three reasons.
-    await page.locator('table.pairs .alert-badge').first().evaluate((b) => {
-      b.textContent = '⚠ median 53 reactions per report; 96% of cases from Canada (CA); ingredient: 8% CA';
-    });
-    const region = page.locator('.table-scroll:has(table.pairs)');
-    const fits = await region.evaluate((e) => e.scrollWidth <= e.clientWidth);
-    assert.ok(fits, `${width} px: the pairs table scrolls sideways`);
-    const box = await region.boundingBox();
-    const badges = await page.locator('table.pairs .alert-badge').evaluateAll((bs) =>
-      bs.map((b) => {
-        const r = b.getBoundingClientRect();
-        return { right: r.right, text: b.textContent };
-      })
-    );
-    assert.ok(badges.length > 0, `${width} px: no badge on the page`);
-    for (const b of badges) assert.ok(b.right <= box.x + box.width + 0.5, `${width} px: badge cut off: ${b.text}`);
-    await ctx.close();
+    for (const expert of [false, true]) {
+      const { ctx, page } = await open(`#/ingredient/${slug}`, { viewport: { width, height: 900 } });
+      if (expert) await page.getByRole('checkbox', { name: 'Show all numbers' }).check();
+      // The fixture's reasons are short; the longest real one has two reasons.
+      await page.locator('table.pairs .pattern-why').first().evaluate((b) => {
+        b.textContent = 'Many reactions per report: median 53; Mostly one country: 96% of cases from Canada (CA); ingredient: 8% CA';
+      });
+      const where = `${width} px${expert ? ', all numbers' : ''}`;
+      const region = page.locator('.table-scroll:has(table.pairs)');
+      const fits = await region.evaluate((e) => e.scrollWidth <= e.clientWidth);
+      assert.ok(fits, `${where}: the pairs table scrolls sideways`);
+      const box = await region.boundingBox();
+      const badges = await page.locator('table.pairs .pattern').evaluateAll((bs) =>
+        bs.map((b) => {
+          const r = b.getBoundingClientRect();
+          return { right: r.right, text: b.textContent };
+        })
+      );
+      assert.ok(badges.length > 0, `${where}: no badge on the page`);
+      for (const b of badges) assert.ok(b.right <= box.x + box.width + 0.5, `${where}: badge cut off: ${b.text}`);
+      await ctx.close();
+    }
   }
 });
 
@@ -485,12 +584,26 @@ test('keyboard: the ingredient page is usable with Tab and Enter only', async ()
     assert.ok(e.visible, `focused element not visible: ${e.text}`);
     assert.ok(e.outline, `no focus indicator: ${e.tag} ${e.text}`);
   }
-  assert.ok(seen.some((e) => e.text.startsWith('PRR')), 'sort button reachable');
-  // Enter on a focused sort button sorts and keeps focus on it.
-  await page.locator('button.sort[data-sort="a"]').focus();
+  assert.ok(seen.some((e) => e.tag === 'select'), 'sort select reachable');
+  assert.ok(seen.some((e) => e.tag === 'input' && e.text === ''), 'filter and controls reachable');
+  // The sort select works from the keyboard: arrows change the order, focus stays on it.
+  const sort = page.locator('#srt');
+  await sort.focus();
+  await page.keyboard.press('ArrowDown');
+  assert.equal(await sort.inputValue(), 'prr');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'srt');
+  const prr = await page
+    .locator('table.pairs tr[data-reaction-key] td[data-field="prr"]')
+    .evaluateAll((tds) => tds.map((td) => td.dataset.value).filter((v) => v !== '').map(Number));
+  assert.deepEqual(prr, [...prr].sort((a, b) => b - a));
+  await page.keyboard.press('ArrowDown');
+  assert.equal(await sort.inputValue(), 'a');
+  // Enter on a Details button opens its row and keeps focus on the button.
+  const det = page.locator('table.pairs button.det').first();
+  await det.focus();
   await page.keyboard.press('Enter');
-  assert.equal(await page.evaluate(() => document.activeElement.dataset.sort), 'a');
-  assert.equal(await page.locator('th:has(button[data-sort="a"])').getAttribute('aria-sort'), 'descending');
+  assert.equal(await det.getAttribute('aria-expanded'), 'true');
+  assert.equal(await page.evaluate(() => document.activeElement.classList.contains('det')), true);
   // Enter on a reaction link opens the pair.
   await page.locator('table.pairs tbody th a').first().focus();
   await page.keyboard.press('Enter');

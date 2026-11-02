@@ -35,15 +35,27 @@ const cellInfo = (loc) => loc.evaluate((td) => ({ v: td.dataset.value ?? '', l: 
 
 for (const [slug, ing] of Object.entries(expected)) {
   await page.goto(`${BASE}#/ingredient/${slug}`);
-  await page.locator('table.pairs tbody tr').first().waitFor();
+  await page.locator('table.pairs tbody tr[data-reaction-key]').first().waitFor();
+  // Every row, with every number column ("Show all numbers" adds the intervals, ROR and criteria).
   const showAll = page.locator('#show-all');
   if ((await showAll.count()) && /Show all/.test(await showAll.innerText())) await showAll.click();
-  const rows = await page.locator('table.pairs tbody tr').count();
+  const expert = page.locator('#expert');
+  if (!(await expert.isChecked())) await expert.check();
+  await page.locator('table.pairs.expert').waitFor();
+  const rows = await page.locator('table.pairs tbody tr[data-reaction-key]').count();
   if (rows !== ing.pairs.length) failures.push(`${slug}: ${rows} rows on the page, ${ing.pairs.length} expected`);
   for (const p of ing.pairs) {
     const row = page.locator(`table.pairs tr[data-reaction-key="${p.reaction_key}"]`);
     const where = `${slug}/${p.reaction_pt} (table)`;
-    if ((await row.locator('th').innerText()).trim() !== p.reaction_pt) failures.push(`${where}: PT text`);
+    // The PT has its own element: the reporting-pattern badge shares the row header.
+    if ((await row.locator('th [data-pt]').innerText()).trim() !== p.reaction_pt) failures.push(`${where}: PT text`);
+    // The phone cards repeat the cases and the PRR: same values, same text.
+    const card = page.locator(`.pair-cards li[data-reaction-key="${p.reaction_key}"]`);
+    if ((await card.locator('[data-pt]').textContent()).trim() !== p.reaction_pt) failures.push(`${slug}/${p.reaction_pt} (card): PT text`);
+    for (const f of ['a', 'prr']) {
+      const c = await cellInfo(card.locator(`[data-field="${f}"]`));
+      compare(`${slug}/${p.reaction_pt} (card)`, f, c.v, p.values[f], c.t, p.text[f]);
+    }
     for (const f of ['a', 'prr', 'ror']) {
       const c = await cellInfo(row.locator(`td[data-field="${f}"]`));
       compare(where, f, c.v, p.values[f], c.t, p.text[f]);
