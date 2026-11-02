@@ -163,6 +163,8 @@ function siteData() {
       // GitHub Pages runs Jekyll on branch deployments unless .nojekyll exists, and Jekyll
       // drops files whose names start with "_" (such as Vite's chunk for a virtual module).
       writeFileSync(join(OUT_DIR, '.nojekyll'), '');
+      // The SIL OFL requires the license to travel with the font files (Source Serif 4).
+      cpSync(join(HERE, 'src/fonts/OFL.txt'), join(OUT_DIR, 'fonts/OFL.txt'));
       for (const entry of DATA_ENTRIES) {
         const src = join(EXPORT_DIR, entry);
         if (existsSync(src)) cpSync(src, join(OUT_DIR, 'data', entry), { recursive: true });

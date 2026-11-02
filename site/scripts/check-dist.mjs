@@ -99,6 +99,18 @@ for (const f of files) {
   }
 }
 
+// --- font license: every font file ships with its license (SIL OFL 1.1, Adobe's text)
+if (files.some((f) => /\.woff2?$/.test(f.path))) {
+  const ofl = join(dist, 'fonts', 'OFL.txt');
+  if (!existsSync(ofl)) problems.push('fonts/OFL.txt missing (the SIL OFL must travel with the fonts)');
+  else {
+    const text = readFileSync(ofl, 'utf8');
+    if (!/SIL OPEN FONT LICENSE Version 1\.1/.test(text) || !/^Copyright .* Adobe/.test(text)) {
+      problems.push('fonts/OFL.txt is not the Source Serif license (SIL OFL 1.1, Adobe copyright)');
+    }
+  }
+}
+
 // --- data copy
 if (!existsSync(join(dist, '.nojekyll'))) problems.push('.nojekyll missing (GitHub Pages would run Jekyll)');
 const manifestPath = join(dist, 'data', 'manifest.json');

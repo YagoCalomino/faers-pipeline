@@ -48,8 +48,8 @@ Sources:
   measures of disproportionality for signal detection in spontaneous reporting systems for
   adverse drug reactions. *Pharmacoepidemiology and Drug Safety* 2002;11(1):3–10.
   doi:10.1002/pds.668. Reporting odds ratio and the use of the lower 1.96·SE bound.
-- The standard errors on the log scale are the usual large-sample formulas for a risk ratio
-  and an odds ratio; the PRR form above matches published tables of disproportionality
+- The standard errors on the log scale are the usual large-sample formulas for a ratio of two
+  proportions and an odds ratio; the PRR form above matches published tables of disproportionality
   formulas. They were checked against an independent computation in plain Python (the
   literals of the dbt test `assert_signal_statistics_known_values` are recomputed by
   `tests/unit/test_signal_known_values.py`) and a recalculation of two real pairs.
