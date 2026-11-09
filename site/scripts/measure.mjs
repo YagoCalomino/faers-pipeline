@@ -21,10 +21,12 @@ const pairKey = doc.pairs[0].reaction_key;
 const SLUG = process.env.MEASURE_SLUG || slug;
 const PAIR = process.env.MEASURE_PAIR || pairKey;
 
-// "First useful information": the element that carries the page's data, visible.
+// "First useful information": the element that carries the page's data, visible. Hidden matches
+// are skipped: the ingredient page has a table (720 px and up) and cards (narrower), and only
+// one of them is shown.
 const SCENARIOS = [
   { name: 'home', route: '', wait: '#top-list li a' },
-  { name: 'ingredient', route: `#/ingredient/${SLUG}`, wait: 'table.pairs tbody tr' },
+  { name: 'ingredient', route: `#/ingredient/${SLUG}`, wait: '[data-reaction-key] [data-field="a"]' },
   { name: 'pair', route: `#/ingredient/${SLUG}/${PAIR}`, wait: 'table.two-by-two td[data-field="a"]' },
   { name: 'quality', route: '#/quality', wait: 'table.metrics td.num' },
   { name: 'validation', route: '#/validation', wait: 'table.known tbody tr' },
@@ -79,7 +81,7 @@ for (const [mi, mode] of modes.entries()) {
         const t0 = Date.now();
         try {
           await page.goto(base + sc.route, { waitUntil: 'commit', timeout: 120000 });
-          await page.locator(sc.wait).first().waitFor({ state: 'visible', timeout: 120000 });
+          await page.locator(sc.wait).filter({ visible: true }).first().waitFor({ state: 'visible', timeout: 120000 });
           times.push(Date.now() - t0);
           await page.waitForLoadState('networkidle', { timeout: 60000 }).catch(() => {});
           await Promise.all(pending);

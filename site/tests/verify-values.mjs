@@ -18,7 +18,9 @@ const PORT = 8320;
 const BASE = `http://127.0.0.1:${PORT}/faers-pipeline/`;
 const server = await startServer({ root: resolve(SITE, distArg), port: PORT, prefix: '/faers-pipeline/' });
 const browser = await chromium.launch();
-const page = await browser.newPage();
+// Wide viewport on purpose: the ingredient table (checked with innerText and visible waits) is
+// shown from 720 px; the phone cards are hidden there and read with textContent.
+const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 const failures = [];
 let checked = 0;
 
