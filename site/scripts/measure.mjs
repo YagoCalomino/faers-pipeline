@@ -27,7 +27,7 @@ const PAIR = process.env.MEASURE_PAIR || pairKey;
 const SCENARIOS = [
   { name: 'home', route: '', wait: '#top-list li a' },
   { name: 'ingredient', route: `#/ingredient/${SLUG}`, wait: '[data-reaction-key] [data-field="a"]' },
-  { name: 'pair', route: `#/ingredient/${SLUG}/${PAIR}`, wait: 'table.two-by-two td[data-field="a"]' },
+  { name: 'pair', route: `#/ingredient/${SLUG}/${PAIR}`, wait: 'table.measures td[data-field="prr"]' },
   { name: 'quality', route: '#/quality', wait: 'table.metrics td.num' },
   { name: 'validation', route: '#/validation', wait: 'table.known tbody tr' },
   { name: 'method', route: '#/method', wait: '.prose h2' },

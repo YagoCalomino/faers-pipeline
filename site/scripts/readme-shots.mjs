@@ -36,17 +36,17 @@ await page.locator('table.pairs').waitFor();
 await page.screenshot({ path: out('ingredient'), ...JPEG });
 await page.close();
 
-// Pair page on a phone: atorvastatin and rhabdomyolysis, from the criteria to the first rows of
-// the quarterly table.
+// Pair page on a phone: atorvastatin and rhabdomyolysis, from the headline to the end of the
+// two shares.
 page = await open('#/ingredient/atorvastatin/15f363411c34bda6a976d905528afff2', {
   viewport: { width: 360, height: 800 },
   deviceScaleFactor: 3,
   isMobile: true,
   hasTouch: true,
 });
-const top = await page.locator('dt', { hasText: 'ROR criterion' }).evaluate((e) => e.parentElement.getBoundingClientRect().top + scrollY);
-const table = await page.locator('main table').last().evaluate((e) => e.getBoundingClientRect().top + scrollY);
-await page.screenshot({ path: out('pair-mobile'), fullPage: true, clip: { x: 0, y: top - 4, width: 360, height: table - top + 110 }, ...JPEG });
+const top = await page.locator('.page-head').evaluate((e) => e.getBoundingClientRect().top + scrollY);
+const end = await page.locator('#division').evaluate((e) => e.getBoundingClientRect().bottom + scrollY);
+await page.screenshot({ path: out('pair-mobile'), fullPage: true, clip: { x: 0, y: top - 4, width: 360, height: end - top + 12 }, ...JPEG });
 await page.close();
 
 await browser.close();

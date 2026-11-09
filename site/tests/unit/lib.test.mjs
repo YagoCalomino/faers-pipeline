@@ -1,8 +1,7 @@
 // Unit tests of the DOM-free modules (node --test). Values from the real export where possible.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { trendSvg } from '../../src/lib/chart.js';
-import { countryLabel, fmtCount, fmtInterval, fmtPct, fmtRatio, fmtShare, fmtShareMin, rawValue } from '../../src/lib/format.js';
+import { countryLabel, fmtAbout, fmtCount, fmtInterval, fmtPct, fmtRatio, fmtShare, fmtShare2, fmtShareMin, rawValue } from '../../src/lib/format.js';
 import {
   concentrationReasons,
   filterPairs,
@@ -11,9 +10,15 @@ import {
   MAG_TICKS,
   magnitude,
   magPos,
+  pairShares,
   parseRoute,
+  ptInline,
+  quarterBars,
+  quarterBarsText,
+  referenceFor,
   searchIngredients,
   searchRows,
+  shareDirection,
   SORT_KEYS,
   sortPairs,
   trendSeries,
@@ -180,16 +185,64 @@ test('trend series fills quarters below the minimum with null', () => {
   assert.equal(trendSeries(null, ['2026Q2'])[0].a, null);
 });
 
-test('trend chart: bars, "<3" gaps, provisional mark, escaped text', () => {
-  const svg = trendSvg(
-    [{ quarter: '2026Q1', a: 12 }, { quarter: '2026Q2', a: null }, { quarter: '2026Q3', a: 4 }],
-    { provisionalQuarter: '2026Q3', titleId: 't', descId: 'd', title: 'A & B', desc: 'x<y' },
+test('quarter bars: heights from the tallest count, "<3" quarters without a bar, provisional flag', () => {
+  // Rhabdomyolysis with atorvastatin, first quarters of the real export, plus a quarter under 3.
+  const bars = quarterBars(
+    [{ quarter: '2024Q3', a: 104, prr: 48.7 }, { quarter: '2024Q4', a: 73, prr: 35.3 }, { quarter: '2025Q1', a: null, prr: null }, { quarter: '2026Q2', a: 52, prr: 30 }],
+    '2026Q2',
   );
-  assert.equal((svg.match(/<rect class="bar/g) || []).length, 2);
-  assert.match(svg, /&lt;3/);
-  assert.match(svg, /2026Q3\*/);
-  assert.match(svg, /<title id="t">A &amp; B<\/title>/);
-  assert.match(svg, /<desc id="d">x&lt;y<\/desc>/);
+  assert.deepEqual(bars.map((b) => b.height), [100, (100 * 73) / 104, 0, 50]);
+  assert.deepEqual(bars.map((b) => b.provisional), [false, false, false, true]);
+  assert.equal(bars[2].a, null);
+  assert.equal(quarterBars([{ quarter: '2026Q2', a: 5 }], null)[0].provisional, false);
+  assert.deepEqual(quarterBars([{ quarter: '2026Q2', a: null }], '2026Q2').map((b) => b.height), [0]);
+  assert.equal(
+    quarterBarsText(bars, 'Cases per quarter'),
+    'Cases per quarter. 2024Q3: 104; 2024Q4: 73; 2025Q1: fewer than 3; 2026Q2 (provisional): 52.',
+  );
+});
+
+test('pair shares: a / n_drug and c / (n_total - n_drug), whose ratio is the PRR', () => {
+  // Rhabdomyolysis with atorvastatin in the real export.
+  const p = { a: 873, b: 13643, c: 4216, d: 2839341, n_drug: 14516, n_total: 2858073, prr: 40.56286482350431 };
+  const s = pairShares(p);
+  assert.equal(s.nOther, p.c + p.d);
+  assert.equal(s.drug, 873 / 14516);
+  assert.equal(s.other, 4216 / 2843557);
+  assert.ok(Math.abs(s.drug / s.other - p.prr) < 1e-9);
+  assert.deepEqual([fmtShare2(s.drug), fmtShare2(s.other), fmtAbout(p.prr)], ['6.0%', '0.15%', '41']);
+  assert.equal(pairShares({ a: 1, c: 0, n_drug: 0, n_total: 0 }).drug, null);
+  assert.equal(pairShares({ a: 1, c: 0, n_drug: 5, n_total: 5 }).other, null);
+});
+
+test('share and "about" formats: 2 significant digits at every size', () => {
+  assert.deepEqual([0.0603, 0.001483, 0.30927, 1, 0, 0.00005, null].map(fmtShare2), ['6.0%', '0.15%', '31%', '100%', '0%', '0.0050%', '—']);
+  assert.deepEqual([40.56, 630.5, 2546.6, 13034.6, 2.34, Infinity, null].map(fmtAbout), ['41', '630', '2,500', '13,000', '2.3', '—', '—']);
+});
+
+test('share direction follows the PRR as shown', () => {
+  assert.equal(shareDirection(40.6, fmtRatio(40.6)), 'larger');
+  assert.equal(shareDirection(0.42, fmtRatio(0.42)), 'smaller');
+  assert.equal(shareDirection(1.0004, fmtRatio(1.0004)), 'same');
+  assert.equal(shareDirection(null, '—'), null);
+  assert.equal(shareDirection(Infinity, '∞'), null);
+});
+
+test('reference pair: joined by ingredient name and reaction PT, null otherwise', () => {
+  const rows = [
+    { ingredient_name: 'atorvastatin', reaction_pt: 'Rhabdomyolysis', expected: 'positive', passed: true },
+    { ingredient_name: 'atorvastatin', reaction_pt: 'Pneumonia', expected: 'negative', passed: true },
+  ];
+  assert.equal(referenceFor(rows, 'atorvastatin', 'Rhabdomyolysis'), rows[0]);
+  assert.equal(referenceFor(rows, 'atorvastatin', 'Myalgia'), null);
+  assert.equal(referenceFor(rows, 'simvastatin', 'Rhabdomyolysis'), null);
+  assert.equal(referenceFor(null, 'atorvastatin', 'Rhabdomyolysis'), null);
+});
+
+test('PT inside a sentence: lower first letter, acronyms kept', () => {
+  assert.equal(ptInline('Rhabdomyolysis'), 'rhabdomyolysis');
+  assert.equal(ptInline('International normalised ratio increased'), 'international normalised ratio increased');
+  assert.equal(ptInline('INR increased'), 'INR increased');
 });
 
 test('groupMetrics nests by basis, group, period', () => {

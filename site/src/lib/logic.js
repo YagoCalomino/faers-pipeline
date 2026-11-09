@@ -161,7 +161,56 @@ export function trendSeries(trend, quarters) {
   });
 }
 
-// Data-quality rows -> { [period_basis]: { [metric_group]: { [period_key]: { metric: row } } } }
+// The two shares behind the PRR of a pair: the reaction's share of the ingredient's cases,
+// a / n_drug (n_drug = a + b), and its share of all other cases, c / (n_total - n_drug)
+// (= c + d). Null where a denominator is 0 or missing.
+export function pairShares(p) {
+  const nOther = p.n_total != null && p.n_drug != null ? p.n_total - p.n_drug : null;
+  return {
+    drug: p.n_drug ? p.a / p.n_drug : null,
+    other: nOther ? p.c / nOther : null,
+    nOther,
+  };
+}
+
+// Direction of a PRR as the page words it: 'larger', 'smaller', 'same' (shown as 1) or null.
+export function shareDirection(prr, shown) {
+  if (prr == null || !Number.isFinite(prr)) return null;
+  if (shown === '1') return 'same';
+  return prr > 1 ? 'larger' : 'smaller';
+}
+
+// Bars of the quarterly chart: height in percent of the tallest count; quarters without a count
+// (fewer than signal_min_cases) have no bar. The provisional quarter is flagged.
+export function quarterBars(series, provisionalQuarter) {
+  const max = Math.max(0, ...series.map((s) => s.a ?? 0));
+  return series.map((s) => ({
+    quarter: s.quarter,
+    a: s.a,
+    prr: s.prr,
+    height: s.a == null || max === 0 ? 0 : (100 * s.a) / max,
+    provisional: provisionalQuarter != null && s.quarter === provisionalQuarter,
+  }));
+}
+
+// Text alternative of the quarterly chart: every quarter with its count.
+export function quarterBarsText(bars, title) {
+  const parts = bars.map(
+    (b) => `${b.quarter}${b.provisional ? ' (provisional)' : ''}: ${b.a == null ? 'fewer than 3' : b.a}`,
+  );
+  return `${title}. ${parts.join('; ')}.`;
+}
+
+// Row of json/known_signals.json for a pair (joined by ingredient name and reaction PT), or null.
+export function referenceFor(rows, ingredientName, reactionPt) {
+  return (rows || []).find((r) => r.ingredient_name === ingredientName && r.reaction_pt === reactionPt) ?? null;
+}
+
+// MedDRA PT inside a sentence: first letter lowered unless the term starts with an acronym
+// ("Rhabdomyolysis" -> "rhabdomyolysis", "INR increased" stays).
+export const ptInline = (pt) => (/^[A-Z][a-z]/.test(pt) ? pt[0].toLowerCase() + pt.slice(1) : pt);
+
+// Data-quality rows ->{ [period_basis]: { [metric_group]: { [period_key]: { metric: row } } } }
 export function groupMetrics(rows) {
   const out = {};
   for (const r of rows) {

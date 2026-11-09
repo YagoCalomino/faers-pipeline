@@ -39,6 +39,20 @@ export function fmtShare(v) {
   return missing(v) ? DASH : SHARE.format(v);
 }
 
+// Share with 2 significant digits, for small shares that a whole percent would hide
+// (6.0%, 0.15%, 0.00042%).
+const SHARE_2 = new Intl.NumberFormat('en-US', { style: 'percent', minimumSignificantDigits: 2, maximumSignificantDigits: 2 });
+export function fmtShare2(v) {
+  if (missing(v)) return DASH;
+  return v === 0 ? '0%' : SHARE_2.format(v);
+}
+
+// "About N times": 2 significant digits (40.56 -> 41, 630.5 -> 630, 2,546.6 -> 2,500).
+const ABOUT = new Intl.NumberFormat('en-US', { maximumSignificantDigits: 2 });
+export function fmtAbout(v) {
+  return missing(v) || !Number.isFinite(v) ? DASH : ABOUT.format(v);
+}
+
 // A share that is above 0 but rounds to 0% shows as "<1%".
 export function fmtShareMin(v) {
   return !missing(v) && v > 0 && v < 0.005 ? '<1%' : fmtShare(v);

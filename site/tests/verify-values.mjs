@@ -70,6 +70,9 @@ for (const [slug, ing] of Object.entries(expected)) {
   }
   for (const p of ing.pairs) {
     await page.goto(`${BASE}#/ingredient/${slug}/${p.reaction_key}`);
+    // The 2×2 table is inside "Show the 2×2 table and the formulas": opened before reading it.
+    await page.locator('table.measures td[data-field="prr"]').waitFor();
+    await page.locator('details.t22 > summary').click();
     await page.locator('table.two-by-two td[data-field="a"]').waitFor();
     const where = `${slug}/${p.reaction_pt} (pair)`;
     for (const f of ['a', 'b', 'c', 'd', 'n_total', 'n_drug', 'n_reac']) {

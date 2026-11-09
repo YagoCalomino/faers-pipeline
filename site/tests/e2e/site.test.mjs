@@ -273,26 +273,154 @@ test('country alert: the badge and the pair page give the country and the ingred
   assert.deepEqual(axeIng.violations.map((v) => v.id), [], 'axe on the ingredient page');
   await ing.ctx.close();
   const pair = await open(`#/ingredient/${slug}/${p.reaction_key}`);
-  const callout = await pair.page.locator('.callout.warn').innerText();
-  assert.match(callout, new RegExp(esc(`${pct(p.top_country_share)} of these cases come from ${country(p.top_country)}`)));
-  assert.match(callout, new RegExp(esc(`most frequent country is ${country(p.ingredient_top_country)}`)));
+  // Same badge and one-line reasons as the ingredient row, under the headline.
+  assert.ok((await pair.page.locator('.page-head .pattern').innerText()).includes(text));
+  const detail = await pair.page.locator('.pattern-detail').innerText();
+  assert.match(detail, /^Reporting pattern\s/);
+  assert.match(detail, new RegExp(esc(`${pct(p.top_country_share)} of these cases come from ${country(p.top_country)}`)));
+  assert.match(detail, new RegExp(esc(`most frequent country is ${country(p.ingredient_top_country)}`)));
+  assert.match(detail, /without a pharmacological cause\.$/);
+  // Where the cases come from: the pair's top country against the same country in the ingredient.
+  assert.equal(
+    await pair.page.locator('[data-field="top_country"]').innerText(),
+    `${country(p.top_country)}, ${pct(p.top_country_share)} of cases`,
+  );
+  assert.match(await pair.page.locator('.country-compare').innerText(), new RegExp(esc(ingPct)));
   const axePair = await new AxeBuilder({ page: pair.page }).withTags(AXE_TAGS).analyze();
   assert.deepEqual(axePair.violations.map((v) => v.id), [], 'axe on the pair page');
   await pair.ctx.close();
 });
 
-test('pair: 2x2 cells add up and match the export', async () => {
+// Formats written here, independently of src/lib/format.js.
+const COUNT_FMT = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+const SHARE2_FMT = new Intl.NumberFormat('en-US', { style: 'percent', minimumSignificantDigits: 2, maximumSignificantDigits: 2 });
+const ABOUT_FMT = new Intl.NumberFormat('en-US', { maximumSignificantDigits: 2 });
+const ratioText = (v) =>
+  Math.abs(v) >= 1000 ? COUNT_FMT.format(v) : new Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 }).format(v);
+
+test('pair: headline and two shares from the 2×2 counts; 2×2 table and formulas behind <details>', async () => {
   const { ctx, page } = await open(ROUTES.pair);
+  const p = FIRST_DOC.pairs[0];
+  const ing = FIRST_DOC.ingredient.ingredient_name;
+  const nOther = p.n_total - p.n_drug;
+  const [sDrug, sOther] = [SHARE2_FMT.format(p.a / p.n_drug), SHARE2_FMT.format(p.c / nOther)];
+  assert.ok(p.prr > 1, 'the first fixture pair has a larger share');
+  assert.equal(await page.locator('main h1').innerText(), `${p.reaction_pt} appears in a larger share of ${ing} reports`);
+  assert.equal(
+    (await page.locator('#pair-lede').innerText()).replace(/\s+/g, ' '),
+    `It is named in ${sDrug} of ${ing} cases (${COUNT_FMT.format(p.a)} of ${COUNT_FMT.format(p.n_drug)}), compared with ${sOther} of cases for all other medicines (${COUNT_FMT.format(p.c)} of ${COUNT_FMT.format(nOther)}): a share about ${ABOUT_FMT.format(p.prr)} times larger.`,
+  );
+  assert.match(await page.locator('.page-head .caution').innerText(), /^This describes reports, not how often .+ happens to people taking /);
+  const rows = await page.locator('.share-row .share-val').allInnerTexts();
+  assert.equal(rows.length, 2);
+  assert.ok(rows[0].includes(`${COUNT_FMT.format(p.a)} name`) && rows[0].includes(`(${sDrug})`), rows[0]);
+  assert.ok(rows[1].includes(`${COUNT_FMT.format(p.c)} name`) && rows[1].includes(`(${sOther})`), rows[1]);
+  assert.match(await page.locator('#division').innerText(), new RegExp(reEsc(`gives the PRR, ${ratioText(p.prr)} `)));
+  // Bar lengths follow the shares on one scale (the larger share fills the track).
+  const widths = await page.locator('.share-fill').evaluateAll((fs) => fs.map((f) => parseFloat(f.style.getPropertyValue('--w'))));
+  assert.equal(widths[0], 100);
+  assert.ok(Math.abs(widths[1] - (100 * (p.c / nOther)) / (p.a / p.n_drug)) < 0.01, `${widths[1]}`);
+  // The 2×2 table is closed by default and holds the full counts once opened.
+  const t22 = page.locator('table.two-by-two');
+  assert.equal(await t22.isVisible(), false);
+  await page.locator('details.t22 > summary').click();
+  assert.equal(await t22.isVisible(), true);
   const v = async (f) => Number(await page.locator(`table.two-by-two td[data-field="${f}"]`).getAttribute('data-value'));
   const [a, b, c, d, n] = [await v('a'), await v('b'), await v('c'), await v('d'), await v('n_total')];
   assert.equal(a + b + c + d, n);
-  const p = FIRST_DOC.pairs[0];
-  assert.deepEqual([a, b, c, d, n], [p.a, p.b, p.c, p.d, p.n_total]);
+  assert.deepEqual([a, b, c, d, n, await v('n_drug'), await v('n_reac')], [p.a, p.b, p.c, p.d, p.n_total, p.n_drug, p.n_reac]);
+  const formulas = await page.locator('ul.formulas').innerText();
+  assert.ok(formulas.includes(`(${COUNT_FMT.format(p.a)} / ${COUNT_FMT.format(p.n_drug)}) / (${COUNT_FMT.format(p.c)} / ${COUNT_FMT.format(nOther)}) = ${ratioText(p.prr)}`), formulas);
+  // Measures: plain labels with the technical name, values from the export.
   assert.equal(Number(await page.locator('table.measures td[data-field="prr"]').getAttribute('data-value')), p.prr);
-  assert.equal(await page.locator('svg.trend').count(), 1);
-  // The provisional quarter's bar (if drawn) uses the hatch pattern, not the plain bar color.
-  const fills = await page.locator('svg.trend rect.bar.provisional').evaluateAll((rs) => rs.map((r) => getComputedStyle(r).fill));
-  for (const f of fills) assert.match(f, /url\(/);
+  assert.deepEqual(
+    (await page.locator('table.measures tbody th').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ')),
+    ['How much larger the share is (PRR)', 'Same comparison as odds (ROR)', 'Distance from equal shares (chi-square, χ²)'],
+  );
+  assert.equal(await page.locator('[data-field="is_signal_evans"]').innerText(), p.is_signal_evans ? 'Yes' : 'No');
+  assert.equal(await page.locator('svg').filter({ has: page.locator('rect') }).count(), 0, 'no SVG chart');
+  await ctx.close();
+});
+
+test('pair: quarterly chart in CSS bars, provisional quarter hatched with *, table fallback', async () => {
+  const { ctx, page } = await open(ROUTES.pair);
+  const p = FIRST_DOC.pairs[0];
+  const counts = new Map(p.trend.map((t) => [t.period_key, t.a]));
+  const chart = page.locator('.qchart .qbars[role="img"]');
+  assert.equal(await chart.count(), 1);
+  const alt = await chart.getAttribute('aria-label');
+  for (const q of META.quarters) {
+    const prov = META.last_quarter_is_provisional && q === META.provisional_quarter ? ' (provisional)' : '';
+    assert.ok(alt.includes(`${q}${prov}: ${counts.has(q) ? counts.get(q) : 'fewer than 3'}`), `${q} in "${alt}"`);
+  }
+  assert.equal(await page.locator('.qcol').count(), META.quarters.length);
+  assert.equal(await page.locator('.qcol.none').count(), META.quarters.filter((q) => !counts.has(q)).length);
+  for (const t of await page.locator('.qcol.none .qval').allInnerTexts()) assert.equal(t, '<3');
+  if (META.last_quarter_is_provisional) {
+    const col = page.locator('.qcol.provisional');
+    assert.equal(await col.count(), 1);
+    assert.match(await col.locator('.qlab').innerText(), /\*/);
+    if (counts.has(META.provisional_quarter)) {
+      assert.match(await col.locator('.qbar').evaluate((b) => getComputedStyle(b).backgroundImage), /repeating-linear-gradient/);
+    }
+    assert.match(await page.locator('.qchart figcaption').innerText(), new RegExp(reEsc(`Hatched, with *: ${META.provisional_quarter} is provisional.`)));
+  }
+  // Bars of counted quarters: the tallest fills the scale; height grows with the count.
+  const hs = await page.locator('.qcol:not(.none)').evaluateAll((cs) => cs.map((c) => parseFloat(c.style.getPropertyValue('--h'))));
+  if (hs.length) assert.equal(Math.max(...hs), 100);
+  const table = page.locator('details.trend-details table.trend-table');
+  assert.equal(await table.isVisible(), false);
+  await page.locator('details.trend-details > summary').click();
+  assert.equal(await table.locator('tbody tr').count(), META.quarters.length);
+  assert.equal(await table.locator('caption').count(), 1);
+  await ctx.close();
+});
+
+test('pair: neutral reporting-pattern state, and no validation block outside the reference pairs', async () => {
+  let found;
+  for (const row of SEARCH.rows) {
+    const slug = row[SEARCH.columns.indexOf('slug')];
+    const doc = JSON.parse(readFileSync(resolve(DIST, `data/json/signals/${slug}.json`), 'utf8'));
+    const p = doc.pairs.find((x) => !flagged(x).length);
+    if (p) {
+      found = { slug, p, doc };
+      break;
+    }
+  }
+  assert.ok(found, 'the export has a pair without a reporting pattern');
+  const refs = JSON.parse(readFileSync(resolve(DIST, 'data/json/known_signals.json'), 'utf8'));
+  const isRef = refs.some((r) => r.ingredient_name === found.doc.ingredient.ingredient_name && r.reaction_pt === found.p.reaction_pt);
+  const { ctx, page } = await open(`#/ingredient/${found.slug}/${found.p.reaction_key}`);
+  assert.equal(await page.locator('.page-head .tag-pattern').count(), 0);
+  assert.equal(await page.locator('.pattern-detail .tag-none').innerText(), 'No reporting pattern');
+  assert.match(await page.locator('.pattern-detail p').innerText(), /^None of the three checks flags this pair/);
+  assert.equal(await page.locator('.ref-pair').count(), isRef ? 1 : 0);
+  await ctx.close();
+});
+
+test('pair: the validation block shows the joined known_signals row (test double of the file)', async () => {
+  // The fixture has no reference pair among its exported pairs, so this test serves a copy of
+  // the real known_signals.json whose first row is renamed to the first fixture pair. It checks
+  // the join and the rendering only; the site itself reads the file as exported.
+  const rows = JSON.parse(readFileSync(resolve(DIST, 'data/json/known_signals.json'), 'utf8'));
+  const p = FIRST_DOC.pairs[0];
+  const double = rows.map((r, i) => (i === 0 ? { ...r, ingredient_name: FIRST_DOC.ingredient.ingredient_name, reaction_pt: p.reaction_pt } : r));
+  const ctx = await browser.newContext();
+  await ctx.route('**/data/json/known_signals.json', (route) => route.fulfill({ json: double }));
+  const page = await ctx.newPage();
+  await page.goto(BASE + ROUTES.pair);
+  const block = page.locator('.ref-pair');
+  await block.waitFor();
+  const text = (await block.innerText()).replace(/\s+/g, ' ');
+  assert.ok(text.includes(`One of the ${rows.length} pairs used to check the pipeline`), text);
+  assert.ok(text.includes(double[0].reference), text);
+  const result = await block.locator('[data-field="passed"]').innerText();
+  if (double[0].passed) assert.equal(result, 'As expected');
+  else assert.match(result, /^Not as expected/);
+  assert.ok(text.includes(double[0].expected === 'positive' ? 'Stands out:' : 'Does not meet the Evans rule'), text);
+  assert.equal(await block.locator('a').getAttribute('href'), '#/validation');
+  const res = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
+  assert.deepEqual(res.violations.map((v) => v.id), [], 'axe with the validation block');
   await ctx.close();
 });
 

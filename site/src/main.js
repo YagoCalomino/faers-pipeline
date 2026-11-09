@@ -2,16 +2,17 @@
 // Views: home (search), ingredient, pair, quality, validation, method, downloads.
 import './style.css';
 import { config, meta } from 'virtual:site-config';
-import { trendSvg } from './lib/chart.js';
 import {
   countryLabel,
   DASH,
+  fmtAbout,
   fmtCount,
   fmtInterval,
   fmtMetric,
   fmtPct,
   fmtRatio,
   fmtShare,
+  fmtShare2,
   fmtShareMin,
   rawValue,
 } from './lib/format.js';
@@ -25,9 +26,15 @@ import {
   magPos,
   ingredientHref,
   pairHref,
+  pairShares,
   parseRoute,
+  ptInline,
+  quarterBars,
+  quarterBarsText,
+  referenceFor,
   searchIngredients,
   searchRows,
+  shareDirection,
   SORT_KEYS,
   sortPairs,
   trendSeries,
@@ -527,79 +534,234 @@ document.addEventListener('click', (e) => {
 
 // ---------------------------------------------------------------------------------- pair
 
+// Reference pairs (json/known_signals.json): loaded with the pair, never required by it.
+async function loadReferences() {
+  try {
+    return await getJson('json/known_signals.json');
+  } catch {
+    return [];
+  }
+}
+
+// Headline and plain sentence of a pair, from its counts and PRR (rounded for reading; the
+// exact values are in the measures table and the 2×2 table).
+function pairHeadline(p, ingName) {
+  const dir = shareDirection(p.prr, fmtRatio(p.prr));
+  const pt = esc(p.reaction_pt);
+  const ing = esc(ingName);
+  if (dir === 'larger') return `${pt} appears in a larger share of ${ing} reports`;
+  if (dir === 'smaller') return `${pt} appears in a smaller share of ${ing} reports`;
+  if (dir === 'same') return `${pt} appears in about the same share of ${ing} reports as of other medicines' reports`;
+  return `${pt} in ${ing} reports`;
+}
+
+function pairLede(p, ingName, shares) {
+  const ing = esc(ingName);
+  const first = `It is named in <strong>${fmtShare2(shares.drug)}</strong> of ${ing} cases (${fmtCount(p.a)} of ${fmtCount(p.n_drug)})`;
+  if (!shares.other) return `${first}, and in none of the cases for all other medicines, so the two shares cannot be divided.`;
+  const second = `compared with <strong>${fmtShare2(shares.other)}</strong> of cases for all other medicines (${fmtCount(p.c)} of ${fmtCount(shares.nOther)})`;
+  const dir = shareDirection(p.prr, fmtRatio(p.prr));
+  const tail =
+    dir === 'larger'
+      ? `a share about <strong>${fmtAbout(p.prr)} times larger</strong>`
+      : dir === 'smaller'
+        ? `a share about <strong>${fmtAbout(1 / p.prr)} times smaller</strong>`
+        : 'about the same share';
+  return `${first}, ${second}: ${tail}.`;
+}
+
+// Two shares as bars on one scale (the larger share fills the track). Decorative: the numbers
+// are in the text next to each bar.
+function shareBars(p, ingName, shares) {
+  const top = Math.max(shares.drug ?? 0, shares.other ?? 0);
+  const w = (v) => (top > 0 && v != null ? ((100 * v) / top).toFixed(2) : '0');
+  const pt = esc(ptInline(p.reaction_pt));
+  const row = (label, n, k, share, cls) => `
+      <div class="share-row ${cls}">
+        <p class="share-head"><span>${label}</span> <span class="share-n">${fmtCount(n)} cases</span></p>
+        <span class="share-track" aria-hidden="true"><span class="share-fill" style="--w:${w(share)}%"></span></span>
+        <p class="share-val"><strong>${fmtCount(k)}</strong> name ${pt} (<strong>${fmtShare2(share)}</strong>)</p>
+      </div>`;
+  return `<div class="shares">
+      ${row(`${esc(ingName)} cases`, p.n_drug, p.a, shares.drug, 'share-drug')}
+      ${row("All other medicines' cases", shares.nOther, p.c, shares.other, 'share-other')}
+    </div>`;
+}
+
+// Quarterly chart drawn with CSS bars (role="img" with every value in its text alternative),
+// followed by the same values as a table.
+function quarterChart(series, title) {
+  const provisional = meta.last_quarter_is_provisional ? meta.provisional_quarter : null;
+  const bars = quarterBars(series, provisional);
+  const cols = bars
+    .map((b) => {
+      const [year, q] = [b.quarter.slice(0, 4), b.quarter.slice(4)];
+      const cls = ['qcol', b.provisional ? 'provisional' : '', b.a == null ? 'none' : ''].filter(Boolean).join(' ');
+      return `<span class="${cls}" style="--h:${b.height.toFixed(2)}%"><span class="qval">${b.a == null ? '&lt;3' : fmtCount(b.a)}</span><span class="qbar"></span><span class="qlab">${esc(q)}${b.provisional ? '*' : ''}<br>${esc(year)}</span></span>`;
+    })
+    .join('');
+  const table = `<table class="trend-table">
+          <caption class="sr-only">${esc(title)}</caption>
+          <thead><tr><th scope="col">Quarter</th><th scope="col" class="num">Cases</th><th scope="col" class="num">PRR</th></tr></thead>
+          <tbody>${bars
+            .map(
+              (b) =>
+                `<tr><th scope="row">${esc(b.quarter)}${b.provisional ? '*' : ''}</th>${b.a == null ? '<td class="num">&lt;3</td><td class="num">—</td>' : `${num(b.a, fmtCount(b.a), 'trend_a')}${num(b.prr, fmtRatio(b.prr), 'trend_prr')}`}</tr>`,
+            )
+            .join('')}</tbody>
+        </table>`;
+  return `<figure class="qchart">
+        <div class="qbars" role="img" aria-label="${esc(quarterBarsText(bars, title))}">${cols}</div>
+        <figcaption class="help">${provisional ? `<span class="qkey" aria-hidden="true"></span> Hatched, with *: ${esc(provisional)} is provisional. ` : ''}Quarters with fewer than 3 cases show "&lt;3".</figcaption>
+      </figure>
+      <details class="trend-details">
+        <summary>Show as a table</summary>
+        ${scrollTable('Cases per quarter', table)}
+      </details>`;
+}
+
+// Neutral state of the reporting pattern: which checks were run, from config/site.yaml.
+function noPatternText(rule) {
+  return `None of the three checks flags this pair: ${fmtShare(rule.min_top_quarter_share)} or more of its cases first
+    received in one quarter (checked from ${fmtCount(rule.min_cases_for_quarter_rule)} cases),
+    ${fmtShare(rule.min_top_country_share)} or more from one country other than the ingredient's most frequent
+    (checked from ${fmtCount(rule.min_cases_for_country_rule)} cases), or a median of
+    ${fmtCount(rule.min_median_reactions_per_case)} or more reactions per report.`;
+}
+
+function referenceBlock(ref, total) {
+  if (!ref) return '';
+  const expected =
+    ref.expected === 'positive'
+      ? 'Stands out: at least 3 cases, PRR ≥ 2 and a ROR lower bound above 1 (positive pair)'
+      : 'Does not meet the Evans rule (negative control)';
+  const result = ref.passed
+    ? '<span class="ok">As expected</span>'
+    : `<span class="bad">Not as expected</span>${ref.failure_reason ? ` (${esc(ref.failure_reason)})` : ''}`;
+  return `<section class="ref-pair" aria-labelledby="ref-h">
+      <p class="kicker">Validation · reference pair</p>
+      <h2 id="ref-h">One of the ${fmtCount(total)} pairs used to check the pipeline</h2>
+      <dl class="facts">
+        <div><dt>Label</dt><dd>${esc(REFERENCE_STATUS[ref.reference_status] ?? ref.reference_status ?? DASH)}</dd></div>
+        <div><dt>Reference</dt><dd>${esc(ref.reference ?? DASH)}</dd></div>
+        <div><dt>Expected</dt><dd>${expected}</dd></div>
+        <div><dt>Result</dt><dd data-field="passed">${result}</dd></div>
+      </dl>
+      <p><a href="#/validation">See all ${fmtCount(total)} reference pairs <span aria-hidden="true">→</span></a></p>
+    </section>`;
+}
+
 async function viewPair(slug, reactionKey) {
-  const doc = await loadIngredient(slug);
+  const [doc, refs] = await Promise.all([loadIngredient(slug), loadReferences()]);
   const p = doc?.pairs.find((x) => x.reaction_key === reactionKey);
   if (!doc || !p) return notFound('This ingredient and reaction pair is not in this export.');
   const ing = doc.ingredient;
   setTitle(`${p.reaction_pt} with ${ing.ingredient_name}`);
   const reasons = concentrationReasons(p, config.alert);
   const series = trendSeries(p.trend, meta.quarters);
+  const shares = pairShares(p);
+  const ref = referenceFor(refs, ing.ingredient_name, p.reaction_pt);
   const cell = (v, field) => `<td class="num" data-field="${field}" data-value="${rawValue(v)}">${fmtCount(v)}</td>`;
   const yes = (v) => (v ? 'Yes' : 'No');
-  const alertHtml = reasons.length
-    ? `<div class="callout warn" role="note"><p><strong>Reporting concentration.</strong>
-        ${reasons.map(reasonLong).join(' ')}
+  const ingName = esc(ing.ingredient_name);
+  const ptName = esc(p.reaction_pt);
+  const chartTitle = `Cases of ${p.reaction_pt} with ${ing.ingredient_name} per quarter`;
+  const patternHtml = reasons.length
+    ? `<div class="pattern-detail">${patternTag()}
+        <p>${reasons.map(reasonLong).join(' ')}
         Clusters of reports (litigation, publicity, one reporter sending many long reports) can
         produce strong disproportionality without a pharmacological cause.</p></div>`
-    : '';
-  const chartTitle = `Cases of ${p.reaction_pt} with ${ing.ingredient_name} per quarter`;
-  const chartDesc = series
-    .map((s) => `${s.quarter}: ${s.a == null ? 'fewer than 3' : s.a}`)
-    .join('; ');
+    : `<div class="pattern-detail pattern-none"><span class="tag tag-none">No reporting pattern</span>
+        <p>${noPatternText(config.alert)}</p></div>`;
+  const countryBar = (share) =>
+    `<span class="share-track cbar" aria-hidden="true"><span class="share-fill" style="--w:${share == null ? 0 : (100 * share).toFixed(2)}%"></span></span>`;
   main.innerHTML = `
-    <p class="crumbs"><a href="#/">Search</a> <span aria-hidden="true">/</span>
-      <a href="${ingredientHref(slug)}">${esc(ing.ingredient_name)}</a> <span aria-hidden="true">/</span> ${esc(p.reaction_pt)}</p>
-    <h1 tabindex="-1">${esc(p.reaction_pt)} <span class="h1-sub">with ${esc(ing.ingredient_name)}</span></h1>
-    ${alertHtml}
-    <section aria-labelledby="t22-h">
-      <h2 id="t22-h">Cases, all loaded quarters</h2>
-      ${scrollTable(
-        '2 by 2 table',
-        `<table class="two-by-two">
-          <caption>Distinct cases with and without ${esc(ing.ingredient_name)} (as primary or secondary suspect) and ${esc(p.reaction_pt)}.</caption>
-          <thead><tr><td></td><th scope="col" class="num">With the reaction</th><th scope="col" class="num">Without</th><th scope="col" class="num">Total</th></tr></thead>
-          <tbody>
-            <tr><th scope="row">With the ingredient</th>${cell(p.a, 'a')}${cell(p.b, 'b')}${cell(p.n_drug, 'n_drug')}</tr>
-            <tr><th scope="row">Without</th>${cell(p.c, 'c')}${cell(p.d, 'd')}${cell(p.n_total - p.n_drug, 'n_without_drug')}</tr>
-            <tr><th scope="row">Total</th>${cell(p.n_reac, 'n_reac')}${cell(p.n_total - p.n_reac, 'n_without_reac')}${cell(p.n_total, 'n_total')}</tr>
-          </tbody>
-        </table>`,
-      )}
-      <p class="help">Cells: a = ${fmtCount(p.a)}, b = ${fmtCount(p.b)}, c = ${fmtCount(p.c)}, d = ${fmtCount(p.d)}.</p>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Search</a> <span aria-hidden="true">/</span>
+      <a href="${ingredientHref(slug)}">${ingName}</a> <span aria-hidden="true">/</span> ${ptName}</nav>
+    <section class="page-head" aria-labelledby="pair-h">
+      <p class="kicker">Reaction reported with ${ingName} · MedDRA PT</p>
+      <h1 id="pair-h" tabindex="-1">${pairHeadline(p, ing.ingredient_name)}</h1>
+      <p class="lede" id="pair-lede">${pairLede(p, ing.ingredient_name, shares)}</p>
+      <p class="caution">This describes reports, not how often ${esc(ptInline(p.reaction_pt))} happens to people
+        taking ${ingName}. A larger share is a reason to look closer, not evidence that the medicine
+        causes the reaction.</p>
+      ${patternBadge(reasons)}
     </section>
-    <section aria-labelledby="dp-h">
-      <h2 id="dp-h">Disproportionality</h2>
-      ${scrollTable(
-        'Disproportionality measures',
-        `<table class="measures">
-          <thead><tr><th scope="col">Measure</th><th scope="col" class="num">Value</th><th scope="col" class="num">95% CI lower</th><th scope="col" class="num">95% CI upper</th></tr></thead>
-          <tbody>
-            <tr><th scope="row">PRR</th>${num(p.prr, fmtRatio(p.prr), 'prr')}${num(p.prr_lcl, fmtRatio(p.prr_lcl), 'prr_lcl')}${num(p.prr_ucl, fmtRatio(p.prr_ucl), 'prr_ucl')}</tr>
-            <tr><th scope="row">ROR</th>${num(p.ror, fmtRatio(p.ror), 'ror')}${num(p.ror_lcl, fmtRatio(p.ror_lcl), 'ror_lcl')}${num(p.ror_ucl, fmtRatio(p.ror_ucl), 'ror_ucl')}</tr>
-            <tr><th scope="row">χ²</th>${num(p.chi2, fmtRatio(p.chi2), 'chi2')}<td></td><td></td></tr>
-          </tbody>
-        </table>`,
-      )}
-      <dl class="flags">
-        <div><dt>Evans criterion (a ≥ 3, PRR ≥ 2, χ² ≥ 4)</dt><dd data-field="is_signal_evans">${yes(p.is_signal_evans)}</dd></div>
-        <div><dt>ROR criterion (a ≥ 3, ROR lower bound &gt; 1)</dt><dd data-field="is_signal_ror">${yes(p.is_signal_ror)}</dd></div>
-      </dl>
-      <details class="formulas">
-        <summary>Formulas</summary>
-        <ul>
-          <li>PRR = [a/(a+b)] / [c/(c+d)]; 95% CI = exp(ln PRR ± 1.96·SE), SE = √(1/a − 1/(a+b) + 1/c − 1/(c+d)).</li>
-          <li>ROR = (a·d) / (b·c); 95% CI = exp(ln ROR ± 1.96·SE), SE = √(1/a + 1/b + 1/c + 1/d).</li>
-          <li>χ² = N(ad − bc)² / [(a+b)(c+d)(a+c)(b+d)], Pearson, 1 degree of freedom, no continuity correction.</li>
+    <section aria-labelledby="shares-h">
+      <h2 id="shares-h">Two shares, side by side</h2>
+      <p class="help">The 2×2 table counts distinct cases by medicine (${ingName} as primary or
+        secondary suspect, or not) and by whether they name the reaction.</p>
+      ${shareBars(p, ing.ingredient_name, shares)}
+      <p class="division" id="division">${
+        p.prr != null && Number.isFinite(p.prr)
+          ? `${fmtShare2(shares.drug)} ÷ ${fmtShare2(shares.other)}: dividing the first share by the second gives the PRR, <strong>${fmtRatio(p.prr)}</strong> (from the unrounded shares).`
+          : 'The PRR cannot be computed for this pair.'
+      }</p>
+      <details class="t22">
+        <summary>Show the 2×2 table and the formulas</summary>
+        ${scrollTable(
+          '2 by 2 table',
+          `<table class="two-by-two">
+            <caption>Distinct cases with and without ${ingName} (as primary or secondary suspect) and ${ptName}.</caption>
+            <thead><tr><td></td><th scope="col" class="num">Name ${ptName}</th><th scope="col" class="num">Other reactions only</th><th scope="col" class="num">Total</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">${ingName} cases</th>${cell(p.a, 'a')}${cell(p.b, 'b')}${cell(p.n_drug, 'n_drug')}</tr>
+              <tr><th scope="row">All other medicines' cases</th>${cell(p.c, 'c')}${cell(p.d, 'd')}${cell(p.n_total - p.n_drug, 'n_without_drug')}</tr>
+              <tr><th scope="row">Total</th>${cell(p.n_reac, 'n_reac')}${cell(p.n_total - p.n_reac, 'n_without_reac')}${cell(p.n_total, 'n_total')}</tr>
+            </tbody>
+          </table>`,
+        )}
+        <p class="help">Cells: a = ${fmtCount(p.a)}, b = ${fmtCount(p.b)}, c = ${fmtCount(p.c)}, d = ${fmtCount(p.d)}.</p>
+        <ul class="formulas">
+          <li>PRR = [a/(a+b)] / [c/(c+d)] = (${fmtCount(p.a)} / ${fmtCount(p.n_drug)}) / (${fmtCount(p.c)} / ${fmtCount(shares.nOther)}) = ${fmtRatio(p.prr)}; 95% CI = exp(ln PRR ± 1.96·SE), SE = √(1/a − 1/(a+b) + 1/c − 1/(c+d)) = ${fmtInterval(p.prr_lcl, p.prr_ucl)}.</li>
+          <li>ROR = (a·d) / (b·c) = (${fmtCount(p.a)} × ${fmtCount(p.d)}) / (${fmtCount(p.b)} × ${fmtCount(p.c)}) = ${fmtRatio(p.ror)}; 95% CI = exp(ln ROR ± 1.96·SE), SE = √(1/a + 1/b + 1/c + 1/d) = ${fmtInterval(p.ror_lcl, p.ror_ucl)}.</li>
+          <li>χ² = N(ad − bc)² / [(a+b)(c+d)(a+c)(b+d)], Pearson, 1 degree of freedom, no continuity correction = ${fmtRatio(p.chi2)}.</li>
         </ul>
       </details>
     </section>
+    <section aria-labelledby="dp-h">
+      <h2 id="dp-h">Measures</h2>
+      ${scrollTable(
+        'Disproportionality measures',
+        `<table class="measures">
+          <caption class="sr-only">Disproportionality measures of ${ptName} with ${ingName}</caption>
+          <thead><tr><th scope="col">Measure</th><th scope="col" class="num">Value</th><th scope="col" class="num">95% CI lower</th><th scope="col" class="num">95% CI upper</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">How much larger the share is <span class="tech">(PRR)</span></th>${num(p.prr, fmtRatio(p.prr), 'prr')}${num(p.prr_lcl, fmtRatio(p.prr_lcl), 'prr_lcl')}${num(p.prr_ucl, fmtRatio(p.prr_ucl), 'prr_ucl')}</tr>
+            <tr><th scope="row">Same comparison as odds <span class="tech">(ROR)</span></th>${num(p.ror, fmtRatio(p.ror), 'ror')}${num(p.ror_lcl, fmtRatio(p.ror_lcl), 'ror_lcl')}${num(p.ror_ucl, fmtRatio(p.ror_ucl), 'ror_ucl')}</tr>
+            <tr><th scope="row">Distance from equal shares <span class="tech">(chi-square, χ²)</span></th>${num(p.chi2, fmtRatio(p.chi2), 'chi2')}<td></td><td></td></tr>
+          </tbody>
+        </table>`,
+      )}
+      <p class="help">The 95% CI is the plausible range of each ratio.</p>
+      <dl class="flags">
+        <div><dt>Screening rule met: Evans <span class="tech">(a ≥ 3, PRR ≥ 2, χ² ≥ 4)</span></dt><dd data-field="is_signal_evans">${yes(p.is_signal_evans)}</dd></div>
+        <div><dt>Screening rule met: ROR <span class="tech">(a ≥ 3, ROR lower bound &gt; 1)</span></dt><dd data-field="is_signal_ror">${yes(p.is_signal_ror)}</dd></div>
+      </dl>
+      <p class="help">Meeting a rule flags a pair for review; it does not confirm an effect of the drug.</p>
+    </section>
+    <section aria-labelledby="trend-h">
+      <h2 id="trend-h">Cases per quarter</h2>
+      <p class="help">Quarter in which the FDA first received each case.${meta.last_quarter_is_provisional ? ` ${esc(meta.provisional_quarter)}* is provisional: its count grows as later files arrive.` : ''} Quarters with fewer than 3 cases show "&lt;3". Cases first received before ${esc(meta.first_quarter)} count in the totals above but not here. The PS/SS share changes by quarter (see the <a href="#/quality">Quality</a> page).</p>
+      ${quarterChart(series, chartTitle)}
+    </section>
     <section aria-labelledby="conc-h">
       <h2 id="conc-h">Where the cases come from</h2>
+      <p class="help">The export keeps the most frequent reporter country of the pair and of the
+        ingredient, not the full country mix.</p>
+      ${
+        p.top_country
+          ? `<div class="country-compare">
+        <p class="cc-head">${esc(countryLabel(p.top_country))}: the most frequent reporter country for this pair</p>
+        <div class="cc-row"><span class="cc-label">This pair (${fmtCount(p.a)} cases)</span>${countryBar(p.top_country_share)}<span class="cc-val">${fmtShare(p.top_country_share)}</span></div>
+        <div class="cc-row"><span class="cc-label">All ${ingName} cases</span>${countryBar(p.ingredient_country_share)}<span class="cc-val">${fmtShareMin(p.ingredient_country_share)}</span></div>
+      </div>`
+          : ''
+      }
       <dl class="facts">
-        <div><dt>Most frequent reporter country</dt><dd>${p.top_country ? `${esc(p.top_country)}, ${fmtShare(p.top_country_share)} of cases` : DASH}</dd></div>
+        <div><dt>Most frequent reporter country, this pair</dt><dd data-field="top_country">${p.top_country ? `${esc(countryLabel(p.top_country))}, ${fmtShare(p.top_country_share)} of cases` : DASH}</dd></div>
         <div><dt>Same country, all cases of the ingredient</dt><dd>${p.top_country ? `${fmtShareMin(p.ingredient_country_share)} ${esc(p.top_country)}` : DASH}</dd></div>
-        <div><dt>Ingredient's most frequent country</dt><dd>${p.ingredient_top_country ? `${esc(p.ingredient_top_country)}, ${fmtShare(p.ingredient_top_country_share)} of its cases` : DASH}</dd></div>
+        <div><dt>Ingredient's most frequent country</dt><dd>${p.ingredient_top_country ? `${esc(countryLabel(p.ingredient_top_country))}, ${fmtShare(p.ingredient_top_country_share)} of its cases` : DASH}</dd></div>
         <div><dt>Most frequent first-receipt quarter</dt><dd>${p.top_quarter ? `${esc(p.top_quarter)}, ${fmtShare(p.top_quarter_share)} of cases` : DASH}</dd></div>
         <div><dt>Median reactions per report</dt><dd>${p.median_reactions_per_case == null ? DASH : fmtCount(p.median_reactions_per_case)}</dd></div>
       </dl>
@@ -607,23 +769,11 @@ async function viewPair(slug, reactionKey) {
         not unusual by itself. The rule that marks a pair as concentrated is on the
         <a href="#/method">Method &amp; limitations</a> page.</p>
     </section>
-    <section aria-labelledby="trend-h">
-      <h2 id="trend-h">Cases per quarter</h2>
-      <p class="help">Quarter in which the FDA first received each case.${meta.last_quarter_is_provisional ? ` ${esc(meta.provisional_quarter)}* is provisional: its count grows as later files arrive.` : ''} Quarters with fewer than 3 cases show "&lt;3". Cases first received before ${esc(meta.first_quarter)} count in the totals above but not here. The PS/SS share changes by quarter (see the <a href="#/quality">Quality</a> page).</p>
-      <figure class="chart">${trendSvg(series, { provisionalQuarter: meta.provisional_quarter, titleId: 'trend-title', descId: 'trend-desc', title: chartTitle, desc: chartDesc })}</figure>
-      ${scrollTable(
-        'Cases per quarter',
-        `<table class="trend-table">
-          <thead><tr><th scope="col">Quarter</th><th scope="col" class="num">Cases</th><th scope="col" class="num">PRR</th></tr></thead>
-          <tbody>${series
-            .map(
-              (s) =>
-                `<tr><th scope="row">${esc(s.quarter)}${s.quarter === meta.provisional_quarter && meta.last_quarter_is_provisional ? '*' : ''}</th>${s.a == null ? '<td class="num">&lt;3</td><td class="num">—</td>' : `${num(s.a, fmtCount(s.a), 'trend_a')}${num(s.prr, fmtRatio(s.prr), 'trend_prr')}`}</tr>`,
-            )
-            .join('')}</tbody>
-        </table>`,
-      )}
-    </section>`;
+    <section aria-labelledby="pat-h">
+      <h2 id="pat-h">Reporting pattern</h2>
+      ${patternHtml}
+    </section>
+    ${referenceBlock(ref, refs.length)}`;
   announce(`${p.reaction_pt} with ${ing.ingredient_name}`);
 }
 
