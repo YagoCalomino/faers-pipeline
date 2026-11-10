@@ -99,6 +99,35 @@ test('every page renders its heading, banner, notice and footer, with no externa
   }
 });
 
+test('head: description and link-preview tags point at the public site; the image is small', async () => {
+  const { ctx, page } = await open(ROUTES.home);
+  const meta = (sel) => page.locator(`head meta[${sel}]`).getAttribute('content');
+  const url = SITE_CFG.site.public_url;
+  const desc = SITE_CFG.site.description;
+  assert.equal(await meta('name="description"'), desc);
+  assert.equal(await meta('property="og:description"'), desc);
+  assert.equal(await meta('name="twitter:description"'), desc);
+  assert.equal(await meta('property="og:title"'), SITE_CFG.site.title);
+  assert.equal(await meta('property="og:url"'), url);
+  assert.equal(await meta('property="og:image"'), `${url}og-image.jpg`);
+  assert.equal(await meta('name="twitter:image"'), `${url}og-image.jpg`);
+  assert.equal(await meta('name="twitter:card"'), 'summary_large_image');
+  // The image ships with the site: 1200x630 JPEG under 100 KB.
+  const img = readFileSync(resolve(DIST, 'og-image.jpg'));
+  assert.ok(img.length < 100_000, `${img.length} bytes`);
+  let i = 2;
+  let size = null;
+  while (i < img.length && !size) {
+    const marker = img[i + 1];
+    if (marker >= 0xc0 && marker <= 0xc2) size = [img.readUInt16BE(i + 7), img.readUInt16BE(i + 5)];
+    i += 2 + img.readUInt16BE(i + 2);
+  }
+  assert.deepEqual(size, [1200, 630]);
+  assert.equal(await meta('property="og:image:width"'), '1200');
+  assert.equal(await meta('property="og:image:height"'), '630');
+  await ctx.close();
+});
+
 test('home: search by keyboard opens the ingredient', async () => {
   const { ctx, page } = await open(ROUTES.home);
   const name = FIRST_DOC.ingredient.ingredient_name;

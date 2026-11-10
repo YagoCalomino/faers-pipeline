@@ -45,6 +45,10 @@ site:
   repo: "faers-pipeline"
   base_path: "/faers-pipeline/"
   public_url: "https://yagocalomino.github.io/faers-pipeline/"
+  # Page description for search engines and link previews (<meta name="description">, Open
+  # Graph and Twitter tags). The preview image og-image.jpg is made by
+  # site/scripts/readme-shots.mjs from the home page (1200x630).
+  description: "Look up a medicine to see which reactions take up a larger share of its reports to the FDA than of other medicines' reports. It shows patterns in reporting, not proof that a medicine causes anything."
   repo_url: "https://github.com/YagoCalomino/faers-pipeline"
   # Branch written by make publish-site (orphan, one commit). Pushing it is a manual step.
   pages_branch: "gh-pages"

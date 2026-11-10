@@ -23,6 +23,8 @@ const REPO = resolve(HERE, '..');
 const EXPORT_DIR = resolve(HERE, process.env.SITE_EXPORT || '../data/site_export');
 const OUT_DIR = resolve(HERE, process.env.SITE_OUT || 'dist');
 const EXPORT_SCHEMA_VERSION = 2;
+// Link-preview image (Open Graph, Twitter), made by scripts/readme-shots.mjs from the home page.
+const OG_IMAGE = { src: 'src/og/og-image.jpg', out: 'og-image.jpg', width: 1200, height: 630 };
 const DATA_ENTRIES = ['meta.json', 'manifest.json', 'json', 'parquet'];
 // Branch the Method page links to on GitHub.
 const SOURCE_BRANCH = 'main';
@@ -62,12 +64,14 @@ function loadInputs() {
       fdaUrl: faersCfg.source.landing_page,
       parquet,
     },
+    // Head tags only: kept out of the bundle, whose URLs must start with an allowed link prefix.
+    head: { public_url: siteCfg.site.public_url, description: siteCfg.site.description },
   };
 }
 
 // The header banner, notice and footer are part of the static HTML: they show before any data
 // loads and without JavaScript.
-function shellHtml(meta, config) {
+function shellHtml(meta, config, head) {
   // Dashed tag: the shared "provisional" motif (dashed tag here, hatched bar and * in charts).
   const provisional = meta.last_quarter_is_provisional
     ? ` <span class="tag tag-provisional" title="Its cases are still growing as later FAERS files arrive">Latest quarter (${esc(meta.provisional_quarter)}) is provisional</span>`
@@ -87,6 +91,24 @@ function shellHtml(meta, config) {
       `<p class="footer-last">Data exported ${esc(meta.export_date)} (UTC). Not medical advice. Static site: no tracking, no external requests. <a href="#/method">Method &amp; limitations</a> · <a href="#/downloads">Downloads</a> · <a href="${esc(config.site.repo_url)}" rel="noopener">Source code</a> · Built by <a href="${esc(author.url)}" rel="noopener">${esc(author.name)}</a></p>`,
     ].join('\n'),
     '<!--TITLE-->': esc(config.site.title),
+    // Description and link previews. Absolute URLs, as Open Graph requires; nothing is loaded
+    // from them by the page.
+    '<!--META-->': [
+      `<meta name="description" content="${esc(head.description)}" />`,
+      `<meta property="og:type" content="website" />`,
+      `<meta property="og:site_name" content="${esc(config.site.title)}" />`,
+      `<meta property="og:title" content="${esc(config.site.title)}" />`,
+      `<meta property="og:description" content="${esc(head.description)}" />`,
+      `<meta property="og:url" content="${esc(head.public_url)}" />`,
+      `<meta property="og:image" content="${esc(head.public_url + OG_IMAGE.out)}" />`,
+      `<meta property="og:image:width" content="${OG_IMAGE.width}" />`,
+      `<meta property="og:image:height" content="${OG_IMAGE.height}" />`,
+      `<meta property="og:image:alt" content="${esc(`Home page of the ${config.site.title}`)}" />`,
+      `<meta name="twitter:card" content="summary_large_image" />`,
+      `<meta name="twitter:title" content="${esc(config.site.title)}" />`,
+      `<meta name="twitter:description" content="${esc(head.description)}" />`,
+      `<meta name="twitter:image" content="${esc(head.public_url + OG_IMAGE.out)}" />`,
+    ].join('\n    '),
   };
 }
 
@@ -159,7 +181,7 @@ export const plain = ${JSON.stringify(siteCfg.method_page.plain)};`;
     transformIndexHtml(html) {
       inputs = inputs || loadInputs();
       let out = html;
-      for (const [k, v] of Object.entries(shellHtml(inputs.meta, inputs.config))) out = out.replaceAll(k, v);
+      for (const [k, v] of Object.entries(shellHtml(inputs.meta, inputs.config, inputs.head))) out = out.replaceAll(k, v);
       return out;
     },
     configureServer(server) {
@@ -171,6 +193,7 @@ export const plain = ${JSON.stringify(siteCfg.method_page.plain)};`;
       writeFileSync(join(OUT_DIR, '.nojekyll'), '');
       // The SIL OFL requires the license to travel with the font files (Source Serif 4).
       cpSync(join(HERE, 'src/fonts/OFL.txt'), join(OUT_DIR, 'fonts/OFL.txt'));
+      cpSync(join(HERE, OG_IMAGE.src), join(OUT_DIR, OG_IMAGE.out));
       for (const entry of DATA_ENTRIES) {
         const src = join(EXPORT_DIR, entry);
         if (existsSync(src)) cpSync(src, join(OUT_DIR, 'data', entry), { recursive: true });

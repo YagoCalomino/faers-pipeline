@@ -3,6 +3,8 @@
 //   resources  nothing loaded from another origin: no http(s):// or protocol-relative URL in
 //              src, link href, CSS url() or JS imports; no root-absolute URL ("/x" breaks under
 //              the /<repo>/ base path of a GitHub Pages project site)
+//   meta       absolute URLs in <meta content> (link previews) start with site.public_url, and
+//              the files they name exist in the build
 //   links      relative references in HTML and CSS point to files that exist; external
 //              hyperlinks (also those in the JS bundle) start with an allowed prefix
 //   data       data/manifest.json matches the copied files (size and sha256); every ingredient
@@ -75,6 +77,13 @@ for (const f of files.filter((x) => x.path.endsWith('.html'))) {
   }
   for (const m of html.matchAll(/<a\b[^>]*\bhref="([^"]*)"/gi)) checkRef(f.path, m[1], 'link');
   if (/@import|<style[^>]*>[^<]*url\(/i.test(html)) problems.push(`${f.path}: inline CSS import or url()`);
+  // Link-preview tags hold absolute URLs (Open Graph needs them); the page loads nothing from
+  // them. They must point at the public site, and the image must be in the build.
+  for (const m of html.matchAll(/<meta\b[^>]*\bcontent="((?:https?:)?\/\/[^"]*)"/gi)) {
+    const url = m[1];
+    if (!url.startsWith(cfg.site.public_url)) problems.push(`${f.path}: meta URL ${url} outside ${cfg.site.public_url}`);
+    else if (url !== cfg.site.public_url) checkRef(f.path, url.slice(cfg.site.public_url.length), 'resource');
+  }
 }
 for (const f of files.filter((x) => x.path.endsWith('.css'))) {
   const css = readFileSync(join(dist, f.path), 'utf8');
