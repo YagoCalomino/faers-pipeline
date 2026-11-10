@@ -4,7 +4,7 @@
 |---|---|
 | [runbook.md](runbook.md) | How to operate the pipeline: start, unpause, backfill, re-run a quarter, rebuild the RxNorm cache or the warehouse, export and publish the site, what to do when a task fails. |
 | [data_dictionary.md](data_dictionary.md) | Tables and columns of the marts: dimensions, facts and the signals schema, plus the reference seeds. Staging and intermediate models are described in their dbt `.yml` files. |
-| [limitations.md](limitations.md) | What the numbers can and cannot say: drug-name mapping, the disproportionality method and its limits, reporting patterns, validation against known pairs, operational limits, MedDRA terms. The site's "Method & limitations" page shows the sections listed in `config/site.yaml` (`method_page`); operational limits stay here. |
+| [limitations.md](limitations.md) | What the numbers can and cannot say: drug-name mapping, the disproportionality method and its limits, reporting patterns, validation against known pairs, operational limits, MedDRA terms. The site's "Method & limitations" page opens with a plain-language layer (`config/site.yaml` `method_page.plain`) and then shows the sections listed in `method_page.sections`, collapsed; operational limits stay here. |
 | [calibration/](calibration/) | Evidence behind calibrated settings: the labelled RxNorm sample with its marks. |
 | [numbers.md](numbers.md) | Counts, coverage, build and run times, disk and site sizes, generated from the warehouse and recorded measurements (`make readme-numbers`). |
 | [adr/](adr/) | Architecture decision records (below). |
@@ -18,6 +18,7 @@
 | [0002](adr/0002-dbt-version.md) | dbt Core with dbt-duckdb and the classic parser; the new parser is checked for compatibility only. | accepted |
 | [0003](adr/0003-site-tooling.md) | A hand-written static site (Vite, plain JavaScript) reading per-ingredient JSON, published from an orphan `gh-pages` branch. | accepted |
 | [0004](adr/0004-meddra-terms.md) | No downloadable dataset of MedDRA terms: the Parquet tables with reaction terms are not published; the site pages show the terms as they appear in FAERS, with a trademark notice. | accepted |
+| [0005](adr/0005-public-ui-redesign.md) | A plain-language public interface: design tokens with light and dark themes, a self-hosted serif font, a tested vocabulary, "Reporting pattern" as the site's name for the concentration alert; same routes and data. | accepted |
 
 Each ADR has a status, a date, the context with the measurements behind it, the decision and
 its consequences.
