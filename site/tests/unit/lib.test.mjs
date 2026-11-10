@@ -23,7 +23,7 @@ import {
   sortPairs,
   trendSeries,
 } from '../../src/lib/logic.js';
-import { dropTitle, linkRepoPaths, selectSections, wrapTables } from '../../src/lib/markdown.js';
+import { collapseSections, dropTitle, linkRepoPaths, selectSections, wrapTables } from '../../src/lib/markdown.js';
 
 const RULE = {
   min_top_quarter_share: 0.8,
@@ -302,4 +302,16 @@ test('linkRepoPaths: known repository paths become GitHub links, the rest stays 
 test('dropTitle: removes only a leading level-1 heading', () => {
   assert.equal(dropTitle('<h1 id="k">Known limitations</h1>\n<p>x</p><h1>y</h1>'),'<p>x</p><h1>y</h1>');
   assert.equal(dropTitle('<p>x</p>'), '<p>x</p>');
+});
+
+test('collapseSections: lead kept, each section under its heading one level down, body in <details>', () => {
+  const html = '<p>Lead text.</p>\n<h2>Signals (PRR, ROR)</h2>\n<p>Intro.</p>\n<h3>Method</h3>\n<p>M.</p>\n<h3>Limits</h3>\n<p>L.</p>\n<h2>MedDRA terms</h2>\n<p>Notice.</p>\n';
+  const { lead, sections } = collapseSections(html);
+  assert.equal(lead, '<p>Lead text.</p>\n');
+  assert.match(sections, /<section class="doc-section" aria-labelledby="doc-s1"><h3 id="doc-s1">Signals \(PRR, ROR\)<\/h3>/);
+  assert.match(sections, /<p class="help doc-covers">Covers: Method · Limits\.<\/p>/);
+  assert.match(sections, /<summary>Show the full section: Signals \(PRR, ROR\)<\/summary><div class="doc-body">\n?<p>Intro\.<\/p>\n<h4>Method<\/h4>\n<p>M\.<\/p>\n<h4>Limits<\/h4>/);
+  assert.match(sections, /<h3 id="doc-s2">MedDRA terms<\/h3><details class="doc-details"><summary>Show the full section: MedDRA terms<\/summary><div class="doc-body"><p>Notice\.<\/p>/);
+  assert.ok(!/<h2/.test(sections), 'no level-2 heading left');
+  assert.equal(collapseSections('<h2>A</h2><p>x</p>').lead, '');
 });

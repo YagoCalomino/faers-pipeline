@@ -1313,6 +1313,186 @@ table.measures tbody th {
   margin-bottom: 0;
 }
 
+/* Method page: plain layer */
+.plain-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 8px 40px;
+  margin: 8px 0 16px;
+}
+.plain-box {
+  border-top: 1px solid var(--color-text);
+}
+.plain-box h2 {
+  margin: 14px 0 6px;
+  font-size: 20px;
+}
+.plain-box p {
+  max-width: 62ch;
+}
+.plain-list,
+.read-steps {
+  max-width: 62ch;
+  margin: 0;
+  padding-left: 1.3rem;
+}
+.plain-list li,
+.read-steps li {
+  margin: 0 0 8px;
+}
+.plain-sec {
+  max-width: 48rem;
+  margin-top: 2rem;
+}
+.glossary {
+  margin: 0;
+}
+.glossary div {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: 4px 24px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+@media (max-width: 40rem) {
+  .glossary div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Method page: the sections of docs/limitations.md, each collapsed under its heading */
+.doc {
+  margin-top: 2.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-text);
+}
+.doc-section {
+  border-bottom: 1px solid var(--color-divider);
+}
+.doc-section h3 {
+  margin: 18px 0 4px;
+}
+.doc-covers {
+  margin: 0;
+}
+.doc-details {
+  margin: 4px 0 8px;
+}
+.doc-body {
+  padding-bottom: 8px;
+}
+
+/* Validation page: the text columns keep a readable width (the table scrolls in its region). */
+table.known td.expected {
+  min-width: 6.5rem;
+}
+table.known td:last-child {
+  min-width: 12rem;
+}
+table.known thead th {
+  white-space: normal;
+}
+
+/* Quality page: the steps from FDA files to counted cases */
+#steps-h {
+  margin-top: 0.5rem;
+}
+.dq-steps {
+  max-width: 48rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dq-steps li {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+.dq-steps .n {
+  font-size: 26px;
+  line-height: 1;
+  color: var(--color-accent-700);
+}
+.dq-step h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.dq-step p {
+  margin: 2px 0 0;
+  font-size: 15px;
+  color: var(--color-muted);
+}
+.dq-val {
+  margin: 0;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+@media (max-width: 30rem) {
+  .dq-steps li {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+  }
+  .dq-val {
+    grid-column: 2;
+  }
+}
+.metric-help {
+  max-width: 60rem;
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--color-muted);
+}
+.metric-help div {
+  display: block;
+  padding: 2px 0;
+}
+.metric-help dt,
+.metric-help dd {
+  display: inline;
+}
+.metric-help dt {
+  color: var(--color-text);
+}
+.metric-help dt::after {
+  content: ': ';
+}
+
+/* Downloads page */
+.dl-files {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  gap: 20px 32px;
+  margin: 20px 0;
+}
+.dl-file {
+  min-width: 0;
+  padding: 4px 18px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+.dl-file h2 {
+  font-size: 20px;
+}
+.dl-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+a.btn {
+  text-decoration: none;
+}
+.dl-meta {
+  font-size: 14px;
+  color: var(--color-muted);
+}
+.dl-file .hash {
+  overflow-wrap: anywhere;
+}
+
 /* Rendered docs/limitations.md */
 .prose {
   max-width: 48rem;

@@ -92,11 +92,143 @@ concentration_alert:
 # rendered on the site, by exact heading. The text before the first section is always kept.
 # Other sections, such as "Operational limits" (local paths, the Windows bind mount, failure
 # callbacks), stay in the repository only. The build fails if a listed heading is missing.
+# On the page each section is collapsed under its heading, after the plain layer below.
 method_page:
   sections:
     - "Signals (PRR, ROR)"
     - "RxNorm normalization of drug names"
     - "MedDRA terms"
+  # Plain-language layer shown above the detailed sections. docs/limitations.md stays the source
+  # of the method: every sentence here must agree with it. scripts/check_docs.py (make lint)
+  # checks that the thresholds written here match config/signals.yaml, config/rxnorm.yaml and
+  # concentration_alert above, and the vocabulary test scans these texts.
+  plain:
+    intro: >-
+      This site counts cases reported to the FDA and compares them. For each active ingredient,
+      it looks for reactions that take up a larger share of the ingredient's reports than of the
+      reports of all other medicines in FAERS. That comparison is called disproportionality.
+    can:
+      - >-
+        Which reactions take up a larger share of an ingredient's reports than of all other
+        reports in FAERS, for every pair with at least 3 cases.
+      - >-
+        How much larger that share is (PRR and ROR), with a 95% CI that shows how precise the
+        estimate is.
+      - >-
+        Whether a pair meets the Evans rule or the ROR rule, two common screening rules.
+      - >-
+        How many cases a pair has in each quarter, and which country most of its cases come
+        from.
+      - >-
+        Whether a pair shows a reporting pattern worth checking: cases bunched in one quarter or
+        in one unusual country, or very long reports.
+    cannot:
+      - >-
+        Whether the medicine caused it. A larger share is a hypothesis for review, not a
+        finding about the drug.
+      - >-
+        How often a reaction happens to people who take the medicine. The site does not measure
+        incidence or risk: it has counts of reports, not of the people who took a medicine.
+      - >-
+        Which medicine is safer, or what you should do. This is not medical advice; talk to a
+        doctor or pharmacist.
+      - >-
+        How two medicines compare by their number of reports: counts depend on market size and
+        on manufacturer and support-program reporting.
+    not_proof:
+      intro: >-
+        A screening rule flags a pair for review. It is not evidence that the medicine causes the
+        reaction, because what gets reported depends on more than the medicine:
+      reasons:
+        - >-
+          Clusters of reports (litigation, publicity, one reporter sending many cases) can make a
+          share large without a pharmacological cause.
+        - >-
+          A medicine is reported with the reactions of the illness it treats and of the medicines
+          given with it (confounding by indication and co-medication).
+        - >-
+          Hundreds of thousands of pairs are compared, so chance alone puts many of them above
+          the screening rules (multiplicity).
+        - >-
+          Pairs with few cases are unstable: a few cases can give a very high ratio with a wide
+          interval.
+        - >-
+          Solicited and study reports count like spontaneous ones, and the same event sent by
+          different reporters stays as separate cases.
+        - >-
+          Heavily reported medicines sit in the comparison group of every other medicine and can
+          hide a larger share (masking).
+    read_pair:
+      - >-
+        Read the headline and the two shares: the reaction's share of the ingredient's reports,
+        next to its share of the reports of all other medicines.
+      - >-
+        Check the number of cases. Only pairs with at least 3 cases are shown, and with few cases
+        the numbers move a lot.
+      - >-
+        Look at the lower end of the 95% CI. When it is close to 1, the larger share may be
+        chance.
+      - >-
+        Look for the reporting-pattern badge and at the cases per quarter. The latest quarter is
+        provisional.
+      - >-
+        Keep in mind what it is: a reason to look closer, not evidence that the medicine causes
+        the reaction.
+    glossary:
+      - term: "PRR (proportional reporting ratio)"
+        definition: >-
+          How much larger the share is: the reaction's share of the ingredient's cases divided by
+          its share of all other cases, [a/(a+b)] / [c/(c+d)]. 1 means equal shares.
+      - term: "ROR (reporting odds ratio)"
+        definition: >-
+          The same comparison made with odds instead of shares, ad/(bc). 1 means equal odds.
+      - term: "SDR (signal of disproportionate reporting)"
+        definition: >-
+          What "signal" means on this site: a pair that meets a screening rule. A statistical
+          hypothesis for review, not a confirmed safety signal.
+      - term: "Case"
+        definition: >-
+          One FAERS case ID, counted once through its latest version after deduplication; cases
+          on the FDA deletion lists are removed. The same event sent by different reporters stays
+          as separate cases. Every count on this site is a count of cases.
+      - term: "Report"
+        definition: >-
+          One version of a FAERS case as submitted to the FDA. A case can have several versions
+          (follow-ups); only the latest is kept.
+      - term: "Share of reports"
+        definition: >-
+          Of the cases that name an ingredient as primary or secondary suspect (PS or SS), the
+          percentage that also list the reaction, a/(a+b).
+      - term: "95% CI (confidence interval)"
+        definition: >-
+          The range around a PRR or ROR that shows how precise it is, computed on the log scale.
+          Few cases give a wide range.
+      - term: "Evans rule"
+        definition: >-
+          At least 3 cases, PRR at least 2 and chi-square (χ²) at least 4 (Evans, Waller and
+          Davis, 2001). The χ² is Pearson's, without continuity correction.
+      - term: "ROR rule"
+        definition: >-
+          At least 3 cases and the lower end of the ROR's 95% CI above 1.
+      - term: "Reporting pattern"
+        definition: >-
+          A pair is marked when its cases look like a reporting cluster: at least 10 cases with
+          80% or more of them first received in one quarter; a median of 40 or more reactions per
+          report; or at least 10 cases with 90% or more of them from one country that is not the
+          ingredient's most frequent one. The PRR and ROR are shown unchanged.
+      - term: "MedDRA PT (Preferred Term)"
+        definition: >-
+          The term that names a reaction in FAERS reports, from the MedDRA dictionary. Terms are
+          shown as they appear in FAERS; this project does not distribute MedDRA.
+      - term: "RxNorm ingredient"
+        definition: >-
+          The active ingredient a FAERS drug name maps to in RxNorm (NLM), by exact or normalized
+          match; approximate matching is off. Salts, prodrugs and biosimilars are grouped in their
+          reference ingredient, and a name without a match stays as its own ingredient (fallback).
+      - term: "Provisional quarter"
+        definition: >-
+          The most recent quarter loaded. Its cases still grow as later FAERS files arrive, so its
+          counts will change.
 
 # Descriptions of the open-data downloads (parquet/<table>.parquet), one per table in
 # export.parquet_tables. Every exported column must have a description here (checked by

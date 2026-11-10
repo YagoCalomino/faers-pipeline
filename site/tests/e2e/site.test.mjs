@@ -399,9 +399,12 @@ test('pair: neutral reporting-pattern state, and no validation block outside the
 });
 
 test('pair: the validation block shows the joined known_signals row (test double of the file)', async () => {
-  // The fixture has no reference pair among its exported pairs, so this test serves a copy of
-  // the real known_signals.json whose first row is renamed to the first fixture pair. It checks
-  // the join and the rendering only; the site itself reads the file as exported.
+  // TEST DOUBLE. The fixture has no reference pair among its exported pairs, so this test (and
+  // only this test) intercepts the request and serves a modified copy of known_signals.json: the
+  // first row is renamed to the first fixture pair, every other field is the file's own. It
+  // checks the join on ingredient_name + reaction_pt and the rendering only. The site has no
+  // test hook: it always reads data/json/known_signals.json exactly as exported, and every other
+  // test (including the Validation page test) reads that real file.
   const rows = JSON.parse(readFileSync(resolve(DIST, 'data/json/known_signals.json'), 'utf8'));
   const p = FIRST_DOC.pairs[0];
   const double = rows.map((r, i) => (i === 0 ? { ...r, ingredient_name: FIRST_DOC.ingredient.ingredient_name, reaction_pt: p.reaction_pt } : r));
@@ -437,6 +440,35 @@ test('validation: every pair shows its label reference, with the three caveats',
   // Captions repeat the section headings, so they are for screen readers only.
   for (const c of await page.locator('table.known caption').all()) assert.match(await c.getAttribute('class'), /sr-only/);
   assert.equal(await page.locator('table.known thead th').nth(2).innerText(), 'Cases');
+  // Expected and Result, row by row, from the file (written out here, not taken from the page code).
+  const heads = await page.locator('table.known').first().locator('thead th').allInnerTexts();
+  assert.deepEqual(heads, ['Ingredient', 'Reaction (PT)', 'Cases', 'PRR', 'ROR lower bound', 'χ²', 'Evans', 'Expected', 'Result', 'Reference']);
+  const shown = await page.locator('table.known tbody tr').evaluateAll((trs) =>
+    trs.map((tr) => ({
+      ing: tr.querySelector('th').textContent.trim(),
+      pt: tr.querySelectorAll('td')[0].textContent.trim(),
+      a: Number(tr.querySelector('td[data-field="a"]').dataset.value),
+      expected: tr.querySelector('td.expected').textContent.trim(),
+      result: tr.querySelector('td[data-field="passed"]').textContent.trim(),
+    })),
+  );
+  assert.equal(shown.length, rows.length);
+  for (const r of rows) {
+    const row = shown.find((x) => x.ing === r.ingredient_name && x.pt === r.reaction_pt);
+    assert.ok(row, `${r.ingredient_name} / ${r.reaction_pt} missing`);
+    assert.equal(row.a, r.a);
+    assert.equal(row.expected, r.expected === 'positive' ? 'Stands out' : 'Does not meet the Evans rule');
+    if (r.passed) assert.equal(row.result, 'As expected');
+    else assert.match(row.result, /^Not as expected/);
+  }
+  const npos = rows.filter((r) => r.expected === 'positive').length;
+  assert.equal(await page.locator('#kinds-pos-h').innerText(), `${npos} positive pairs`);
+  assert.equal(await page.locator('#kinds-neg-h').innerText(), `${rows.length - npos} negative controls`);
+  const lede = await page.locator('.page-head .lede').innerText();
+  assert.equal(lede.replace(/\s+/g, ' '), `${rows.filter((r) => r.passed).length} of ${rows.length} reference pairs behave as expected in all loaded cases.`);
+  assert.match(await page.locator('.page-head .caution').innerText(), /^A sanity check of the pipeline .*not a validation of disproportionality as a method/);
+  assert.match(await page.locator('section[aria-labelledby="kinds-neg-h"]').innerText(), /Pairs the label does not list/);
+  assert.match(await page.locator('section[aria-labelledby="kinds-pos-h"]').innerText(), /Expected: at least 3 cases, PRR ≥ 2 and a ROR lower bound above 1\./);
   const text = await page.locator('main').innerText();
   assert.match(text, /not that the drug is proven not to cause it/);
   assert.match(text, /For warfarin, an increased INR is a monitoring result/);
@@ -461,6 +493,36 @@ test('reading notes: home volume caption, deleted ids on Quality, PS/SS share on
   assert.match(await trend.innerText(), /The PS\/SS share changes by quarter \(see the Quality page\)\.$/);
   assert.equal(await trend.locator('a').getAttribute('href'), '#/quality');
   await pair.ctx.close();
+});
+
+test('quality: the steps come from dq_metrics.json, and every metric shown has one plain line', async () => {
+  const { ctx, page } = await open(ROUTES.quality);
+  const dq = JSON.parse(readFileSync(resolve(DIST, 'data/json/dq_metrics.json'), 'utf8'));
+  const allOf = (group, metric) => dq.find((r) => r.period_basis === 'all' && r.metric_group === group && r.metric === metric);
+  const COUNT = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+  const steps = await page.locator('ol.dq-steps li').evaluateAll((lis) => lis.map((li) => ({ t: li.querySelector('h3').textContent, v: li.querySelector('.dq-val').textContent })));
+  assert.deepEqual(steps, [
+    { t: 'Case versions loaded', v: COUNT.format(allOf('deduplication', 'demo_rows').value) },
+    { t: 'Superseded versions removed', v: COUNT.format(allOf('deduplication', 'superseded_versions_removed').value) },
+    { t: 'Deleted cases removed', v: COUNT.format(allOf('deduplication', 'deleted_cases_removed').value) },
+    { t: 'Cases counted', v: COUNT.format(allOf('deduplication', 'cases_after_deduplication').value) },
+    { t: 'PS/SS drug lines mapped to RxNorm', v: COUNT.format(allOf('rxnorm_coverage', 'signal_role_lines').value) },
+  ]);
+  // Every column or row label of the metric tables has its line under the table, and no more.
+  // Metric names are the column heads (after the period column), or the row heads of the
+  // key-value table.
+  const labels = await page.locator('table.metrics').evaluateAll((ts) =>
+    ts.flatMap((t) => [...t.querySelectorAll(t.classList.contains('kv') ? 'tbody th' : 'thead th:not(:first-child)')].map((th) => th.textContent.trim())),
+  );
+  const shown = new Set(labels);
+  const help = await page.locator('dl.metric-help dt').allInnerTexts();
+  assert.deepEqual([...new Set(help)].sort(), [...shown].sort());
+  for (const dd of await page.locator('dl.metric-help dd').allInnerTexts()) assert.ok(dd.trim().length > 10, dd);
+  const checks = await page.locator('#checks-help').innerText();
+  assert.match(checks, /reconciled with the lake/);
+  assert.match(checks, /Approximate RxNorm matching is off/);
+  assert.match(checks, /at least 3 cases \(a ≥ 3\)/);
+  await ctx.close();
 });
 
 test('unknown routes show not found', async () => {
@@ -593,15 +655,55 @@ function horizontalScrollers(page) {
   );
 }
 
-test('method page: only the configured sections of limitations.md, with the case definition', async () => {
+const squash = (t) => t.replace(/\s+/g, ' ').trim();
+
+test('method page: plain layer from config/site.yaml, then the configured sections collapsed', async () => {
   const { ctx, page } = await open(ROUTES.method);
   await page.locator('article.prose').waitFor();
-  const h2 = await page.locator('article.prose h2').allInnerTexts();
-  assert.deepEqual(h2.map((t) => t.trim()), SITE_CFG.method_page.sections);
-  const text = await page.locator('article.prose').innerText();
+  const plain = SITE_CFG.method_page.plain;
+  assert.deepEqual(await page.locator('main h1').allInnerTexts(), ['What the numbers on this site mean'], 'one h1');
+  assert.equal(await page.title(), `Method & limitations · ${SITE_CFG.site.title}`);
+  // A heading keeps the menu name, for the links that say "Method & limitations".
+  assert.equal(await page.locator('main h2#method-limitations').innerText(), 'Method & limitations');
+  assert.deepEqual(await page.locator('main > section > h2, main > div > section > h2').allInnerTexts(), [
+    'What this can tell you',
+    'What this cannot tell you',
+    'Why a larger share is not proof',
+    'How to read a pair in 30 seconds',
+    'Glossary',
+    'Method & limitations',
+  ]);
+  assert.equal(squash(await page.locator('.page-head .lede').innerText()), squash(plain.intro));
+  const items = async (sel) => (await page.locator(sel).allInnerTexts()).map(squash);
+  assert.deepEqual(await items('section[aria-labelledby="can-h"] li'), plain.can.map(squash));
+  assert.deepEqual(await items('section[aria-labelledby="cannot-h"] li'), plain.cannot.map(squash));
+  assert.deepEqual(await items('section[aria-labelledby="proof-h"] li'), plain.not_proof.reasons.map(squash));
+  assert.deepEqual(await items('ol.read-steps li'), plain.read_pair.map(squash));
+  assert.deepEqual(await items('dl.glossary dt'), plain.glossary.map((g) => g.term));
+  assert.deepEqual(await items('dl.glossary dd'), plain.glossary.map((g) => squash(g.definition)));
+  for (const term of ['PRR', 'ROR', 'SDR', 'Case', 'Report', 'Share of reports', '95% CI', 'Evans rule', 'ROR rule', 'Reporting pattern', 'MedDRA PT', 'RxNorm ingredient', 'Provisional quarter']) {
+    assert.ok(plain.glossary.some((g) => g.term.startsWith(term)), `glossary: ${term}`);
+  }
+  // The detailed sections: one per configured heading, each collapsed under its heading.
+  const h3 = await page.locator('article.prose section.doc-section > h3').allInnerTexts();
+  assert.deepEqual(h3.map((t) => t.trim()), SITE_CFG.method_page.sections);
+  assert.equal(await page.locator('article.prose section.doc-section > details.doc-details:not([open])').count(), SITE_CFG.method_page.sections.length);
+  assert.equal(await page.locator('article.prose h2').count(), 0, 'section headings are one level below the page h2');
+  const text = await page.locator('article.prose').textContent();
   assert.ok(!text.includes('Operational limits'), 'operational limits stay in the repository');
   assert.match(text, /a case is one FAERS case ID/);
-  assert.deepEqual(await page.locator('main h1').allInnerTexts(), ['Method & limitations'], 'one h1, named as in the menu');
+  // The biases, the five layers of validation and the MedDRA notice, word for word.
+  assert.match(text, /Confounding by indication and co-medication\./);
+  assert.match(squash(text), /The numbers are checked in five places\. Only the second is independent of the warehouse/);
+  assert.ok(squash(text).includes(squash(MEDDRA)), 'MedDRA notice as in config/site.yaml');
+  const covers = await page.locator('section.doc-section').first().locator('.doc-covers').innerText();
+  assert.match(covers, /Limits of the signals/);
+  assert.match(covers, /Layers of validation/);
+  // Opening a section shows its text.
+  const first = page.locator('details.doc-details').first();
+  await first.locator('summary').click();
+  assert.equal(await first.getAttribute('open'), '');
+  assert.ok(await first.locator('h4', { hasText: 'Layers of validation' }).isVisible());
   // Repository paths are links to GitHub, under an allowed prefix.
   const repo = SITE_CFG.site.repo_url;
   const hrefs = await page.locator('main a:has(code)').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
@@ -623,6 +725,7 @@ test('method page: axe and focusable scroll regions at narrow and wide viewports
     for (const scheme of ['light', 'dark']) {
       const { ctx, page } = await open(ROUTES.method, { viewport, colorScheme: scheme });
       await page.locator('article.prose').waitFor();
+      await page.locator('details').evaluateAll((ds) => ds.forEach((d) => (d.open = true)));
       const tables = await page.locator('article.prose table').count();
       assert.ok(tables > 0, 'the method page has tables');
       const wrapped = await page.locator('article.prose .table-scroll[role="region"][tabindex="0"][aria-label] > table').count();

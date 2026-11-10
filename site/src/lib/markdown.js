@@ -81,3 +81,24 @@ export function wrapTables(html) {
     return `<div class="table-scroll" role="region" aria-label="${label}" tabindex="0">${table}</div>`;
   });
 }
+
+// Method page layout of the rendered document: the text before the first level-2 heading
+// (`lead`) and the sections (`sections`). Each section keeps its heading, one level down (h2 ->
+// h3, the subsections h3 -> h4), with the list of its subsections, and its body inside
+// <details>, so the page opens on the plain layer and the detail is one click away. Headings stay
+// outside <summary>, where screen readers would not announce them as headings.
+export function collapseSections(html) {
+  const parts = html.split(/(?=<h2[\s>])/);
+  const lead = parts[0].startsWith('<h2') ? '' : parts.shift();
+  const sections = parts
+    .map((part, i) => {
+      const m = /^<h2[^>]*>([\s\S]*?)<\/h2>\s*/.exec(part);
+      const body = part.slice(m[0].length).replace(/<(\/?)h([3-5])\b/g, (_, slash, n) => `<${slash}h${+n + 1}`);
+      const subs = [...part.matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/g)].map((s) => textOf(s[1]));
+      const id = `doc-s${i + 1}`;
+      const covers = subs.length ? `<p class="help doc-covers">Covers: ${subs.join(' · ')}.</p>` : '';
+      return `<section class="doc-section" aria-labelledby="${id}"><h3 id="${id}">${m[1]}</h3>${covers}<details class="doc-details"><summary>Show the full section: ${textOf(m[1])}</summary><div class="doc-body">${body}</div></details></section>`;
+    })
+    .join('\n');
+  return { lead, sections };
+}

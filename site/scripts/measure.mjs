@@ -30,7 +30,7 @@ const SCENARIOS = [
   { name: 'pair', route: `#/ingredient/${SLUG}/${PAIR}`, wait: 'table.measures td[data-field="prr"]' },
   { name: 'quality', route: '#/quality', wait: 'table.metrics td.num' },
   { name: 'validation', route: '#/validation', wait: 'table.known tbody tr' },
-  { name: 'method', route: '#/method', wait: '.prose h2' },
+  { name: 'method', route: '#/method', wait: 'article.prose .doc-section h3' },
   { name: 'downloads', route: '#/downloads', wait: 'main section h2' },
 ];
 const PROFILES = {

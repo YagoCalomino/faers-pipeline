@@ -631,13 +631,8 @@ function noPatternText(rule) {
 
 function referenceBlock(ref, total) {
   if (!ref) return '';
-  const expected =
-    ref.expected === 'positive'
-      ? 'Stands out: at least 3 cases, PRR ≥ 2 and a ROR lower bound above 1 (positive pair)'
-      : 'Does not meet the Evans rule (negative control)';
-  const result = ref.passed
-    ? '<span class="ok">As expected</span>'
-    : `<span class="bad">Not as expected</span>${ref.failure_reason ? ` (${esc(ref.failure_reason)})` : ''}`;
+  const expected = `${expectedText(ref, true)} (${ref.expected === 'positive' ? 'positive pair' : 'negative control'})`;
+  const result = resultText(ref);
   return `<section class="ref-pair" aria-labelledby="ref-h">
       <p class="kicker">Validation · reference pair</p>
       <h2 id="ref-h">One of the ${fmtCount(total)} pairs used to check the pipeline</h2>
@@ -846,44 +841,123 @@ function keyValueTable(caption, rows, metrics) {
   );
 }
 
+// One plain line per metric, shown under its table.
+const METRIC_HELP = {
+  demo: 'Case versions: one row per version of a case.',
+  drug: 'Drug lines: one row per drug named in a case version.',
+  reac: 'Reaction lines: one row per reaction term in a case version.',
+  outc: 'Outcome lines: one row per outcome recorded for a case version.',
+  indi: 'Indication lines: one row per reason a drug was given.',
+  demo_rows: 'Every case version loaded, before deduplication.',
+  distinct_caseids: 'Different case IDs among those versions.',
+  superseded_versions_removed: 'Older versions of a case, dropped because a later version exists.',
+  deleted_cases_removed: 'Cases on the FDA deletion lists, dropped.',
+  cases_after_deduplication: 'Cases counted on this site: one per case ID, its latest version.',
+  pct_duplicate_rows_removed: 'Superseded versions, as a share of all loaded versions.',
+  pct_demo_rows_removed_total: 'Superseded versions and deleted cases, as a share of all loaded versions.',
+  winning_versions: 'Versions from this file that are the latest of their case.',
+  deleted_ids_listed: "Case IDs in this file's deletion list.",
+  deleted_ids_found_in_demo: 'Of those, the IDs that match a loaded case.',
+  signal_role_lines: 'Drug lines with a primary or secondary suspect role (PS/SS): the ones looked up in RxNorm.',
+  pct_lines_exact: 'Share matched to an RxNorm ingredient by its exact name.',
+  pct_lines_normalized_layer: 'Share matched only after RxNorm normalized the name (approximate matching is off).',
+  pct_lines_fallback: 'Share with no match: the name stays as its own ingredient.',
+  generic_fallback_lines: 'Lines that name a class of products (HERBALS, VITAMINS, …) instead of an ingredient; left out of the site.',
+  cases: 'Cases first received in the quarter.',
+  pct_cases_reporter_country_missing: 'Cases without a reporter country.',
+  pct_cases_age_missing: "Cases without the patient's age.",
+  pct_cases_sex_unknown: 'Cases with sex unknown or not recorded.',
+  pct_cases_event_date_missing: 'Cases without the date of the event.',
+  pct_drug_lines_without_prod_ai: 'Drug lines without active-ingredient text; the reported drug name is used and not looked up.',
+  pct_reaction_lines_without_pt: 'Reaction lines without a MedDRA PT.',
+  pct_PS: 'Primary suspect: the drug suspected first.',
+  pct_SS: 'Secondary suspect: another suspected drug.',
+  pct_C: 'Concomitant: taken at the same time, not suspected.',
+  pct_I: 'Interacting: suspected through an interaction.',
+  pct_DN: 'Not administered: named in the report, not given.',
+};
+
+function metricHelp(metrics) {
+  return `<dl class="metric-help">${metrics
+    .map((m) => `<div><dt>${esc(METRIC_LABELS[m] ?? m)}</dt><dd>${esc(METRIC_HELP[m] ?? '')}</dd></div>`)
+    .join('')}</dl>`;
+}
+
 async function viewQuality() {
   setTitle('Data quality');
-  main.innerHTML = '<h1 tabindex="-1">Data quality</h1><p class="loading">Loading…</p>';
+  main.innerHTML = '<h1 tabindex="-1">From FDA files to counted cases</h1><p class="loading">Loading…</p>';
   const g = groupMetrics(await getJson('json/dq_metrics.json'));
   const fq = g.file_quarter ?? {};
   const iq = g.init_quarter ?? {};
   const all = g.all ?? {};
   const allOf = (group) => all[group]?.ALL ?? {};
+  const dedup = allOf('deduplication');
+  const rx = allOf('rxnorm_coverage');
+  const val = (r) => (r ? fmtMetric(r.value, r.unit) : DASH);
+  // Steps of the pipeline, with values from the same metrics as the tables below.
+  const steps = [
+    ['Case versions loaded', `All versions in the FAERS files ${meta.first_quarter} to ${meta.last_quarter}.`, val(dedup.demo_rows)],
+    ['Superseded versions removed', 'A case keeps only its latest version.', val(dedup.superseded_versions_removed)],
+    ['Deleted cases removed', 'Cases on the FDA deletion lists.', val(dedup.deleted_cases_removed)],
+    ['Cases counted', 'One per case ID: every count on this site.', val(dedup.cases_after_deduplication)],
+    ['PS/SS drug lines mapped to RxNorm', `Exact ${val(rx.pct_lines_exact)}, normalized ${val(rx.pct_lines_normalized_layer)}; no match ${val(rx.pct_lines_fallback)}.`, val(rx.signal_role_lines)],
+  ];
+  const rawCols = ['demo', 'drug', 'reac', 'outc', 'indi'];
+  const dedupKv = ['demo_rows', 'distinct_caseids', 'superseded_versions_removed', 'deleted_cases_removed', 'cases_after_deduplication', 'pct_duplicate_rows_removed', 'pct_demo_rows_removed_total'];
+  const dedupFq = ['demo_rows', 'winning_versions', 'deleted_ids_listed', 'deleted_ids_found_in_demo'];
+  const rxCols = ['signal_role_lines', 'pct_lines_exact', 'pct_lines_normalized_layer', 'pct_lines_fallback', 'generic_fallback_lines'];
+  const missCols = ['cases', 'pct_cases_reporter_country_missing', 'pct_cases_age_missing', 'pct_cases_sex_unknown', 'pct_cases_event_date_missing', 'pct_drug_lines_without_prod_ai', 'pct_reaction_lines_without_pt'];
+  const roleCols = ['pct_PS', 'pct_SS', 'pct_C', 'pct_I', 'pct_DN'];
   main.innerHTML = `
-    <h1 tabindex="-1">Data quality</h1>
-    <p class="lede">Measured by the pipeline on every build (dbt model <code>mart_dq_metrics</code>).
-      File quarter is the FAERS file a row came from; first-receipt quarter is when the FDA first
-      received the case.</p>
+    <section class="page-head">
+      <p class="kicker">Data quality</p>
+      <h1 tabindex="-1">From FDA files to counted cases</h1>
+      <p class="lede">Measured by the pipeline on every build (dbt model <code>mart_dq_metrics</code>).
+        File quarter is the FAERS file a row came from; first-receipt quarter is when the FDA first
+        received the case.</p>
+    </section>
+    <section aria-labelledby="steps-h">
+      <h2 id="steps-h">The steps, in all loaded files</h2>
+      <ol class="dq-steps">${steps
+        .map(([t, note, v], k) => `<li><span class="n" aria-hidden="true">${k + 1}</span><div class="dq-step"><h3>${esc(t)}</h3><p>${esc(note)}</p></div><p class="dq-val">${v}</p></li>`)
+        .join('')}</ol>
+      <p class="help" id="checks-help">Checks behind these numbers: each new build is reconciled with
+        the lake before it replaces the previous one (case, drug, reaction and outcome row counts
+        recomputed outside dbt; any difference keeps the previous warehouse). Approximate RxNorm
+        matching is off, after a calibration on a manually labelled sample. Only PS and SS drug
+        lines count, and a pair is kept only with at least 3 cases (a ≥ 3). Details on the
+        <a href="#/method">Method &amp; limitations</a> page.</p>
+    </section>
     <section aria-labelledby="raw-h"><h2 id="raw-h">Raw rows per file</h2>
-      ${metricTable('Rows loaded per FAERS file quarter', fq.raw_rows ?? {}, ['demo', 'drug', 'reac', 'outc', 'indi'], 'File quarter')}
+      ${metricTable('Rows loaded per FAERS file quarter', fq.raw_rows ?? {}, rawCols, 'File quarter')}
+      ${metricHelp(rawCols)}
     </section>
     <section aria-labelledby="dedup-h"><h2 id="dedup-h">Deduplication</h2>
       <p>A case keeps only its latest version; cases in the FDA deletion lists are removed.</p>
-      ${keyValueTable('All loaded files', allOf('deduplication'), ['demo_rows', 'distinct_caseids', 'superseded_versions_removed', 'deleted_cases_removed', 'cases_after_deduplication', 'pct_duplicate_rows_removed', 'pct_demo_rows_removed_total'])}
-      ${metricTable('Per FAERS file quarter', fq.deduplication ?? {}, ['demo_rows', 'winning_versions', 'deleted_ids_listed', 'deleted_ids_found_in_demo'], 'File quarter')}
+      ${keyValueTable('All loaded files', dedup, dedupKv)}
+      ${metricTable('Per FAERS file quarter', fq.deduplication ?? {}, dedupFq, 'File quarter')}
       <p class="help" id="deleted-help">Deleted ids found in loaded cases: an id can appear in more
         than one deletion list, so the per-file sum can exceed the number of removed cases;
         "${DASH}" means none found.</p>
+      ${metricHelp([...dedupKv, ...dedupFq.slice(1)])}
     </section>
     <section aria-labelledby="rx-h"><h2 id="rx-h">RxNorm coverage of drug names</h2>
       <p>Share of primary and secondary suspect (PS/SS) drug lines by match type. Names without a
         match stay as their own ingredient (fallback).</p>
-      ${metricTable('Per first-receipt quarter, and all cases', { ...iq.rxnorm_coverage, ALL: allOf('rxnorm_coverage') }, ['signal_role_lines', 'pct_lines_exact', 'pct_lines_normalized_layer', 'pct_lines_fallback', 'generic_fallback_lines'], 'Quarter')}
+      ${metricTable('Per first-receipt quarter, and all cases', { ...iq.rxnorm_coverage, ALL: rx }, rxCols, 'Quarter')}
+      ${metricHelp(rxCols)}
     </section>
     <section aria-labelledby="miss-h"><h2 id="miss-h">Missing values</h2>
-      ${metricTable('Share of cases (or lines) per first-receipt quarter', { ...iq.missing_values, ALL: allOf('missing_values') }, ['cases', 'pct_cases_reporter_country_missing', 'pct_cases_age_missing', 'pct_cases_sex_unknown', 'pct_cases_event_date_missing', 'pct_drug_lines_without_prod_ai', 'pct_reaction_lines_without_pt'], 'Quarter')}
+      ${metricTable('Share of cases (or lines) per first-receipt quarter', { ...iq.missing_values, ALL: allOf('missing_values') }, missCols, 'Quarter')}
       <p class="help">Reporter country counts "COUNTRY NOT SPECIFIED" as missing.</p>
+      ${metricHelp(missCols)}
     </section>
     <section aria-labelledby="role-h"><h2 id="role-h">Drug roles per file</h2>
       <p>Share of drug lines by role: PS primary suspect, SS secondary suspect, C concomitant,
         I interacting, DN not administered. Only PS and SS count for disproportionality, so a
         change in this mix changes the universe of each quarter.</p>
-      ${metricTable('Share of drug lines per FAERS file quarter', { ...fq.role_mix, ALL: allOf('role_mix') }, ['pct_PS', 'pct_SS', 'pct_C', 'pct_I', 'pct_DN'], 'File quarter')}
+      ${metricTable('Share of drug lines per FAERS file quarter', { ...fq.role_mix, ALL: allOf('role_mix') }, roleCols, 'File quarter')}
+      ${metricHelp(roleCols)}
     </section>`;
   announce('Data quality loaded');
 }
@@ -898,6 +972,19 @@ const REFERENCE_STATUS = {
   label_not_listed: 'Not listed in the label',
 };
 
+// Expected result of a reference pair: short in the Validation table (the criteria are written
+// above it), with the criteria on the pair page's validation block.
+function expectedText(r, full = false) {
+  if (r.expected !== 'positive') return 'Does not meet the Evans rule';
+  return full ? 'Stands out: at least 3 cases, PRR ≥ 2 and a ROR lower bound above 1' : 'Stands out';
+}
+
+function resultText(r) {
+  return r.passed
+    ? '<span class="ok">As expected</span>'
+    : `<span class="bad">Not as expected</span>${r.failure_reason ? ` (${esc(r.failure_reason)})` : ''}`;
+}
+
 async function viewValidation() {
   setTitle('Validation');
   main.innerHTML = '<h1 tabindex="-1">Validation against known pairs</h1><p class="loading">Loading…</p>';
@@ -908,14 +995,15 @@ async function viewValidation() {
     scrollTable(
       caption,
       `<table class="known"><caption class="sr-only">${esc(caption)}</caption>
-        <thead><tr><th scope="col">Ingredient</th><th scope="col">Reaction (PT)</th><th scope="col" class="num">Cases</th><th scope="col" class="num">PRR</th><th scope="col" class="num">ROR lower bound</th><th scope="col" class="num">χ²</th><th scope="col">Evans</th><th scope="col">Result</th><th scope="col">Reference</th></tr></thead>
+        <thead><tr><th scope="col">Ingredient</th><th scope="col">Reaction (PT)</th><th scope="col" class="num">Cases</th><th scope="col" class="num">PRR</th><th scope="col" class="num">ROR lower bound</th><th scope="col" class="num">χ²</th><th scope="col">Evans</th><th scope="col">Expected</th><th scope="col">Result</th><th scope="col">Reference</th></tr></thead>
         <tbody>${list
           .map(
             (r) => `<tr>
               <th scope="row">${esc(r.ingredient_name)}</th><td>${esc(r.reaction_pt)}</td>
               ${num(r.a, fmtCount(r.a), 'a')}${num(r.prr, fmtRatio(r.prr), 'prr')}${num(r.ror_lcl, fmtRatio(r.ror_lcl), 'ror_lcl')}${num(r.chi2, fmtRatio(r.chi2), 'chi2')}
               <td>${r.is_signal_evans ? 'Yes' : 'No'}</td>
-              <td>${r.passed ? '<span class="ok">As expected</span>' : `<span class="bad">Not as expected</span>${r.failure_reason ? ` (${esc(r.failure_reason)})` : ''}`}</td>
+              <td class="expected">${expectedText(r)}</td>
+              <td data-field="passed">${resultText(r)}</td>
               <td>${esc(REFERENCE_STATUS[r.reference_status] ?? r.reference_status ?? '')}<br><span class="muted">${esc(r.reference ?? '')}</span></td>
             </tr>`,
           )
@@ -923,14 +1011,29 @@ async function viewValidation() {
     );
   const passed = rows.filter((r) => r.passed).length;
   main.innerHTML = `
-    <h1 tabindex="-1">Validation against known pairs</h1>
-    <p class="lede">${passed} of ${rows.length} reference pairs behave as expected in all loaded
-      cases. A sanity check of the pipeline (drug-name mapping, deduplication, counting), not a
-      validation of disproportionality as a method.</p>
-    <p>Positive pairs have an established association and are expected to have at least 3
-      cases, PRR ≥ 2 and a ROR lower bound above 1. Negative controls were chosen for clinical
-      implausibility and are expected not to meet the Evans criterion. With large counts, a small
-      excess can still put a control's ROR lower bound above 1.</p>
+    <section class="page-head">
+      <p class="kicker">Validation</p>
+      <h1 tabindex="-1">Validation against known pairs</h1>
+      <p class="lede"><strong>${fmtCount(passed)} of ${fmtCount(rows.length)}</strong> reference pairs behave as
+        expected in all loaded cases.</p>
+      <p class="caution">A sanity check of the pipeline (drug-name mapping, deduplication, counting),
+        not a validation of disproportionality as a method: it does not show that the method is right.</p>
+    </section>
+    <div class="plain-cols">
+      <section class="plain-box" aria-labelledby="kinds-pos-h">
+        <h2 id="kinds-pos-h">${fmtCount(pos.length)} positive pairs</h2>
+        <p>Pairs with an established association, each backed by its FDA label. Expected: at least 3
+          cases, PRR ≥ 2 and a ROR lower bound above 1. A positive pair that stops standing out
+          usually points to a regression in drug-name mapping, ingredient splitting or
+          deduplication.</p>
+      </section>
+      <section class="plain-box" aria-labelledby="kinds-neg-h">
+        <h2 id="kinds-neg-h">${fmtCount(neg.length)} negative controls</h2>
+        <p>Pairs the label does not list, chosen for clinical implausibility. Expected: not to meet
+          the Evans rule. With large counts, a small excess can still put a control's ROR lower bound
+          above 1.</p>
+      </section>
+    </div>
     <section aria-labelledby="pos-h"><h2 id="pos-h">Positive pairs</h2>${table('Positive pairs', pos)}</section>
     <section aria-labelledby="neg-h"><h2 id="neg-h">Negative controls</h2>${table('Negative controls', neg)}</section>
     <section aria-labelledby="ref-h"><h2 id="ref-h">References</h2>
@@ -942,18 +1045,60 @@ async function viewValidation() {
           adverse reaction listed in the label.</li>
         <li>The references were read in copies of the FDA labels, consulted on 2026-10-29.</li>
       </ul>
+      <p class="help">How the checks fail or warn a build, and the other layers of validation, are on
+        the <a href="#/method">Method &amp; limitations</a> page.</p>
     </section>`;
   announce('Validation loaded');
 }
 
 // -------------------------------------------------------------------------------- method
 
+// Plain layer first (config/site.yaml method_page.plain), then the sections of
+// docs/limitations.md, each collapsed under its heading. The page keeps a heading named as in the
+// menu ("Method & limitations") for the detailed part.
+const METHOD_H1 = 'What the numbers on this site mean';
+
 async function viewMethod() {
   setTitle('Method & limitations');
-  main.innerHTML = '<h1 tabindex="-1">Method &amp; limitations</h1><p class="loading">Loading…</p>';
-  const { html } = await import('virtual:limitations');
+  main.innerHTML = `<h1 tabindex="-1">${METHOD_H1}</h1><p class="loading">Loading…</p>`;
+  const { lead, sections, plain } = await import('virtual:limitations');
+  const list = (items) => items.map((t) => `<li>${esc(t)}</li>`).join('');
   const doc = `<a href="${esc(config.site.repo_url)}/blob/main/docs/limitations.md" rel="noopener"><code>docs/limitations.md</code></a>`;
-  main.innerHTML = `<h1 tabindex="-1">Method &amp; limitations</h1><p class="crumbs">Method and limitations of the results, from ${doc}; the operational limits of the pipeline are in that file in the repository.</p><article class="prose">${html}</article>`;
+  main.innerHTML = `
+    <section class="page-head">
+      <p class="kicker">Method &amp; limitations</p>
+      <h1 tabindex="-1">${METHOD_H1}</h1>
+      <p class="lede">${esc(plain.intro)}</p>
+    </section>
+    <div class="plain-cols">
+      <section aria-labelledby="can-h" class="plain-box">
+        <h2 id="can-h">What this can tell you</h2>
+        <ul class="plain-list">${list(plain.can)}</ul>
+      </section>
+      <section aria-labelledby="cannot-h" class="plain-box">
+        <h2 id="cannot-h">What this cannot tell you</h2>
+        <ul class="plain-list">${list(plain.cannot)}</ul>
+      </section>
+    </div>
+    <section aria-labelledby="proof-h" class="plain-sec">
+      <h2 id="proof-h">Why a larger share is not proof</h2>
+      <p>${esc(plain.not_proof.intro)}</p>
+      <ul class="plain-list">${list(plain.not_proof.reasons)}</ul>
+    </section>
+    <section aria-labelledby="read-h" class="plain-sec">
+      <h2 id="read-h">How to read a pair in 30 seconds</h2>
+      <ol class="read-steps">${list(plain.read_pair)}</ol>
+    </section>
+    <section aria-labelledby="gloss-h" class="plain-sec">
+      <h2 id="gloss-h">Glossary</h2>
+      <dl class="glossary">${plain.glossary.map((g) => `<div><dt>${esc(g.term)}</dt><dd>${esc(g.definition)}</dd></div>`).join('')}</dl>
+    </section>
+    <section aria-labelledby="method-limitations" class="doc">
+      <h2 id="method-limitations">Method &amp; limitations</h2>
+      <p class="help">The detailed method and its limits, from ${doc}. The operational limits of the
+        pipeline are in that file in the repository.</p>
+      <article class="prose">${lead}${sections}</article>
+    </section>`;
   announce('Method and limitations loaded');
 }
 
@@ -974,10 +1119,11 @@ function viewDownloads() {
       const cols = Object.entries(d.columns)
         .map(([c, text]) => `<tr><th scope="row"><code>${esc(c)}</code></th><td>${esc(text)}</td></tr>`)
         .join('');
-      return `<section aria-labelledby="dl-${name}">
+      return `<section class="dl-file" aria-labelledby="dl-${name}">
         <h2 id="dl-${name}"><code>${esc(name)}.parquet</code></h2>
         <p>${esc(d.description)}</p>
-        <p><a href="data/${esc(f.path)}" download>Download ${esc(name)}.parquet</a> (${fmtBytes(f.bytes)}, Parquet with zstd compression)</p>
+        <p class="dl-action"><a class="btn" href="data/${esc(f.path)}" download>Download ${esc(name)}.parquet</a>
+          <span class="dl-meta">${fmtBytes(f.bytes)}, Parquet with zstd compression</span></p>
         <p class="help">sha256 <code class="hash">${esc(f.sha256)}</code></p>
         <details><summary>Columns of ${esc(name)}</summary>
           ${scrollTable(`Columns of ${name}`, `<table class="columns"><thead><tr><th scope="col">Column</th><th scope="col">Description</th></tr></thead><tbody>${cols}</tbody></table>`)}
@@ -986,13 +1132,16 @@ function viewDownloads() {
     })
     .join('');
   main.innerHTML = `
-    <h1 tabindex="-1">Downloads</h1>
-    <p class="lede">The ingredient list and the data-quality metrics of this site, as open
-      data. Exported ${esc(meta.export_date)} (UTC) from the build with data through
-      ${esc(meta.last_quarter)}. Tables with reaction terms are not offered for download:
-      the terms are MedDRA terms, owned by ICH.</p>
-    <p class="meddra">${esc(config.site.meddra_notice)}</p>
-    ${sections}
+    <section class="page-head">
+      <p class="kicker">Open data</p>
+      <h1 tabindex="-1">Downloads</h1>
+      <p class="lede">The ingredient list and the data-quality metrics of this site, as open
+        data. Exported ${esc(meta.export_date)} (UTC) from the build with data through
+        ${esc(meta.last_quarter)}. Tables with reaction terms are not offered for download:
+        the terms are MedDRA terms, owned by ICH.</p>
+    </section>
+    <p class="meddra callout">${esc(config.site.meddra_notice)}</p>
+    <div class="dl-files">${sections}</div>
     <p class="help">Any Parquet reader opens these files, for example DuckDB:
       <code>select ingredient_name, n_cases_ps_ss from 'ingredients.parquet' order by n_cases_ps_ss desc limit 10</code>.</p>`;
 }

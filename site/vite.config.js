@@ -5,7 +5,8 @@
 //   ../config/site.yaml                         site settings, concentration alert, downloads
 //   ../config/faers.yaml                        FDA landing page (footer link)
 //   ../docs/limitations.md                      sections rendered into the Method & limitations page
-//                                               (config/site.yaml method_page.sections)
+//                                               (config/site.yaml method_page.sections), after
+//                                               the plain layer (method_page.plain)
 // Output: SITE_OUT (default dist): index.html, assets/, and data/ (a copy of the export).
 // base './': every URL in the build is relative, so it works under any sub-path
 // (GitHub Pages project sites live under /<repo>/).
@@ -15,7 +16,7 @@ import { dirname, join, resolve, normalize, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { marked } from 'marked';
 import YAML from 'yaml';
-import { dropTitle, linkRepoPaths, selectSections, wrapTables } from './src/lib/markdown.js';
+import { collapseSections, dropTitle, linkRepoPaths, selectSections, wrapTables } from './src/lib/markdown.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..');
@@ -141,12 +142,17 @@ function siteData() {
         // Tables go in focusable scroll regions (src/lib/markdown.js): a wide table must not be a
         // scroll container the keyboard cannot reach (axe scrollable-region-focusable).
         // Only the sections listed in config/site.yaml method_page; the rest stays in the repository.
-        const md = selectSections(readFileSync(join(REPO, 'docs/limitations.md'), 'utf8'), readYaml('config/site.yaml').method_page.sections);
-        // The document's own title is dropped (the page uses the menu name), and repository paths
+        const siteCfg = readYaml('config/site.yaml');
+        const md = selectSections(readFileSync(join(REPO, 'docs/limitations.md'), 'utf8'), siteCfg.method_page.sections);
+        // The document's own title is dropped (the page has its own), and repository paths
         // written as code become links to GitHub (config/site.yaml allowed_link_prefixes).
-        const repoUrl = readYaml('config/site.yaml').site.repo_url;
-        const html = wrapTables(linkRepoPaths(dropTitle(marked.parse(md, { gfm: true })), repoUrl, SOURCE_BRANCH, repoPathKind()));
-        return `export const html = ${JSON.stringify(html)};`;
+        const html = wrapTables(linkRepoPaths(dropTitle(marked.parse(md, { gfm: true })), siteCfg.site.repo_url, SOURCE_BRANCH, repoPathKind()));
+        // Each section collapsed under its heading; the plain layer travels in the same chunk, so
+        // the main bundle of the other pages does not carry it.
+        const { lead, sections } = collapseSections(html);
+        return `export const lead = ${JSON.stringify(lead)};
+export const sections = ${JSON.stringify(sections)};
+export const plain = ${JSON.stringify(siteCfg.method_page.plain)};`;
       }
       return null;
     },
