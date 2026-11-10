@@ -761,7 +761,7 @@ async function viewPair(slug, reactionKey) {
         <div><dt>Median reactions per report</dt><dd>${p.median_reactions_per_case == null ? DASH : fmtCount(p.median_reactions_per_case)}</dd></div>
       </dl>
       <p class="help">Most FAERS reports come from the United States, so a high country share is
-        not unusual by itself. The rule that marks a pair as concentrated is on the
+        not unusual by itself. The rule behind the reporting-pattern badge is on the
         <a href="#/method">Method &amp; limitations</a> page.</p>
     </section>
     <section aria-labelledby="pat-h">

@@ -139,7 +139,7 @@ ingredient's own country mix, or together with a high `median_reactions_per_case
 
 ### Concentration alert
 
-The public site marks a pair as concentrated when any of three rules holds
+The concentration alert (shown on the site as "Reporting pattern") marks a pair when any of three rules holds
 (`config/site.yaml` `concentration_alert`):
 
 - **Quarter:** at least 10 cases and 80% or more of them in one init quarter. The minimum of

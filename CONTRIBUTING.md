@@ -43,7 +43,7 @@ Before opening a pull request:
 ### Site
 
 - Site settings (concentration alert, size limits, column descriptions) live in
-  `config/site.yaml`. The concentration alert flags reporting clusters by quarter, country or
+  `config/site.yaml`. The concentration alert (shown on the site as "Reporting pattern") flags reporting clusters by quarter, country or
   report length; the full rule is in [docs/limitations.md](docs/limitations.md), "Concentration
   alert". After a change to the rule: `make site-ci`, `python -I scripts/site_alert_stats.py`
   (share of flagged rows) and `make publish-site`.

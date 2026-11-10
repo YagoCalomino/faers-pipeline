@@ -99,8 +99,9 @@ Accepted on 2026-10-26, after the measurements above.
   steps.
 - **Language and paths.** The site is in English. Base path and `repo_url` live in
   `config/site.yaml`; every link inside the site is relative.
-- **Concentration alert.** The rule (share of a pair's cases in one init quarter, median
-  reactions per case) and its thresholds live in `config/site.yaml`.
+- **Concentration alert** (shown on the site as "Reporting pattern"). The rule (share of a
+  pair's cases in one init quarter, median reactions per case) and its thresholds live in
+  `config/site.yaml`.
   The rule was later extended with a country anomaly check; see docs/limitations.md.
 
 ## Alternatives discarded

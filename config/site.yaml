@@ -69,7 +69,8 @@ site:
   # button appears only if that union grows.
   pairs_page_size: 30
 
-# Concentration alert on a pair (ALL period, over the pair's a cases; mart_signals_top). A
+# Concentration alert on a pair, shown on the site as "Reporting pattern" (ALL period, over the
+# pair's a cases; mart_signals_top). A
 # reporting artefact is suspected when any rule holds:
 #   - quarter: at least min_cases_for_quarter_rule cases and min_top_quarter_share of them in
 #     one init quarter (with 3 to 7 cases one quarter easily holds 100%);
