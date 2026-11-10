@@ -30,21 +30,21 @@ let page = await open('#/', { viewport: { width: 1280, height: 800 } });
 await page.screenshot({ path: out('search'), ...JPEG });
 await page.close();
 
-// Ingredient page: atorvastatin, the top of its reactions table with the concentration alerts.
-page = await open('#/ingredient/atorvastatin', { viewport: { width: 1280, height: 900 } });
+// Ingredient page: atorvastatin, the top of its reactions table with the reporting-pattern badges.
+page = await open('#/ingredient/atorvastatin', { viewport: { width: 1280, height: 1350 } });
 await page.locator('table.pairs').waitFor();
 await page.screenshot({ path: out('ingredient'), ...JPEG });
 await page.close();
 
-// Pair page on a phone: atorvastatin and rhabdomyolysis, from the headline to the end of the
-// two shares.
+// Pair page on a phone: atorvastatin and rhabdomyolysis, from the top of the page content (the
+// breadcrumb and the headline, which name the pair) to the end of the two shares.
 page = await open('#/ingredient/atorvastatin/15f363411c34bda6a976d905528afff2', {
   viewport: { width: 360, height: 800 },
   deviceScaleFactor: 3,
   isMobile: true,
   hasTouch: true,
 });
-const top = await page.locator('.page-head').evaluate((e) => e.getBoundingClientRect().top + scrollY);
+const top = await page.locator('main nav.crumbs').evaluate((e) => e.getBoundingClientRect().top + scrollY);
 const end = await page.locator('#division').evaluate((e) => e.getBoundingClientRect().bottom + scrollY);
 await page.screenshot({ path: out('pair-mobile'), fullPage: true, clip: { x: 0, y: top - 4, width: 360, height: end - top + 12 }, ...JPEG });
 await page.close();

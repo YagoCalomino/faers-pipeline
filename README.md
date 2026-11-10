@@ -12,13 +12,13 @@ data pipeline: Airflow ingests the quarters, RxNorm normalizes drug names, dbt a
 deduplicate cases and compute disproportionality (PRR, ROR), and a static site publishes the
 results with their data-quality metrics.
 
-**Explorer:** <https://yagocalomino.github.io/faers-pipeline/> (static site, no backend).
+**Explorer:** <https://yagocalomino.github.io/faers-pipeline/> (static site, no backend). Each page leads in plain language with what the numbers show and what they do not; the counts, 95% intervals, 2×2 tables and formulas are one click away. Light and dark themes.
 
-| Search | Ingredient page (atorvastatin) | Pair detail on a phone |
+| Search | Ingredient page (atorvastatin) | Pair page on a phone |
 |---|---|---|
-| ![Search page of the explorer, with the ingredients that have the most cases](docs/img/readme-search.jpg) | ![Atorvastatin page: reactions with cases, PRR, ROR and concentration alerts by country and quarter](docs/img/readme-ingredient.jpg) | ![Atorvastatin and rhabdomyolysis on a phone: where the cases come from and cases per quarter](docs/img/readme-pair-mobile.jpg) |
+| ![Home page: search by active ingredient, with the question the site answers](docs/img/readme-search.jpg) | ![Atorvastatin page: reactions with their cases, how much larger their share of reports is, and reporting-pattern badges](docs/img/readme-ingredient.jpg) | ![Rhabdomyolysis with atorvastatin on a phone: the headline and the two shares of reports compared](docs/img/readme-pair-mobile.jpg) |
 
-On the atorvastatin page, the first rows are reporting clusters; the concentration alert marks them.
+On the atorvastatin page, three of the first four reactions carry a "Reporting pattern" badge: most of their cases come from one country that is unusual for atorvastatin.
 
 ## Architecture
 
